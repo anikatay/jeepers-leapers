@@ -1,7 +1,7 @@
 pipeline {
     agent any
     tools {
-        jdk 'JDK21'
+        jdk 'jdk21'
     }
     stages {
         stage('Checkout') {
