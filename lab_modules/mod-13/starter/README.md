@@ -17,6 +17,23 @@ By the end of this lab your team will have:
   clone your team repository there before starting Part B
 - The [`starter/`](starter) folder from this lab (a minimal "hello world" Java app)
 
+## Docker Installation
+
+1. Check that Maven is installed.
+   [`mvn -version`]
+   If not, install with [`sudo -n dnf install -y maven`]
+2. Ensure Maven's Java version is correct.
+   [`export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto.x86_64`]
+3. [`mvn clean package`]
+4. [`docker build -t "folder_name" .`] (don't forget the ".")
+5. [`docker run -d --name "image_name" "folder_name"`]
+
+Other helpful docker commands
+  * [`docker images`]
+  * [`docker ps`]
+  * [`docker logs "image_name"`]
+  * [`docker exec -ti "image_name" sh`] (shells into the image)
+
 ## Task sheet
 
 ### Part A — Branch
