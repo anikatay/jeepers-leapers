@@ -5,7 +5,7 @@ Submission record confirming completion of the Module 12 lab, dated 2026-08-20.
 ## Part A — Repository created
 The team agreed the repository name `jeepers-leapers` and created it on GitHub as a public, empty repository (no auto-generated README, `.gitignore`, or licence). All team members were added as collaborators and each cloned the repository locally, confirming they could see it.
 
-- Repository URL: TBD (add once confirmed)
+- Repository URL: https://github.com/anikatay/jeepers-leapers.git
 
 ## Part B — Branching strategy agreed
 The team agreed on **trunk-based development with short-lived feature branches**, reviewed via pull request before merging into `main`.
