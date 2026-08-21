@@ -6,7 +6,7 @@ pipeline {
                 checkout scm
             }
         }
-        stage('environment check'){
+        stage('Environment check'){
             steps {
                 sh 'java -version'
                 sh 'mvn -version'
