@@ -14,6 +14,7 @@ pipeline {
             steps {
                 sh 'java -version'
                 sh 'export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto.x86_64'
+                sh 'export PATH=$JAVA_HOME/bin:$PATH'
                 sh 'mvn -version'
                 sh 'echo $JAVA_HOME'
                 sh 'echo $MAVEN_HOME'
