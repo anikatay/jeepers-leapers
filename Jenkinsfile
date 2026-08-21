@@ -6,6 +6,13 @@ pipeline {
                 checkout scm
             }
         }
+        stage('environment check'){
+            steps {
+                sh 'java -version'
+                sh 'mvn -version'
+                sh 'docker --version'
+            }
+        }
         stage('Build Image') {
             steps {
                 sh 'mvn -B clean package -DskipTests'
