@@ -12,13 +12,11 @@ pipeline {
         }
         stage('Build Image') {
             steps {
-                withMaven(maven: 'Maven3', jdk: 'jdk21') {
-                    sh 'mvn -version'
-                    sh 'echo $JAVA_HOME'
-                    sh 'echo $MAVEN_HOME'
-                    sh 'mvn -B -X clean package -DskipTests'
-                    sh 'docker build -t team-skeleton:latest .'
-                }
+                sh 'mvn -version'
+                sh 'echo $JAVA_HOME'
+                sh 'echo $MAVEN_HOME'
+                sh 'mvn -B -X clean package -DskipTests'
+                sh 'docker build -t team-skeleton:latest .'
             }
         }
         stage('Smoke Test') {
