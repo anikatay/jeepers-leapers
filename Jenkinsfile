@@ -12,6 +12,10 @@ pipeline {
         }
         stage('Build Image') {
             steps {
+                sh 'java -version'
+                sh 'mvn -version'
+                sh 'echo $JAVA_HOME'
+                sh 'echo $MAVEN_HOME'
                 sh 'mvn -B -X clean package -DskipTests'
                 sh 'docker build -t team-skeleton:latest .'
             }
