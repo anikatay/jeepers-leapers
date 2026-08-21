@@ -2,7 +2,7 @@ pipeline {
     agent any
     tools {
         jdk 'jdk21'
-        maven 'Maven Install'
+        maven 'Maven3'
     }
     stages {
         stage('Checkout') {
