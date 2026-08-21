@@ -15,6 +15,7 @@ pipeline {
         }
         stage('Build Image') {
             steps {
+                sh 'export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto.x86_64'
                 sh 'mvn -B clean package -DskipTests'
                 sh 'docker build -t team-skeleton:latest .'
             }
