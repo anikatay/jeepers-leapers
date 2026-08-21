@@ -1,9 +1,5 @@
 pipeline {
-    agent any
-    tools {
-        jdk 'jdk21'
-        maven 'Maven3'
-    }
+     agent any
     stages {
         stage('Checkout') {
             steps {
@@ -12,10 +8,7 @@ pipeline {
         }
         stage('Build Image') {
             steps {
-                sh 'mvn -version'
-                sh 'echo $JAVA_HOME'
-                sh 'echo $MAVEN_HOME'
-                sh 'mvn -B -X clean package -DskipTests'
+                sh 'mvn -B clean package -DskipTests'
                 sh 'docker build -t team-skeleton:latest .'
             }
         }
