@@ -12,7 +12,7 @@ pipeline {
         }
         stage('Build Image') {
             steps {
-                withMaven(maven: 'Maven-3.9.16', jdk: 'jdk21') {
+                withMaven(maven: 'Maven3', jdk: 'jdk21') {
                     sh 'mvn -version'
                     sh 'echo $JAVA_HOME'
                     sh 'echo $MAVEN_HOME'
