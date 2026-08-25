@@ -24,6 +24,16 @@ pipeline {
                 sh 'docker build -t team-skeleton:latest .'
             }
         }
+        stage('Unit Tests') {
+            steps {
+                sh 'mvn -B test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
         stage('Smoke Test') {
             steps {
                 sh 'docker run --rm team-skeleton:latest'
