@@ -31,18 +31,6 @@ pipeline {
                 }
             }
         }
-        stage('Demo Test'){
-            steps{
-                script{
-                    def rand = Math.random()
-                    if(rand < 0.5){
-                        error("Demo test failed")
-                    }else{
-                        echo "Demo test passed"
-                    }
-                }
-            }
-        }
         stage('Smoke Test') {
             steps {
                 sh 'docker run --rm team-skeleton:latest'
