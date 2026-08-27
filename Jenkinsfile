@@ -48,6 +48,11 @@ pipeline {
                 sh 'docker run --rm team-skeleton:latest'
             }
         }
+        stage('Multibranch Test') {
+            steps {
+                sh 'echo "this test always passes"'
+            }
+        }
     }
     post {
         always {
