@@ -1,35 +1,144 @@
-BR-01 — Build registration/login with Spring Security (JWT + bcrypt) against a PostgreSQL users table, exposing /register and /login endpoints with a matching Angular form.
+PS-101 — Client registration and sign-in
+As a customer, I want to register for the platform and sign in securely, so that I can access my account with confidence it's protected.
+Acceptance criteria:
 
-BR-02 — Add a JWT-claims-based Spring Security filter that scopes all queries to the current client ID, tested against a few seeded dummy clients.
+- User can register with a valid email and password
+- Passwords are stored hashed (bcrypt), never in plaintext
+- Sign-in returns a JWT on valid credentials
+- Invalid credentials are rejected with a clear error message
 
-BR-03 — Set short JWT expiry and build a Redis-backed revocation store checked on every request, with a /logout endpoint to revoke tokens.
+PS-102 — Restrict clients to their own data
+As a customer, I want to only view and act on my own positions, cash, and order history, so that my data is never exposed to or altered by another client.
+Acceptance criteria:
 
-BR-04 — Build an Angular order form posting to a new Spring Boot /orders endpoint that writes to a PostgreSQL orders table, using a hardcoded instrument list.
+- Every API call is scoped to the authenticated client's ID
+- Requesting another client's data returns a 403/404
+- Verified against multiple seeded test clients
 
-BR-05 — Write a Spring Boot service that validates orders against seeded cash/holdings data using SELECT ... FOR UPDATE locking, rejecting invalid orders with a clear error.
+PS-103 — Time-limited and revocable sessions
+As a customer, I want my signed-in session to expire and be revocable, so that a compromised credential has limited exposure.
+Acceptance criteria:
 
-BR-06 — Persist accepted orders to PostgreSQL and publish an OrderAccepted Kafka event in the same flow, ensuring the DB write survives even if the Kafka publish fails.
+- JWTs expire after a configurable time window
+- Logout revokes the active token immediately
+- Expired or revoked tokens are rejected on the next request
 
-BR-07 — Set up a Spring WebSocket/Redis Pub/Sub channel broadcasting order status to an Angular RxJS subscriber, tested with fake status transitions from a test endpoint.
+PS-104 — Submit buy/sell order
+As a customer, I want to submit an order to buy or sell a supported instrument, so that I can act on my investment decisions.
+Acceptance criteria:
 
-BR-08 — Build an execution worker that fills/rejects orders using a Redis-cached price, tested against a mock price feed populated on a timer.
+- Order form captures instrument, side, quantity, and order type
+- Submitting the form creates an order with status "Submitted"
+- Client receives on-screen confirmation of submission
 
-BR-09 — Write a single @Transactional method updating holdings, cash, and ledger together on fill, verified with a test that forces a mid-transaction failure.
+PS-105 — Validate orders against trading rules
+As a customer, I want my order checked against trading rules before it's accepted, so that invalid orders are never processed.
+Acceptance criteria:
 
-BR-10 — Create a PostgreSQL view aggregating holdings/cash exposed via a /portfolio endpoint and Angular page, built against seeded sample data.
+- Orders are rejected if cash/holdings are insufficient
+- Orders are rejected if the instrument isn't tradable
+- Concurrent orders against the same balance don't cause a race condition
 
-BR-11 — Build a paginated, indexed orders/fills query exposed via /blotter and rendered as an Angular data table, using seeded sample records.
+PS-106 — Record accepted order as a firm commitment
+As a customer, I want my accepted order recorded as a firm commitment, so that my intent to trade is never lost, even if execution fails later.
+Acceptance criteria:
 
-BR-12 — Build a market data service ingesting UK/US/India equities, FX, and crypto quotes (real or mocked) into a Redis cache, exposed via /quotes/{symbol}.
+- Order is durably saved with status "Accepted" before execution starts
+- An OrderAccepted event is published to Kafka on acceptance
+- Order record persists even if the Kafka publish fails
 
-BR-13 — Add an Angular ticker component that shows live prices from the Redis cache on the order form before submission.
+PS-107 — Real-time order status updates
+As a customer, I want to see my order status change in real time, so that I don't have to manually refresh the page.
+Acceptance criteria:
 
-BR-14 — Create append-only PostgreSQL audit tables and a shared logging service for orders/pricing/balances, with Docker persistent storage verified via a restart test.
+- Status updates (submitted, accepted, filled, rejected) push to the UI automatically
+- No page refresh is required to see the latest status
+- Verified end-to-end using simulated status transitions
 
-BR-15 — Thread a correlation ID through order events and build an /audit/{correlationId} endpoint plus Angular view to display them in order, tested against seeded multi-stage records.
+PS-108 — Price and execute orders against a live quote
+As a customer, I want my order priced against a current market quote at execution, so that I get a fair and accurate trade outcome.
+Acceptance criteria:
 
-BR-16 — Stream synthetic trading events via Kafka into a separate PostgreSQL reporting DB structured for aggregation by instrument, period, and segment.
+- Execution reads the current cached price at time of fill
+- Order is filled or rejected based on that price
+- Fill/reject outcome is recorded against the order
 
-BR-17 — Build an Angular BI dashboard querying the reporting DB for volume, active instruments, and client trends using seeded/synthetic data.
+PS-109 — Atomic settlement of holdings, cash, and ledger
+As a customer, I want my holdings, cash balance, and trade record to update together when my order fills, so that my account is always accurate and consistent.
+Acceptance criteria:
 
-BR-18 — Build a guard service flagging high-slippage orders from mocked price history, paired with an Angular confirmation modal and a short business-justification write-up
+- Holdings, cash, and ledger update in a single transaction
+- A failure at any point rolls back all three, with no partial update
+- Verified with a test that forces a mid-transaction failure
+
+PS-110 — View current holdings and cash balance
+As a customer, I want to see my current holdings and cash balance, so that I know my portfolio position at any time.
+Acceptance criteria:
+
+- Portfolio screen shows current holdings and cash
+- Values reflect the client's latest executed trade
+- Data loads correctly against seeded sample holdings
+
+PS-111 — View order and fill history (blotter)
+As a customer, I want to see a chronological history of my orders and fills, so that I can review my trading activity.
+Acceptance criteria:
+
+- Blotter lists orders/fills newest first
+- Supports filtering by date range and instrument
+- Large histories are paginated
+
+PS-112 — Multi-asset-class market data feeds
+As a customer, I want live quotes available for equities (UK/US/India), FX, and crypto, so that I can trade across all supported asset classes.
+Acceptance criteria:
+
+- /quotes/{symbol} returns a current price for each supported asset class
+- Quotes refresh in near real time
+- Works with mock or live feed sources
+
+PS-113 — Pre-trade indicative pricing
+As a customer, I want to see an indicative price before I submit an order, so that I can decide with confidence before committing.
+Acceptance criteria:
+
+- Live price is shown on the order form before submission
+- Price updates automatically as the market moves
+- Displayed price matches the underlying quote source
+
+PS-114 — Permanent audit trail for orders, pricing, and balances
+As a customer, I want every accepted order, pricing decision, and balance change permanently recorded, so that my history is never lost, even after a system restart.
+Acceptance criteria:
+
+- Every relevant event is written to an append-only audit table
+- Audit records survive a system/container restart
+- Records cannot be edited or deleted after creation
+
+PS-115 — Reconstruct full trade lifecycle for audit
+As a customer, I want the full lifecycle of any of my trades to be reconstructable, so that disputes or audits can be resolved without relying on memory.
+Acceptance criteria:
+
+- Each order has a correlation ID linking placement, pricing, and settlement events
+- Audit view displays all stages for a given correlation ID, in order
+- Verified against seeded multi-stage sample records
+
+PS-116 — OLAP analytics on trading activity
+As a business stakeholder, I want trading activity analyzed by instrument, period, and segment, so that I can understand performance without impacting live trading.
+Acceptance criteria:
+
+- Trading events stream into a separate reporting database
+- Reporting queries don't affect live trading performance
+- Aggregates can be sliced by instrument, period, and segment
+
+PS-117 — Operational BI dashboard
+As a business stakeholder, I want to see key trading insights like volume, active instruments, and client trends, so that I can monitor platform health.
+Acceptance criteria:
+
+- Dashboard displays trading volume, active instruments, and client trends
+- Data is sourced from the reporting database
+- Values match known sample/test data
+
+PS-118 — Pre-trade slippage and volatility guard
+As a customer, I want to be warned about likely slippage or high volatility before my order executes, so that I avoid an unexpectedly poor fill.
+Acceptance criteria:
+
+- System flags orders likely to experience significant slippage before execution
+- Client sees a warning modal requiring explicit confirmation to proceed
+- Business justification for the feature is documented in the ticket
