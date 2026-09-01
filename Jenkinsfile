@@ -35,7 +35,7 @@ pipeline {
         }
         stage('Smoke Test') {
             steps {
-                sh 'docker-compose up -d'
+                sh 'docker-compose up -d --build'
                 sh 'sleep 5'
                 sh 'docker-compose ps'
                 sh '''
