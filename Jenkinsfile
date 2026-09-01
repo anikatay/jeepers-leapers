@@ -14,11 +14,7 @@ pipeline {
                 sh 'java -version'
                 sh 'mvn -version'
                 sh 'docker --version'
-            }
-        }
-        stage('Build Image') {
-            steps {
-                sh 'docker build -t team-skeleton:latest .'
+                sh 'docker-compose --version'
             }
         }
         stage('Unit Tests') {
@@ -31,14 +27,27 @@ pipeline {
                 }
             }
         }
-        stage('Smoke Test') {
+        stage('Compose validate and build') {
             steps {
-                sh 'docker run --rm team-skeleton:latest'
+                sh 'docker-compose config'
+                sh 'docker-compose build'
             }
         }
-        stage('Multibranch Test') {
+        stage('Smoke Test') {
             steps {
-                sh 'echo "this test always passes"'
+                sh 'docker-compose up -d'
+                sh 'sleep 5'
+                sh 'docker-compose ps'
+                sh '''
+                    docker-compose exec -T db pg_isready -U paysprint
+                '''
+                sh 'curl -f http://localhost:8090 || (echo "Frontend down!!!" && exit 1)'
+            }
+            post {
+                always {
+                    sh 'docker-compose logs'
+                    sh 'docker-compose down -v'
+                }
             }
         }
     }
