@@ -1,0 +1,194 @@
+<div class="dashboard-shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">JL</div>
+      <span class="brand-name">Jeepers Leapers</span>
+    </div>
+
+    <nav class="main-nav" aria-label="Client navigation">
+      <button
+        *ngFor="let item of navItems"
+        type="button"
+        class="nav-item"
+        [class.active]="activeNav === item"
+        (click)="navigateTo(item)">
+        {{ item }}
+      </button>
+    </nav>
+
+    <div class="profile-wrap" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="profile-button"
+        aria-label="Open profile menu"
+        [attr.aria-expanded]="profileOpen"
+        (click)="toggleProfile($event)">
+        <span class="profile-name">Joana</span>
+        <span class="avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path>
+          </svg>
+        </span>
+      </button>
+
+      <div class="profile-menu" *ngIf="profileOpen">
+        <button type="button" (click)="selectProfileOption('Profile')">Profile</button>
+        <button type="button" (click)="selectProfileOption('Settings')">Settings</button>
+        <button type="button" class="logout" (click)="selectProfileOption('Logout')">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-content">
+    <section class="overview-section">
+      <h2>Portfolio Overview</h2>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <p class="stat-label">Net Worth</p>
+          <p class="stat-value">$284,512</p>
+          <p class="stat-sub neutral">.40 USD</p>
+        </article>
+
+        <article class="stat-card">
+          <p class="stat-label">Today's Gains</p>
+          <p class="stat-value">+$1,234</p>
+          <p class="stat-sub positive">+0.44% today</p>
+        </article>
+
+        <article class="stat-card">
+          <p class="stat-label">Overall Gains</p>
+          <p class="stat-value">+$47,210</p>
+          <p class="stat-sub positive">+19.9% all time</p>
+        </article>
+
+        <article class="stat-card">
+          <p class="stat-label">Overall Returns</p>
+          <p class="stat-value">+24.3%</p>
+          <p class="stat-sub positive">Since inception</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="allocation-section">
+      <h2>Portfolio Allocation</h2>
+
+      <div class="allocation-card">
+        <div class="quick-actions">
+          <p class="section-kicker">Quick Actions</p>
+
+          <button type="button" class="action-button buy">Buy</button>
+          <button type="button" class="action-button sell">Sell</button>
+          <button type="button" class="action-button orders">Orders</button>
+        </div>
+
+        <div class="allocation-divider"></div>
+
+        <div class="allocation-visual">
+          <div class="donut-wrap">
+            <div class="donut-chart" aria-label="Portfolio allocation chart">
+              <div class="donut-center">
+                <span>Portfolio</span>
+                <strong>100%</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="allocation-legend">
+            <div class="legend-item" *ngFor="let item of allocation">
+              <span class="legend-color" [style.background]="item.color"></span>
+              <span class="legend-name">{{ item.name }}</span>
+              <strong>{{ item.value }}%</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="graph-section">
+      <h2>Portfolio Graph</h2>
+
+      <div class="graph-card">
+        <div class="graph-toolbar">
+          <div>
+            <p class="graph-meta-label">6-Month Change</p>
+            <p class="graph-gain">+$46,512 (+19.5%)</p>
+          </div>
+
+          <div class="toolbar-divider"></div>
+
+          <div>
+            <p class="graph-meta-label">Period</p>
+            <p class="graph-period">Mar 2026 - Sep 2026</p>
+          </div>
+
+          <div class="period-buttons">
+            <button
+              *ngFor="let period of periods"
+              type="button"
+              [class.active]="activePeriod === period"
+              (click)="setPeriod(period)">
+              {{ period }}
+            </button>
+          </div>
+        </div>
+
+        <div class="chart-area">
+          <div class="y-axis">
+            <span>$285k</span>
+            <span>$270k</span>
+            <span>$255k</span>
+            <span>$240k</span>
+          </div>
+
+          <div class="chart-canvas">
+            <div class="grid-line g1"></div>
+            <div class="grid-line g2"></div>
+            <div class="grid-line g3"></div>
+            <div class="grid-line g4"></div>
+
+            <svg class="line-chart" viewBox="0 0 900 260" preserveAspectRatio="none" aria-label="Portfolio history line chart">
+              <defs>
+                <linearGradient id="portfolioFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#16a34a" stop-opacity="0.16"></stop>
+                  <stop offset="100%" stop-color="#16a34a" stop-opacity="0"></stop>
+                </linearGradient>
+              </defs>
+
+              <path
+                class="area-path"
+                d="M20,210 L160,175 L300,193 L440,125 L580,98 L720,55 L880,22 L880,245 L20,245 Z">
+              </path>
+
+              <polyline
+                class="portfolio-line"
+                points="20,210 160,175 300,193 440,125 580,98 720,55 880,22">
+              </polyline>
+
+              <g class="chart-points">
+                <circle cx="20" cy="210" r="5"></circle>
+                <circle cx="160" cy="175" r="5"></circle>
+                <circle cx="300" cy="193" r="5"></circle>
+                <circle cx="440" cy="125" r="5"></circle>
+                <circle cx="580" cy="98" r="5"></circle>
+                <circle cx="720" cy="55" r="5"></circle>
+                <circle cx="880" cy="22" r="5"></circle>
+              </g>
+            </svg>
+
+            <div class="x-axis">
+              <span>Mar</span>
+              <span>Apr</span>
+              <span>May</span>
+              <span>Jun</span>
+              <span>Jul</span>
+              <span>Aug</span>
+              <span>Sep</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
