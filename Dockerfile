@@ -24,6 +24,7 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
+
 # Create a non-root group and user, then switch to it.
 # Running as root inside a container is unnecessary and increases blast radius
 # if the container is compromised.
