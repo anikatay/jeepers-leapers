@@ -1,11 +1,11 @@
 package com.neueda.leap;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
 public class Main {
-    public static void main(String[] args) throws InterruptedException {
-        System.out.println("This is the Jeepers Leapers application!");
-        System.out.println("Container is up and running.");
-        System.out.println("Sleeping...");
-        System.out.println("Inspect container and check docker-compose networking...");
-        Thread.sleep(60000);
+    public static void main(String[] args) {
+        SpringApplication.run(Main.class, args);
     }
 }
