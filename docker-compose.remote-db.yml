@@ -1,0 +1,10 @@
+# Override for teammates: point `app` at the shared db container instead of a local one.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.remote-db.yml up -d app
+# Requires DB_HOST and DB_PASSWORD set in .env to match the shared EC2 host/password.
+services:
+  app:
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:8100/paysprint
+      SPRING_DATASOURCE_USERNAME: paysprint
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+    depends_on: []
