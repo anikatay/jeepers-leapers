@@ -35,7 +35,7 @@ pipeline {
         stage('Smoke Test') {
             steps {
                 sh '''
-                    docker-compose exec -T db pg_isready -U paysprint
+                    pg_isready -h 10.14.141.36 -p 8100 -U paysprint
                 '''
                 sh 'curl -f http://localhost:8090 || (echo "Frontend down!!!" && exit 1)'
             }
