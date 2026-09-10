@@ -32,17 +32,8 @@ pipeline {
                 }
             }
         }
-        stage('Compose validate and build') {
-            steps {
-                sh 'docker-compose config'
-                sh 'docker-compose build'
-            }
-        }
         stage('Smoke Test') {
             steps {
-                sh 'docker-compose -f docker-compose.yml -f docker-compose.remote-db.yml up -d --build app --force-recreate'
-                sh 'sleep 10'
-                sh 'docker-compose ps'
                 sh '''
                     docker-compose exec -T db pg_isready -U paysprint
                 '''
