@@ -15,6 +15,19 @@ CREATE TABLE IF NOT EXISTS accounts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- PII
+CREATE TABLE IF NOT EXISTS user_pii (
+    user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    first_name VARCHAR(64) NOT NULL,
+    last_name VARCHAR(64) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    ssn VARCHAR(11) UNIQUE NOT NULL,
+    "address" TEXT,
+    phone_number VARCHAR(15),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 2. Tradable Instruments & Current Prices
 CREATE TABLE IF NOT EXISTS instruments (
     instrument_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
