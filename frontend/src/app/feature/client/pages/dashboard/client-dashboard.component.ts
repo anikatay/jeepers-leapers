@@ -1,21 +1,20 @@
 import { Component, OnInit, ChangeDetectorRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PortfolioService } from '../../../../core/services/portfolio.service';
-// import { Portfolio, Holding } from '../../models/portfolio.model';
+import { Router, RouterOutlet } from '@angular/router';
 
 
 @Component({
   selector: 'app-client-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterOutlet],
   templateUrl: './client-dashboard.component.html',
   styleUrl: './client-dashboard.component.css'
 })
 export class ClientDashboardComponent implements OnInit{
-  // Just expose the service's signal directly — no local copy needed
   portfolio;
 
-  constructor(private portfolioService: PortfolioService) {
+  constructor(private portfolioService: PortfolioService, private router: Router ) {
     this.portfolio = this.portfolioService.portfolio;
     effect(() => {
       const data = this.portfolio();
@@ -46,6 +45,13 @@ export class ClientDashboardComponent implements OnInit{
 
   navigateTo(item: string) {
     this.activeNav = item;
+
+    if (item === 'Portfolio') {
+      this.router.navigate(['portfolio']); // relative to current route
+    } else if (item === 'Home') {
+      this.router.navigate(['.']); // back to the parent path (Home)
+    }
+    // add more branches later for Orders, Holding, Alerts as you build them out
   }
 
   toggleProfile(event: Event) {

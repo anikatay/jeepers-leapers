@@ -40,7 +40,7 @@
     </div>
   </header>
 
-  <main class="dashboard-content">
+  <main class="dashboard-content" *ngIf="activeNav === 'Home'">
     <section class="overview-section">
       <h2>Portfolio Overview</h2>
 
@@ -191,4 +191,5 @@
       </div>
     </section>
   </main>
+  <router-outlet></router-outlet>
 </div>
