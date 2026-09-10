@@ -3,6 +3,11 @@ pipeline {
     tools{
         maven 'Maven3'
     }
+    environment {
+        DB_PORT_J = "${DB_PORT_J}"
+        DB_PASSWORD = "${DB_PASSWORD}"
+        DB_HOST = "${DB_HOST}"
+    }
     stages {
         stage('Checkout') {
             steps {
@@ -35,8 +40,8 @@ pipeline {
         }
         stage('Smoke Test') {
             steps {
-                sh 'docker-compose up -d --build'
-                sh 'sleep 5'
+                sh 'run-remote.sh'
+                sh 'sleep 10'
                 sh 'docker-compose ps'
                 sh '''
                     docker-compose exec -T db pg_isready -U paysprint
