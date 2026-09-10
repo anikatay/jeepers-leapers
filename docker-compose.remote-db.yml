@@ -4,7 +4,7 @@
 services:
   app:
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:8100/paysprint
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:${DB_PORT}/paysprint
       SPRING_DATASOURCE_USERNAME: paysprint
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
     depends_on: []
