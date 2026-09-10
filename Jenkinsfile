@@ -4,7 +4,7 @@ pipeline {
         maven 'Maven3'
     }
     environment {
-        DB_PORT = "${DB_PORT_J}"
+        DB_PORT_J = "${DB_PORT_J}"
         DB_PASSWORD = "${DB_PASSWORD}"
         DB_HOST = "${DB_HOST}"
     }
@@ -40,7 +40,7 @@ pipeline {
         }
         stage('Smoke Test') {
             steps {
-                sh 'docker-compose -f docker-compose.yml -f docker-compose.remote-db.yml up -d --build app --force-recreate'
+                sh 'docker-compose -f docker-compose.yml -f docker-compose.remote-dbj.yml up -d --build app --force-recreate'
                 sh 'sleep 10'
                 sh 'docker-compose ps'
                 sh '''
