@@ -34,9 +34,8 @@ CREATE TABLE IF NOT EXISTS exchanges (
     currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR'))
 );
 
--- 3. Customer Portfolio Holdings TODO: Check before PR
-CREATE TABLE IF NOT EXISTS positions (
-    position_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+-- 3. Customer Portfolio Holdings 
+CREATE TABLE IF NOT EXISTS holdings (
     account_id UUID NOT NULL REFERENCES accounts(account_id),
     instrument_id UUID NOT NULL REFERENCES instruments(instrument_id),
     quantity NUMERIC(18, 8) NOT NULL DEFAULT 0,
