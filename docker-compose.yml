@@ -9,14 +9,14 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/paysprint
       SPRING_DATASOURCE_USERNAME: paysprint
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-changeme}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
 
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: paysprint
       POSTGRES_USER: paysprint
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       # Only db is reachable from the host. app is not. This mirrors a real
       # deployment where the database is internal but needs to be accessible
