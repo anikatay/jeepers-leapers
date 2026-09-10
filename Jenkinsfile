@@ -4,7 +4,7 @@ pipeline {
         maven 'Maven3'
     }
     environment {
-        DB_PORT_J = "${DB_PORT_J}"
+        DB_PORT = "${DB_PORT_J}"
         DB_PASSWORD = "${DB_PASSWORD}"
         DB_HOST = "${DB_HOST}"
     }
