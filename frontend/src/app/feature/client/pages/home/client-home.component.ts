@@ -5,13 +5,13 @@ import { Router, RouterOutlet } from '@angular/router';
 
 
 @Component({
-  selector: 'app-client-dashboard',
+  selector: 'app-client-home',
   standalone: true,
   imports: [CommonModule, RouterOutlet],
-  templateUrl: './client-dashboard.component.html',
-  styleUrl: './client-dashboard.component.css'
+  templateUrl: './client-home.component.html',
+  styleUrl: './client-home.component.css'
 })
-export class ClientDashboardComponent implements OnInit{
+export class ClientHomeComponent implements OnInit{
   portfolio;
 
   constructor(private portfolioService: PortfolioService, private router: Router ) {
@@ -47,7 +47,7 @@ export class ClientDashboardComponent implements OnInit{
     this.activeNav = item;
 
     if (item === 'Portfolio') {
-      this.router.navigate(['portfolio']); // relative to current route
+      this.router.navigate(['./client/portfolio']); // relative to current route
     } else if (item === 'Home') {
       this.router.navigate(['.']); // back to the parent path (Home)
     }

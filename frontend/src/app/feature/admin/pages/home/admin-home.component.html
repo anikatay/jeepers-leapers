@@ -1,0 +1,5 @@
+<ul *ngIf="trades() as data">
+    <li *ngFor="let trade of data">
+      {{ trade.clientEmail }} — {{ trade.instrumentName }} @ {{ trade.tradeValue }}
+    </li>
+</ul>

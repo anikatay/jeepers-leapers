@@ -4,6 +4,10 @@ export const routes: Routes = [
   { path: '', redirectTo: 'client', pathMatch: 'full' },
   {
     path: 'client',
-    loadChildren: () => import('./feature/client/clients.routes').then(m => m.CLIENT_ROUTES)
+    loadChildren: () => import('./feature/client/client.routes').then(m => m.CLIENT_ROUTES)
+  },
+  {
+    path: 'admin',
+    loadChildren: () => import('./feature/admin/admin.routes').then(m => m.ADMIN_ROUTES)
   }
 ];

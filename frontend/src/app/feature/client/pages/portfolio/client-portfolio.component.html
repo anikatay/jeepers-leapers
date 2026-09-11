@@ -1,1 +1,14 @@
-<p>Portfolio page — coming soon</p>
+<h1>total Value: {{ portfolio()?.totalPortfolioValue }}</h1>
+
+<table class="holdings-table" *ngIf="portfolio() as data">
+    <thead>
+        <tr>
+        <th *ngFor="let col of columns">{{ col.header }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let holding of data.holdings">
+        <td *ngFor="let col of columns">{{ holding[col.field] }}</td>
+        </tr>
+    </tbody>
+</table>
