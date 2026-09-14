@@ -1,0 +1,119 @@
+classDiagram
+    direction TB
+
+    class PII {
+        -first_name String
+        -last_name String
+        -DOB Date
+        -SSN String
+        -phone_number String
+        -address String
+        -created_at Date
+        +getAge() int
+        +isAdult() Boolean
+    }
+
+    class IUser {
+        <<interface>>
+        -user_id String
+        -email String
+        -role Enum
+        -status Enum
+        -getDto() UserDto
+    }
+
+    class ClientUser {
+
+    }
+
+    class AnalystUser {
+
+    }
+
+    class AdminUser {
+
+    }
+
+    class Account {
+        -account_id String
+        -user_id String
+        -currency String
+        -balance double
+        -created_at Date
+    }
+
+    class Instrument {
+        -instrument_id UUID
+        -ticker String
+        -name String
+        -type String
+        -exchange_id UUID
+        -current_price double
+        -updated_at Date
+    }
+
+    class Exchange {
+        -exchange_id UUID
+        -name String
+        -region String
+        -timezone String
+        -currency String
+        +isMarketOpen() Boolean
+        
+    }
+
+    class Holding {
+        -account_id String
+        -instrument_id UUID
+        -quantity double
+        +getValue(currentPrice double) double
+        
+    }
+
+    class Trade {
+        -trade_id UUID
+        -account_id String
+        -instrument_id UUID
+        -side Enum
+        -status Enum
+        -quantity double
+        -execution_price double
+        -executed_at Timestamp
+        +getTradeValue() double
+        +getStatus() Enum
+    }
+
+    class Request {   
+
+    }
+
+    class Response {
+        -success Boolean
+        -message String
+        +toString() String
+    }
+
+    class BuyRequest {
+        -account_id String
+        -instrument_id UUID
+        -quantity double
+        -hasSufficentBalance Boolean
+    }
+
+    class SellRequest {
+    }
+
+    class Service {
+
+    }
+
+    class TransactionService {
+        
+    }
+
+
+    ClientUser --|> IUser : inheritance
+    AnalystUser --|> IUser : inheritance
+    AdminUser --|> IUser : inheritance
+    BuyRequest --|> Request : inheritance
+    SellRequest --|> Request : inheritance
