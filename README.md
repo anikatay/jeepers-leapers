@@ -28,7 +28,7 @@
 - jupyter notebook
 
 ## Project Structure
-
+```
 jeepers-leapers/
 ├── frontend/
 ├──	src/
@@ -51,7 +51,7 @@ jeepers-leapers/
 | | | └──Main.java
 | | └──resources/
 └ └──test/java/com/neueda/leap
-
+```
 ## Key Dependencies
 
 - Java 21       | Backend
