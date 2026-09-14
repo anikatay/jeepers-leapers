@@ -21,6 +21,12 @@
 2.  npm install
 3.  npm run start
 
+##  Jupyter setup
+
+- /usr/bin/python3 -m ensurepip --upgrade
+- pip3 install notebook
+- jupyter notebook
+
 ## Project Structure
 
 jeepers-leapers/
