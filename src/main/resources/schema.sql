@@ -1,9 +1,8 @@
 -- 1. User & Role Management
 CREATE TABLE IF NOT EXISTS users (
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
     role VARCHAR(32) NOT NULL CHECK (role IN ('ROLE_CUSTOMER', 'ROLE_ADMIN', 'ROLE_ANALYST')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE'))
 );
 
 -- Accounts
@@ -12,6 +11,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR')),
     balance NUMERIC(18, 4) NOT NULL DEFAULT 0.00,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS user_pii (
     "address" TEXT,
     phone_number VARCHAR(15),
     email VARCHAR(255) UNIQUE NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 2. Tradable Instruments & Current Prices
@@ -42,7 +41,7 @@ CREATE TABLE IF NOT EXISTS instruments (
 CREATE TABLE IF NOT EXISTS exchanges (
     exchange_id VARCHAR(64) PRIMARY KEY,
     "name" VARCHAR(255) NOT NULL,
-    country VARCHAR(64) NOT NULL,
+    region VARCHAR(64) NOT NULL,
     timezone VARCHAR(32) NOT NULL,
     currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR'))
 );
@@ -63,7 +62,6 @@ CREATE TABLE IF NOT EXISTS trades (
     side VARCHAR(8) NOT NULL CHECK (side IN ('BUY', 'SELL')),
     quantity NUMERIC(18, 8) NOT NULL,
     execution_price NUMERIC(18, 4) NOT NULL,
-    trade_value NUMERIC(18, 4) GENERATED ALWAYS AS (quantity * execution_price) STORED,
     executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
