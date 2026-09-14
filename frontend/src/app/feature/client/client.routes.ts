@@ -6,10 +6,10 @@ import { ClientPortfolioComponent } from './pages/portfolio/client-portfolio.com
 export const CLIENT_ROUTES: Routes = [
   {
     path: '',
-    component: ClientHomeComponent, // acts as the layout shell
+    component: ClientHomeComponent,
     children: [
       { path: 'portfolio', component: ClientPortfolioComponent },
-      // add more tabs here later: 'orders', 'holdings', 'alerts', etc.
+      // 'orders' later, same pattern
     ]
   }
 ];

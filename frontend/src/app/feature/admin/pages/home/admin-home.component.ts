@@ -2,12 +2,14 @@ import { Component, OnInit, ChangeDetectorRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TradesService } from '../../../../core/services/trades.service';
 import { Router, RouterOutlet } from '@angular/router';
+import { NavbarComponent, NavItem } from '../../../../layout/navbar/navbar.component';
+
 
 
 @Component({
   selector: 'app-admin-home',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterOutlet, NavbarComponent],
   templateUrl: './admin-home.component.html',
   styleUrl: './admin-home.component.css'
 })
@@ -27,4 +29,12 @@ export class AdminHomeComponent implements OnInit{
   ngOnInit() {
     this.tradesService.getTrades(); 
   }
+
+  navItems: NavItem[] = [
+    { label: 'Home', path: '' },
+    { label: 'Trades', path: 'trades' },
+    { label: 'Users', path: 'users' },
+  ];
+
+  userName = 'ADMIN'; // or pulled from an auth service later
 }

@@ -1,5 +1,10 @@
-<ul *ngIf="trades() as data">
-    <li *ngFor="let trade of data">
-      {{ trade.clientEmail }} — {{ trade.instrumentName }} @ {{ trade.tradeValue }}
-    </li>
-</ul>
+<div class="dashboard-shell">
+  <app-navbar [navItems]="navItems" [userName]="userName"></app-navbar>
+
+  <ul *ngIf="trades() as data">
+      <li *ngFor="let trade of data">
+        {{ trade.clientEmail }} — {{ trade.instrumentName }} @ {{ trade.tradeValue }}
+      </li>
+  </ul>
+  <router-outlet></router-outlet>
+</div>

@@ -1,46 +1,11 @@
 <div class="dashboard-shell">
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">JL</div>
-      <span class="brand-name">Jeepers Leapers</span>
-    </div>
+  <app-navbar
+    [navItems]="navItems"
+    [userName]="userName"
+    (profileOptionSelected)="handleProfileOption($event)">
+  </app-navbar>
 
-    <nav class="main-nav" aria-label="Client navigation">
-      <button
-        *ngFor="let item of navItems"
-        type="button"
-        class="nav-item"
-        [class.active]="activeNav === item"
-        (click)="navigateTo(item)">
-        {{ item }}
-      </button>
-    </nav>
-
-    <div class="profile-wrap" (click)="$event.stopPropagation()">
-      <button
-        type="button"
-        class="profile-button"
-        aria-label="Open profile menu"
-        [attr.aria-expanded]="profileOpen"
-        (click)="toggleProfile($event)">
-        <span class="profile-name">Joana</span>
-        <span class="avatar" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="8" r="4"></circle>
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path>
-          </svg>
-        </span>
-      </button>
-
-      <div class="profile-menu" *ngIf="profileOpen">
-        <button type="button" (click)="selectProfileOption('Profile')">Profile</button>
-        <button type="button" (click)="selectProfileOption('Settings')">Settings</button>
-        <button type="button" class="logout" (click)="selectProfileOption('Logout')">Logout</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="dashboard-content" *ngIf="activeNav === 'Home'">
+  <main class="dashboard-content" *ngIf="isHomeRoute">
     <section class="overview-section">
       <h2>Portfolio Overview</h2>
 
