@@ -34,5 +34,5 @@ USER appuser
 # Copy only the compiled jar from the build stage. Nothing else.
 COPY --from=build /app/target/JeepersLeapers.jar app.jar
 
-EXPOSE 8080
+EXPOSE 8095
 ENTRYPOINT ["java", "-jar", "app.jar"]
