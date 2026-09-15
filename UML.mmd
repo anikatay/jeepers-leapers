@@ -105,16 +105,46 @@ classDiagram
     }
 
     class Service {
-
+        -validateReq() Request
+        -processReq() Request
+        -validateRes(Response) Object|void
     }
 
     class TransactionService {
 
     }
 
+    class AccountService {}
 
-    ClientUser --|> IUser : inheritance
-    AnalystUser --|> IUser : inheritance
-    AdminUser --|> IUser : inheritance
-    BuyRequest --|> Request : inheritance
-    SellRequest --|> Request : inheritance
+    class UserService {}
+
+    class TradeService {}
+
+    class ClientCommunicator {}
+
+    class ServerFacade {}
+
+
+
+    ClientUser --|> IUser
+    AnalystUser --|> IUser
+    AdminUser --|> IUser
+    BuyRequest --|> Request
+    SellRequest --|> Request
+    IUser *--> PII : contains
+    IUser --> Account : belongs to
+    Account *--> Holding : belongs to
+    Holding "1"-->"*" Instrument : contains
+    Trade "*"-->"1" Account : belongs to
+    Trade "*"-->"1" Instrument : involves
+    Instrument "*"o-->"1" Exchange : listed on
+
+
+    TransactionService --|> Service
+    AccountService --|> Service
+    UserService --|> Service
+    TradeService --|> Service
+
+    Service "*"-->"1" ClientCommunicator
+    ClientCommunicator ..> ServerFacade
+
