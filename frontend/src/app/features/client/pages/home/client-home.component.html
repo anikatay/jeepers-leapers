@@ -1,46 +1,29 @@
 <div class="dashboard-shell">
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">JL</div>
-      <span class="brand-name">Jeepers Leapers</span>
-    </div>
+  <app-navbar
+    [navItems]="navItems"
+    [userName]="userName"
+    (profileOptionSelected)="handleProfileOption($event)">
+  </app-navbar>
 
-    <nav class="main-nav" aria-label="Client navigation">
-      <button
-        *ngFor="let item of navItems"
-        type="button"
-        class="nav-item"
-        [class.active]="activeNav === item"
-        (click)="navigateTo(item)">
-        {{ item }}
-      </button>
-    </nav>
+  <div *ngIf="loading()" class="loading-container">
+    <p>Loading portfolio...</p>
+  </div>
 
-    <div class="profile-wrap" (click)="$event.stopPropagation()">
-      <button
-        type="button"
-        class="profile-button"
-        aria-label="Open profile menu"
-        [attr.aria-expanded]="profileOpen"
-        (click)="toggleProfile($event)">
-        <span class="profile-name">Joana</span>
-        <span class="avatar" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="8" r="4"></circle>
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path>
-          </svg>
-        </span>
-      </button>
+  <div *ngIf="error()" class="error-container">
+    <p>Error: {{ error() }}</p>
+  </div>
 
-      <div class="profile-menu" *ngIf="profileOpen">
-        <button type="button" (click)="selectProfileOption('Profile')">Profile</button>
-        <button type="button" (click)="selectProfileOption('Settings')">Settings</button>
-        <button type="button" class="logout" (click)="selectProfileOption('Logout')">Logout</button>
-      </div>
-    </div>
-  </header>
+  <div *ngIf="isHomeRoute && !loading() && !error()" class="user-selector">
+    <label for="user-dropdown">Switch User (Dev):</label>
+    <select
+      id="user-dropdown"
+      [value]="selectedUserId"
+      (change)="onUserChange($any($event.target).value)">
+      <option *ngFor="let user of users" [value]="user.id">{{ user.name }} ({{ user.id.slice(0, 8) }}...)</option>
+    </select>
+  </div>
 
-  <main class="dashboard-content">
+  <main class="dashboard-content" *ngIf="isHomeRoute && !loading() && !error()">
     <section class="overview-section">
       <h2>Portfolio Overview</h2>
 
@@ -53,7 +36,7 @@
 
         <article class="stat-card">
           <p class="stat-label">Today's Gains</p>
-          <p class="stat-value">+$1,234</p>
+          <p class="stat-value">{{ portfolio()?.totalPortfolioValue || 'N/A' }}</p>
           <p class="stat-sub positive">+0.44% today</p>
         </article>
 
@@ -191,4 +174,5 @@
       </div>
     </section>
   </main>
+  <router-outlet></router-outlet>
 </div>
