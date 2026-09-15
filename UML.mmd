@@ -12,26 +12,14 @@ classDiagram
         -address String
         +getAge() int
         +isAdult() Boolean
+        +getDto() PiiDto
     }
 
-    class IUser {
-        <<interface>>
+    class User {
         -user_id UUID
         -role Enum
         -status Enum
-        -getDto() UserDto
-    }
-
-    class ClientUser {
-
-    }
-
-    class AnalystUser {
-
-    }
-
-    class AdminUser {
-
+        +getDto() UserDto
     }
 
     class Account {
@@ -41,6 +29,7 @@ classDiagram
         -currency String
         -balance double
         -created_at Date
+        +getDto() AccountDto
     }
 
     class Instrument {
@@ -51,6 +40,7 @@ classDiagram
         -exchange_id UUID
         -current_price double
         -updated_at Date
+        +getDto() InstrumentDto
     }
 
     class Exchange {
@@ -60,6 +50,7 @@ classDiagram
         -timezone String
         -currency String
         +isMarketOpen() Boolean
+        +getDto() ExchangeDto
         
     }
 
@@ -68,7 +59,7 @@ classDiagram
         -instrument_id UUID
         -quantity double
         +getValue(currentPrice double) double
-        
+        +getDto() HoldingDto
     }
 
     class Trade {
@@ -80,39 +71,23 @@ classDiagram
         -quantity double
         -execution_price double
         -executed_at Timestamp
+        +getDto() TradeDto
         +getTradeValue() double
         +getStatus() Enum
     }
 
-    class Request {   
-
-    }
-
-    class Response {
-        -success Boolean
-        -message String
-        +toString() String
-    }
-
-    class BuyRequest {
-        -account_id UUID
-        -instrument_id UUID
-        -quantity double
-        -hasSufficentBalance Boolean
-    }
-
-    class SellRequest {
-    }
 
     class Service {
-        -validateReq() Request
-        -processReq() Request
+        -validateReq()
+        -processReq()
         -validateRes(Response) Object|void
     }
 
-    class TransactionService {
+    class InstrumentService {
 
     }
+
+    class HoldingService {}
 
     class AccountService {}
 
@@ -120,31 +95,67 @@ classDiagram
 
     class TradeService {}
 
-    class ClientCommunicator {}
+    class Validator{
+        <<interface>>
+    }
 
-    class ServerFacade {}
+    class ValidatorFactory {
+        +getValidator(Object) Validator
+    }
 
+    class UserValidator{}
 
+    class AccountValidator {}
 
-    ClientUser --|> IUser
-    AnalystUser --|> IUser
-    AdminUser --|> IUser
+    class TradeValidator {}
+
+    class HoldingValidator {}
+
+    class InstrumentValidator {}
+
+    class Controller {}
+
+    class ClientController {}
+
+    class AdminController {}
+
+    class AnalystController {}
+
+    class View {}
+
     BuyRequest --|> Request
     SellRequest --|> Request
-    IUser *--> PII : contains
-    IUser --> Account : belongs to
-    Account *--> Holding : belongs to
+    User "1"*-->"1" PII : contains
+    User "1"-->"1" Account : belongs to
+    Account "1"*-->"0..*" Holding : belongs to
     Holding "1"-->"*" Instrument : contains
     Trade "*"-->"1" Account : belongs to
     Trade "*"-->"1" Instrument : involves
     Instrument "*"o-->"1" Exchange : listed on
 
 
-    TransactionService --|> Service
+    HoldingService --|> Service
     AccountService --|> Service
     UserService --|> Service
     TradeService --|> Service
+    InstrumentService --|> Service
 
-    Service "*"-->"1" ClientCommunicator
-    ClientCommunicator ..> ServerFacade
+    
+    ClientController --|> Controller
+    AdminController --|> Controller
+    AnalystController --|> Controller
 
+    Controller --> View : updates UI
+    Controller ..> Validator : uses
+    Controller ..> Service : calls
+
+    Validator *--> ValidatorFactory
+
+    TradeValidator --|> Validator
+    AccountValidator --|> Validator
+    UserValidator --|> Validator
+    HoldingValidator --|> Validator
+    InstrumentValidator --|> Validator
+
+
+    
