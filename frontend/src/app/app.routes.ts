@@ -1,7 +1,9 @@
 import { Routes } from '@angular/router';
-import { ClientDashboardComponent } from './client-dashboard/client-dashboard.component';
+import { CLIENT_ROUTES } from './features/client/client.routes';
+import { ADMIN_ROUTES } from './features/admin/admin.routes';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: 'dashboard', component: ClientDashboardComponent }
+  { path: '', redirectTo: 'client', pathMatch: 'full' },
+  { path: 'client', children: CLIENT_ROUTES },
+  { path: 'admin', children: ADMIN_ROUTES }
 ];
