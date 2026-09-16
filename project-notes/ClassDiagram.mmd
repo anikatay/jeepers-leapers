@@ -1,0 +1,158 @@
+classDiagram
+    direction TB
+
+    class PII {
+        -user_id UUID
+        -first_name String
+        -last_name String
+        -DOB Date
+        -SSN String
+        -email String
+        -phone_number String
+        -address String
+        +getAge() int
+        +isAdult() Boolean
+        +getDto() PiiDto
+    }
+
+    class User {
+        -user_id UUID
+        -role Enum
+        -status Enum
+        +getDto() UserDto
+    }
+
+    class Account {
+        -account_id UUID
+        -user_id UUID
+        -status Enum
+        -currency String
+        -balance double
+        -created_at Date
+        +getDto() AccountDto
+    }
+
+    class Instrument {
+        -instrument_id UUID
+        -ticker String
+        -name String
+        -type String
+        -exchange_id UUID
+        -current_price double
+        -updated_at Date
+        +getDto() InstrumentDto
+    }
+
+    class Exchange {
+        -exchange_id UUID
+        -name String
+        -region String
+        -timezone String
+        -currency String
+        +isMarketOpen() Boolean
+        +getDto() ExchangeDto
+
+    }
+
+    class Holding {
+        -account_id UUID
+        -instrument_id UUID
+        -quantity double
+        +getValue(currentPrice double) double
+        +getDto() HoldingDto
+    }
+
+    class Trade {
+        -trade_id UUID
+        -account_id UUID
+        -instrument_id UUID
+        -side Enum
+        -status Enum
+        -quantity double
+        -execution_price double
+        -executed_at Timestamp
+        +getDto() TradeDto
+        +getTradeValue() double
+        +getStatus() Enum
+    }
+
+
+    class Service {
+        -validateReq()
+        -processReq()
+        -validateRes(Response) Object|void
+    }
+
+    class InstrumentService {
+
+    }
+
+    class HoldingService {}
+
+    class AccountService {}
+
+    class UserService {}
+
+    class TradeService {}
+
+    class Validator{
+        <<interface>>
+    }
+
+    class ValidatorFactory {
+        +getValidator(Object) Validator
+    }
+
+    class UserValidator{}
+
+    class AccountValidator {}
+
+    class TradeValidator {}
+
+    class HoldingValidator {}
+
+    class InstrumentValidator {}
+
+    class Controller {}
+
+    class ClientController {}
+
+    class AdminController {}
+
+    class AnalystController {}
+
+    class View {}
+
+    BuyRequest --|> Request
+    SellRequest --|> Request
+    User "1"*-->"1" PII : contains
+    User "1"-->"1" Account : belongs to
+    Account "1"*-->"0..*" Holding : belongs to
+    Holding "1"-->"*" Instrument : contains
+    Trade "*"-->"1" Account : belongs to
+    Trade "*"-->"1" Instrument : involves
+    Instrument "*"o-->"1" Exchange : listed on
+
+
+    HoldingService --|> Service
+    AccountService --|> Service
+    UserService --|> Service
+    TradeService --|> Service
+    InstrumentService --|> Service
+
+
+    ClientController --|> Controller
+    AdminController --|> Controller
+    AnalystController --|> Controller
+
+    Controller --> View : updates UI
+    Controller ..> Validator : uses
+    Controller ..> Service : calls
+
+    Validator *--> ValidatorFactory
+
+    TradeValidator --|> Validator
+    AccountValidator --|> Validator
+    UserValidator --|> Validator
+    HoldingValidator --|> Validator
+    InstrumentValidator --|> Validator
