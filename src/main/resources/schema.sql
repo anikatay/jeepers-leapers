@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS user_pii (
     ssn VARCHAR(11) UNIQUE NOT NULL,
     "address" TEXT,
     phone_number VARCHAR(15),
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL
 );
 
 -- 2. Tradable Instruments & Current Prices
@@ -64,4 +64,3 @@ CREATE TABLE IF NOT EXISTS trades (
     execution_price NUMERIC(18, 4) NOT NULL,
     executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
