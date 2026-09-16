@@ -1,0 +1,30 @@
+<div class="portfolio-container">
+  <div *ngIf="loading()" class="loading">
+    <p>Loading portfolio...</p>
+  </div>
+
+  <div *ngIf="error()" class="error">
+    <p>Error: {{ error() }}</p>
+  </div>
+
+  <div *ngIf="!loading() && portfolio() as data" class="portfolio-content">
+    <h1>Total Portfolio Value: {{ data.totalPortfolioValue }}</h1>
+
+    <table class="holdings-table">
+      <thead>
+        <tr>
+          <th *ngFor="let col of columns">{{ col.header }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let holding of data.holdings">
+          <td *ngFor="let col of columns">{{ holding[col.field] }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="!loading() && !portfolio()" class="no-data">
+    <p>No portfolio data available</p>
+  </div>
+</div>

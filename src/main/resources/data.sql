@@ -4,18 +4,26 @@
 -- ============================================================================
 
 -- ── Exchanges ────────────────────────────────────────────────────────────────
-INSERT INTO exchanges (exchange_id, "name", country, timezone, currency) VALUES
+INSERT INTO exchanges (exchange_id, "name", region, timezone, currency) VALUES
     ('NYSE', 'New York Stock Exchange', 'USA', 'America/New_York', 'USD'),
     ('NASDAQ', 'NASDAQ', 'USA', 'America/New_York', 'USD')
 ON CONFLICT DO NOTHING;
 
 -- ── Users ────────────────────────────────────────────────────────────────────
-INSERT INTO users (user_id, email, role) VALUES
-    ('a1000000-0000-0000-0000-000000000001', 'alice@example.com',   'ROLE_CUSTOMER'),
-    ('a1000000-0000-0000-0000-000000000002', 'bob@example.com',     'ROLE_CUSTOMER'),
-    ('a1000000-0000-0000-0000-000000000003', 'charlie@example.com', 'ROLE_CUSTOMER'),
-    ('a1000000-0000-0000-0000-000000000004', 'admin@platform.com',  'ROLE_ADMIN'),
-    ('a1000000-0000-0000-0000-000000000005', 'dana@platform.com',   'ROLE_ANALYST')
+INSERT INTO users (user_id, role) VALUES
+    ('a1000000-0000-0000-0000-000000000001', 'ROLE_CUSTOMER'),
+    ('a1000000-0000-0000-0000-000000000002', 'ROLE_CUSTOMER'),
+    ('a1000000-0000-0000-0000-000000000003', 'ROLE_CUSTOMER'),
+    ('a1000000-0000-0000-0000-000000000004', 'ROLE_ADMIN'),
+    ('a1000000-0000-0000-0000-000000000005', 'ROLE_ANALYST')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO user_pii (user_id, first_name, last_name, date_of_birth, ssn, email) VALUES
+    ('a1000000-0000-0000-0000-000000000001', 'Alice', 'Anderson', '1990-01-01', '111-11-1111', 'alice@example.com'),
+    ('a1000000-0000-0000-0000-000000000002', 'Bob', 'Brown', '1988-05-12', '222-22-2222', 'bob@example.com'),
+    ('a1000000-0000-0000-0000-000000000003', 'Charlie', 'Clark', '1995-09-23', '333-33-3333', 'charlie@example.com'),
+    ('a1000000-0000-0000-0000-000000000004', 'Admin', 'User', '1985-03-15', '444-44-4444', 'admin@platform.com'),
+    ('a1000000-0000-0000-0000-000000000005', 'Dana', 'Davis', '1992-11-07', '555-55-5555', 'dana@platform.com')
 ON CONFLICT DO NOTHING;
 
 -- ── Accounts ─────────────────────────────────────────────────────────────────
