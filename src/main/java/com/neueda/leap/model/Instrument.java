@@ -1,11 +1,6 @@
 package com.neueda.leap.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -20,10 +15,14 @@ public class Instrument {
     private UUID instrumentId;
 
     @Column(nullable = false, unique = true)
-    private String symbol;
+    private String ticker;
 
     @Column(nullable = false)
     private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "exchange_id", nullable = false)
+    private Exchange exchange;
 
     @Column(name = "current_price", nullable = false, precision = 18, scale = 4)
     private BigDecimal currentPrice;
@@ -34,43 +33,21 @@ public class Instrument {
     public Instrument() {
     }
 
-    public UUID getInstrumentId() {
-        return instrumentId;
-    }
+    public UUID getInstrumentId() { return instrumentId; }
+    public void setInstrumentId(UUID instrumentId) { this.instrumentId = instrumentId; }
 
-    public void setInstrumentId(UUID instrumentId) {
-        this.instrumentId = instrumentId;
-    }
+    public String getTicker() { return ticker; }
+    public void setTicker(String ticker) { this.ticker = ticker; }
 
-    public String getSymbol() {
-        return symbol;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setSymbol(String symbol) {
-        this.symbol = symbol;
-    }
+    public Exchange getExchange() { return exchange; }
+    public void setExchange(Exchange exchange) { this.exchange = exchange; }
 
-    public String getName() {
-        return name;
-    }
+    public BigDecimal getCurrentPrice() { return currentPrice; }
+    public void setCurrentPrice(BigDecimal currentPrice) { this.currentPrice = currentPrice; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public BigDecimal getCurrentPrice() {
-        return currentPrice;
-    }
-
-    public void setCurrentPrice(BigDecimal currentPrice) {
-        this.currentPrice = currentPrice;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(OffsetDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

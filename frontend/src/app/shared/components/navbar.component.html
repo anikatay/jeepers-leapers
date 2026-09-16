@@ -1,0 +1,39 @@
+<!-- navbar.component.html -->
+<header class="topbar">
+<!-- index.html, inside <head> -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <div class="brand">
+      <div class="brand-mark">JL</div>
+      <span class="brand-name">{{ brandName }}</span>
+    </div>
+  
+    <nav class="main-nav" aria-label="Navigation">
+      <a *ngFor="let item of navItems"
+         class="nav-item"
+         [routerLink]="item.path"
+         routerLinkActive="active"
+         [routerLinkActiveOptions]="{ exact: item.path === '' }">
+        {{ item.label }}
+      </a>
+    </nav>
+  
+    <div class="profile-wrap" (click)="$event.stopPropagation()">
+      <button type="button" class="profile-button" (click)="toggleProfile($event)">
+        <span class="profile-name">{{ userName }}</span>
+        <span class="avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path>
+          </svg>
+        </span>
+      </button>
+  
+      <div class="profile-menu" *ngIf="profileOpen">
+        <button type="button" (click)="selectProfileOption('Profile')">Profile</button>
+        <button type="button" (click)="selectProfileOption('Settings')">Settings</button>
+        <button type="button" class="logout" (click)="selectProfileOption('Logout')">Logout</button>
+      </div>
+    </div>
+  </header>
