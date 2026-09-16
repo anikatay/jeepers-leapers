@@ -1,0 +1,54 @@
+sequenceDiagram
+    actor A as Actor
+    participant TV as Trade View
+    participant C as Controller
+    participant T as Trade
+    participant V as Validator
+    participant S as Service
+    participant D as DAO/Magic
+
+    A->>TV: input, onClick()
+    activate TV
+
+    TV->>C: makeTrade(input)
+    activate C
+
+    C->>T: new Trade()
+    activate T
+    T-->>C:
+    deactivate T
+
+
+C->>V: validate(Trade)
+activate V
+V->>V: side == "BUY" or "SELL"
+V->>V: side instanceof String
+V->>V: symbol instanceof String
+V->>V: symbol.matches("[A-Z0-9]+")
+V->>V: !symbol.isBlank()
+V->>V: !symbol.contains(" ")
+V->>V: tradeQuantity > 0
+V-->>C: true
+    deactivate V
+
+    C->>S: makeTrade(Trade)
+    activate S
+
+    S->>S: Validate(Trade)
+    S->>S: Holding_Update()
+    S->>S: Subtract_Balance()
+    S->>S: Trade_Status_Update()
+
+    S->>D: do_Magic()
+    activate D
+    D-->>S: Message_Response
+    deactivate D
+
+    S-->>C: Message_Response
+    deactivate S
+
+    C-->>TV: Message_Response
+    deactivate C
+
+    TV-->>A: toast()
+    deactivate TV
