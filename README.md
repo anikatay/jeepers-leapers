@@ -11,8 +11,8 @@
 ## Running With docker-compose
 
 1.  docker-compose up -d --build 
--   If app does not rebuild with new changes (docker is running the cached app):
--   docker-compose up -d --build --force-recreate
+  -   If app does not rebuild with new changes (docker is running the cached app):
+  -   docker-compose up -d --build --force-recreate
 2.  docker ps (make sure all containers are up and running)
 3.  if all containers are running front end is accessable from "your-ip":8090
 
@@ -29,7 +29,7 @@
 - jupyter notebook
 
 ## Project Structure
-
+```
 jeepers-leapers/
 ├── frontend/
 ├──	src/
@@ -52,7 +52,7 @@ jeepers-leapers/
 | | | └──Main.java
 | | └──resources/
 └ └──test/java/com/neueda/leap
-
+```
 ## Key Dependencies
 
 - Java 21       | Backend
