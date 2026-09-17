@@ -2,7 +2,6 @@ package com.neueda.leap.controller;
 
 import com.neueda.leap.dto.AccountResponse;
 import com.neueda.leap.service.AccountService;
-import com.neueda.leap.model.Account;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,19 +24,7 @@ public class AccountController {
 
     @GetMapping("/accounts/{userId}")
     public ResponseEntity<List<AccountResponse>> getAccountsForUser(@PathVariable UUID userId) {
-        List<Account> accounts = accountService.getAccountsForUser(userId);
-        if (accounts.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        List<AccountResponse> response = accounts.stream()
-                .map(a -> new AccountResponse(
-                        a.getAccountId(),
-                        a.getCurrency(),
-                        a.getBalance(),
-                        a.getStatus(),
-                        a.getCreatedAt()))
-                .toList();
+        List<AccountResponse> response = accountService.getAccountsForUser(userId);
 
         return ResponseEntity.ok(response);
     }

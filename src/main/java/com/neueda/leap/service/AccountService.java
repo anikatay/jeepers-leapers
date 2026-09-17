@@ -1,6 +1,7 @@
 package com.neueda.leap.service;
 
 
+import com.neueda.leap.dto.AccountResponse;
 import com.neueda.leap.model.Account;
 import com.neueda.leap.repository.AccountRepository;
 import org.springframework.stereotype.Service;
@@ -19,9 +20,18 @@ public class AccountService {
     }
 
 
-    public List<Account> getAccountsForUser(UUID userId) {
+    public List<AccountResponse> getAccountsForUser(UUID userId) {
         List<Account> accounts = accountRepository.findByUserUserId(userId);
 
-        return accounts;
+        List<AccountResponse> response = accounts.stream()
+                .map(a -> new AccountResponse(
+                        a.getAccountId(),
+                        a.getCurrency(),
+                        a.getBalance(),
+                        a.getStatus(),
+                        a.getCreatedAt()))
+                .toList();
+
+        return response;
     }
 }
