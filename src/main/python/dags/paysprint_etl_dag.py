@@ -144,6 +144,11 @@ with DAG(
             dim_instrument = pd.read_sql_table('dim_instrument', conn)
         
         # Merge to get surrogate keys
+        trades['account_id'] = trades['account_id'].astype(str)
+        dim_user['account_id'] = dim_user['account_id'].astype(str)
+        trades['instrument_id'] = trades['instrument_id'].astype(str)
+        dim_instrument['instrument_id'] = dim_instrument['instrument_id'].astype(str)
+
         trades = pd.merge(trades, dim_user[['account_id', 'user_key']], on='account_id', how='inner')
         trades = pd.merge(trades, dim_instrument[['instrument_id', 'instrument_key']], on='instrument_id', how='inner')
         
@@ -193,6 +198,12 @@ with DAG(
             dim_user = pd.read_sql_table('dim_user', conn)
             dim_instrument = pd.read_sql_table('dim_instrument', conn)
             
+        holdings['instrument_id'] = holdings['instrument_id'].astype(str)
+        instruments['instrument_id'] = instruments['instrument_id'].astype(str)
+        dim_instrument['instrument_id'] = dim_instrument['instrument_id'].astype(str)
+        holdings['account_id'] = holdings['account_id'].astype(str)
+        dim_user['account_id'] = dim_user['account_id'].astype(str)
+
         holdings = pd.merge(holdings, instruments[['instrument_id', 'current_price']], on='instrument_id', how='inner')
         holdings = pd.merge(holdings, dim_user[['account_id', 'user_key']], on='account_id', how='inner')
         holdings = pd.merge(holdings, dim_instrument[['instrument_id', 'instrument_key']], on='instrument_id', how='inner')
@@ -261,6 +272,9 @@ with DAG(
         df = pd.merge(accounts, exposure, on='account_id', how='left')
         df['total_exposure'] = df['total_exposure'].fillna(0)
         
+        df['account_id'] = df['account_id'].astype(str)
+        dim_user['account_id'] = dim_user['account_id'].astype(str)
+
         df = pd.merge(df, dim_user[['account_id', 'user_key']], on='account_id', how='inner')
         df['cash_balance'] = df['balance']
         
