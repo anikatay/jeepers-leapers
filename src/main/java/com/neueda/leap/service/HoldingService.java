@@ -20,13 +20,13 @@ public class HoldingService {
     }
 
     public PortfolioResponse getPortfolio(UUID userId) {
-        List<Holding> holdings = holdingRepository.findByAccountUserId(userId);
+        List<Holding> response = holdingRepository.findByAccountUserId(userId);
 
-        if (holdings.isEmpty()) {
+        if (response.isEmpty()) {
             return new PortfolioResponse(BigDecimal.ZERO, List.of());
         }
 
-        List<HoldingDto> holdingDtos = holdings.stream()
+        List<HoldingDto> holdingDtos = response.stream()
                 .map(h -> {
                     BigDecimal holdingValue = h.getQuantity()
                             .multiply(h.getInstrument().getCurrentPrice());
