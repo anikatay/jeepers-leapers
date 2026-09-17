@@ -62,5 +62,6 @@ CREATE TABLE IF NOT EXISTS trades (
     side VARCHAR(8) NOT NULL CHECK (side IN ('BUY', 'SELL')),
     quantity NUMERIC(18, 8) NOT NULL,
     execution_price NUMERIC(18, 4) NOT NULL,
+    trade_value NUMERIC(18, 4) GENERATED ALWAYS AS (quantity * execution_price) STORED,
     executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
