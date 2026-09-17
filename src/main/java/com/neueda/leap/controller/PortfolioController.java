@@ -23,12 +23,12 @@ public class PortfolioController {
 
     @GetMapping("/portfolio/{userId}")
     public ResponseEntity<PortfolioResponse> getPortfolio(@PathVariable UUID userId) {
-        PortfolioResponse portfolio = holdingService.getPortfolio(userId);
+        PortfolioResponse response = holdingService.getPortfolio(userId);
 
-        if (portfolio.getHoldings().isEmpty()) {
+        if (response.getHoldings().isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        return ResponseEntity.ok(portfolio);
+        return ResponseEntity.ok(response);
     }
 }
