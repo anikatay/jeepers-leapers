@@ -1,8 +1,7 @@
 package com.neueda.leap.controller;
 
 import com.neueda.leap.dto.TradeResponse;
-import com.neueda.leap.model.Trade;
-import com.neueda.leap.repository.TradeRepository;
+import com.neueda.leap.service.TradeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,31 +15,19 @@ import java.util.UUID;
 @RequestMapping("/api")
 public class TradeController {
 
-    private final TradeRepository tradeRepository;
+    private final TradeService tradeService;
 
-    public TradeController(TradeRepository tradeRepository) {
-        this.tradeRepository = tradeRepository;
+    public TradeController(TradeService tradeService) {
+        this.tradeService = tradeService;
     }
 
     @GetMapping("/trades/{userId}")
     public ResponseEntity<List<TradeResponse>> getTradesForUser(@PathVariable UUID userId) {
-        List<Trade> trades = tradeRepository.findByAccountUserUserId(userId);
+        List<TradeResponse> response = tradeService.getTradesForUser(userId);
 
-        if (trades.isEmpty()) {
+        if (response.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-
-        List<TradeResponse> response = trades.stream()
-                .map(t -> new TradeResponse(
-                        t.getTradeId(),
-                        t.getInstrument().getName(),
-                        t.getInstrument().getTicker(),
-                        t.getSide(),
-                        t.getQuantity(),
-                        t.getExecutionPrice(),
-                        t.getTradeValue(),
-                        t.getExecutedAt()))
-                .toList();
 
         return ResponseEntity.ok(response);
     }
