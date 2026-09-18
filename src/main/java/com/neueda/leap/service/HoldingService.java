@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class HoldingService {
+public class HoldingService implements IService {
 
     private final HoldingRepository holdingRepository;
 

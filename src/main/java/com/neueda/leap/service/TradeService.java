@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class TradeService {
+public class TradeService implements IService {
 
     private final TradeRepository tradeRepository;
 
