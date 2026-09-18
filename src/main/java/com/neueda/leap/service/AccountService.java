@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class AccountService {
+public class AccountService implements IService {
 
     private final AccountRepository accountRepository;
 

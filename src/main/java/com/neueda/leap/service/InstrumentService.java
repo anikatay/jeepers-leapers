@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class InstrumentService {
+public class InstrumentService implements IService {
 
     private final InstrumentRepository instrumentRepository;
 
