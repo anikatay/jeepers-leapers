@@ -16,11 +16,14 @@ def _build_url(dbname: str) -> str:
     password = os.getenv("DB_PASSWORD", "changeme")
     host = os.getenv("DB_HOST", "db")
     port = os.getenv("DB_PORT", "5432")
+    
+    # Try to use psycopg2 if available, otherwise fall back to psycopg
     try:
         import psycopg2  # noqa: F401
         driver = "psycopg2"
     except ImportError:
         driver = "psycopg"
+    
     return f"postgresql+{driver}://{user}:{password}@{host}:{port}/{dbname}"
 
 
