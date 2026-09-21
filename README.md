@@ -14,7 +14,7 @@
   -   If app does not rebuild with new changes (docker is running the cached app):
   -   docker-compose up -d --build --force-recreate
 2.  docker ps (make sure all containers are up and running)
-3.  if all containers are running front end is accessable from "your-ip":8090
+3.  if all containers are running front end is accessible from "your-ip":8090
 
 ## Running the frontend
 
@@ -36,19 +36,9 @@ jeepers-leapers/
 │	├──	main/
 | | ├──java/com/neueda/leap/
 | | | ├──controller/
-| | | | ├──PortfolioController.java
-| | | | └──TradeController.java
 | | | ├──dto/
-| | | | ├──PortfolioResponse.java
-| | | | └──TradeResponse.java
 | | | ├──model/
-| | | | ├──Instrument.java
-| | | | ├──Position.java
-| | | | ├──Trade.java
-| | | | ├──User.java
 | | | ├──repository/
-| | | | ├──PortfolioRepository.java
-| | | | └──TradeRepository.java
 | | | └──Main.java
 | | └──resources/
 └ └──test/java/com/neueda/leap
