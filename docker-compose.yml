@@ -13,7 +13,7 @@ x-airflow-common: &airflow-common
     DB_PORT: '5432'
     OLTP_DB_NAME: paysprint
     ANALYTICS_DB_NAME: paysprint_analytics
-    _PIP_ADDITIONAL_REQUIREMENTS: "pandas"
+    _PIP_ADDITIONAL_REQUIREMENTS: "pandas>=2.0 sqlalchemy>=2.0 psycopg[binary]>=3.1"
   volumes:
     - ./src/main/python/dags:/opt/airflow/dags
     - ./src/main/python/utils:/opt/airflow/utils
