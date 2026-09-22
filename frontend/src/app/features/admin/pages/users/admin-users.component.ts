@@ -13,19 +13,22 @@ import { TradesService } from '../../../../core/services/trades.service';
   styleUrl: './admin-users.component.css'
 })
 export class AdminUsersComponent{
+  columnsName = ['Name', 'Trades', 'Gains', 'Online Status'];
   allUsers = [ 
-        { userId: 'a1000000-0000-0000-0000-000000000001', name: 'Alice', email: 'alice@example.com' }, 
-        { userId: 'a1000000-0000-0000-0000-000000000002', name: 'Bob', email: 'bob@example.com' },
-        { userId: 'a1000000-0000-0000-0000-000000000003', name: 'Charlie', email: 'charlie@example.com' },
-        { userId: 'a1000000-0000-0000-0000-000000000004', name: 'David', email: 'david@example.com' },
-        { userId: 'a1000000-0000-0000-0000-000000000005', name: 'Emma', email: 'emma@example.com' } 
+        { userId: 'a1000000-0000-0000-0000-000000000001', name: 'Alice', trades: '1', gains: '$100', onlineStatus: 'online' }, 
+        { userId: 'a1000000-0000-0000-0000-000000000002', name: 'Bob', trades: '2', gains: '$200', onlineStatus: 'offline' },
+        { userId: 'a1000000-0000-0000-0000-000000000003', name: 'Charlie', trades: '3', gains: '$300', onlineStatus: 'online' },
+        { userId: 'a1000000-0000-0000-0000-000000000004', name: 'David', trades: '4', gains: '$400', onlineStatus: 'offline' },
+        { userId: 'a1000000-0000-0000-0000-000000000005', name: 'Emma', trades: '5', gains: '$500', onlineStatus: 'online' } 
     ];
 
     searchTerm = ''; 
     selectedUser: { 
         userId: string; 
         name: string; 
-        email: string; 
+        trades: string; 
+        gains: string; 
+        onlineStatus: string; 
     } | null = null;
 
 

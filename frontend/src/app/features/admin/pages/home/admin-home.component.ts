@@ -18,10 +18,7 @@ export class AdminHomeComponent implements OnInit {
   trades!: Signal<Trade[] | null>;
   isHomeRoute = true;
 
-  constructor(
-    private tradesService: TradesService,
-    private router: Router
-  ) {
+  constructor(private tradesService: TradesService, private router: Router) {
     this.trades = this.tradesService.trades;
     this.isHomeRoute = this.router.url === '/admin';
 
@@ -66,6 +63,7 @@ export class AdminHomeComponent implements OnInit {
   ];
 
   getCellValue(trade: Trade, field: keyof Trade) {
-    return trade[field];
+    const exactTrade = trade[field];
+    return exactTrade;
   }
 }
