@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 export interface NavItem {
   label: string;
   path: string; // relative path, e.g. '' for home, 'portfolio', 'trades'
+  exact?: boolean; // true only for the "home"/index item
 }
 
 @Component({

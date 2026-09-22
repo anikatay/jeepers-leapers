@@ -14,7 +14,7 @@
          class="nav-item"
          [routerLink]="item.path"
          routerLinkActive="active"
-         [routerLinkActiveOptions]="{ exact: item.path === '' }">
+         [routerLinkActiveOptions]="{ exact: !!item.exact }">
         {{ item.label }}
       </a>
     </nav>
