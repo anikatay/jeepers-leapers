@@ -1,5 +1,10 @@
 export interface Trade {
-    clientEmail: string;
-    instrumentName: string;
-    tradeValue: number;
-  }
+  tradeId: string;
+  instrumentName: string;
+  ticker: string;
+  side: string;
+  quantity: number;
+  executionPrice: number;
+  tradeValue: number;
+  executedAt: string;
+}

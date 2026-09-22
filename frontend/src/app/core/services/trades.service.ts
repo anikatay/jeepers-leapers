@@ -5,7 +5,7 @@ import { Trade } from '../models/trade.model';
 @Injectable({
   providedIn: 'root'
 })
-export class TradesService{
+export class TradesService {
 
   trades = signal<Trade[] | null>(null);
   loading = signal<boolean>(false);
@@ -13,10 +13,11 @@ export class TradesService{
 
   constructor(private http: HttpClient) {}
 
-  getTrades(): void {
+  getTrades(userId: string): void {
     this.loading.set(true);
     this.error.set(null);
-    this.http.get<Trade[]>(`/api/trades`)
+
+    this.http.get<Trade[]>(`/api/trades/${userId}`)
       .subscribe({
         next: (data) => {
           this.trades.set(data);
