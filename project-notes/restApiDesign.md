@@ -62,7 +62,6 @@
 
 
 ## Exchanges
-## Instruments
 |Method|URL|Description|Status Code|
 |------|---|-----------|-----------|
 |`GET`|`/exchanges`|Get all exchanges|
