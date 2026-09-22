@@ -67,6 +67,6 @@
 |------|---|-----------|-----------|
 |`GET`|`/exchanges`|Get all exchanges|
 |`GET`|`/exchanges/{exchange_id}`|Get specific exchange|200, 404|
-|`POST`|`/exchange`|Create exchange (admin)||
-|`PATCH`|`/exchange/{exchange_id}`|||
-|`DELETE`|`/exchange/{exchange_id}`|||
+|`POST`|`/exchanges`|Create exchange (admin)||
+|`PATCH`|`/exchanges/{exchange_id}`|||
+|`DELETE`|`/exchanges/{exchange_id}`|||
