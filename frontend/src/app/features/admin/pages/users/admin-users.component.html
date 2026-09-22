@@ -5,16 +5,37 @@ admin-users.component.html
   placeholder="Search users by name..."
   [(ngModel)]="searchTerm" />
 
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th *ngFor="let type of columnsName">
+          {{ type }}
+        </th>
+      </tr>
+    </thead>
 
-<ul class="user-list" >
+    <tbody class="user-list">
+    
+        <tr *ngFor="let user of filteredUsers" (click)="selectUser(user)">
+          {{ user.name }}, {{ user.trades }}, {{ user.gains }}, {{ user.onlineStatus }}
+        </tr>
+    </tbody>
+
+  </table>
+
+<!-- <ul class="user-list" >
+   the (click) option is used whenever the user actually clicks on one of the user.name
   <li *ngFor="let user of filteredUsers" (click)="selectUser(user)">
-    {{ user.name }}
+    {{ user.name }}, {{ user.trades }}, {{ user.gains }}, {{ user.onlineStatus }}
   </li>
-</ul>
+</ul> -->
 
-
+<!-- when the user.name is clicked it assigned the selectedUser variable whatever you clicked, cause it was defaulted to null -->
 <div class="user-detail-layout" *ngIf="selectedUser">
   <button (click)="clearSelection()">&larr; Back to list</button>
   <p>Selected: {{ selectedUser.name }}</p>
+  <p>Trades: {{ selectedUser.trades }}</p>
+  <p>Gains: {{ selectedUser.gains }}</p>
+  <p>Status: {{ selectedUser.onlineStatus }}</p>
 
 </div>
