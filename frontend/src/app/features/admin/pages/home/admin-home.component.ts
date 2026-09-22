@@ -1,11 +1,10 @@
-import { Component, OnInit, ChangeDetectorRef, effect, Signal } from '@angular/core';
+import { Component, OnInit, effect, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TradesService } from '../../../../core/services/trades.service';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { NavbarComponent, NavItem } from '../../../../shared/components/navbar.component';
 import { Trade } from '../../../../core/models/trade.model';
-
-
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-admin-home',
@@ -14,32 +13,59 @@ import { Trade } from '../../../../core/models/trade.model';
   templateUrl: './admin-home.component.html',
   styleUrl: './admin-home.component.css'
 })
-export class AdminHomeComponent implements OnInit{
-  trades: Signal<Trade[] | null>;
-  loading: Signal<boolean>;
-  error: Signal<string | null>;
+export class AdminHomeComponent implements OnInit {
 
-  constructor(private tradesService: TradesService, private router: Router ) {
+  trades!: Signal<Trade[] | null>;
+  isHomeRoute = true;
+
+  constructor(
+    private tradesService: TradesService,
+    private router: Router
+  ) {
     this.trades = this.tradesService.trades;
-    this.loading = this.tradesService.loading;
-    this.error = this.tradesService.error;
+    this.isHomeRoute = this.router.url === '/admin';
+
+    this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe(() => {
+        this.isHomeRoute = this.router.url === '/admin';
+      });
+
     effect(() => {
       const data = this.trades();
+
       if (data) {
-        console.log('Portfolio updated:', data);
+        console.log('Trades updated:', data);
       }
     });
   }
 
   ngOnInit() {
-    this.tradesService.getTrades(); 
+    const userId = 'a1000000-0000-0000-0000-000000000001';
+
+    this.tradesService.getTrades(userId);
   }
 
   navItems: NavItem[] = [
-    { label: 'Home', path: '' },
-    { label: 'Trades', path: 'trades' },
-    { label: 'Users', path: 'users' },
+    { label: 'Home', path: '/admin', exact: true },
+    { label: 'Users', path: '/admin/users' },
+    { label: 'Trades', path: '/admin/instruments' }
   ];
 
-  userName = 'ADMIN'; // or pulled from an auth service later
+  userName = 'ADMIN';
+
+  columns: { header: string; field: keyof Trade }[] = [
+    { header: 'Trade ID', field: 'tradeId' },
+    { header: 'Instrument', field: 'instrumentName' },
+    { header: 'Ticker', field: 'ticker' },
+    { header: 'Action', field: 'side' },
+    { header: 'Quantity', field: 'quantity' },
+    { header: 'Execution Price', field: 'executionPrice' },
+    { header: 'Trade Value', field: 'tradeValue' },
+    { header: 'Date', field: 'executedAt' }
+  ];
+
+  getCellValue(trade: Trade, field: keyof Trade) {
+    return trade[field];
+  }
 }

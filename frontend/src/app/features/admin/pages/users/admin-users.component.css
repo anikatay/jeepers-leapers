@@ -1,0 +1,75 @@
+.search-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+
+  border: 1px solid #ccc;
+  border-radius: 8px;
+
+  font-size: 16px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  border-color: #333;
+}
+
+
+/* User list */
+.user-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  max-width: 400px;
+}
+
+.user-list li {
+  padding: 14px 16px;
+  margin-bottom: 8px;
+
+  background: #f5f5f5;
+  border-radius: 8px;
+
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.user-list li:hover {
+  background: #e8e8e8;
+}
+
+
+/* Selected user */
+.user-detail-layout {
+  max-width: 400px;
+  margin-top: 25px;
+  padding: 20px;
+
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.user-detail-layout button {
+  padding: 8px 14px;
+
+  border: none;
+  border-radius: 6px;
+
+  background: #333;
+  color: white;
+
+  cursor: pointer;
+}
+
+.user-detail-layout button:hover {
+  background: #555;
+}
+
+.user-detail-layout p {
+  margin: 10px 0;
+}
+

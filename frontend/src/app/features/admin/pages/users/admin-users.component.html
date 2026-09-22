@@ -1,0 +1,20 @@
+admin-users.component.html
+<input
+  type="text"
+  class="search-input"
+  placeholder="Search users by name..."
+  [(ngModel)]="searchTerm" />
+
+
+<ul class="user-list" >
+  <li *ngFor="let user of filteredUsers" (click)="selectUser(user)">
+    {{ user.name }}
+  </li>
+</ul>
+
+
+<div class="user-detail-layout" *ngIf="selectedUser">
+  <button (click)="clearSelection()">&larr; Back to list</button>
+  <p>Selected: {{ selectedUser.name }}</p>
+
+</div>
