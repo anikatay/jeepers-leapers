@@ -44,4 +44,30 @@ public class HoldingService implements IService {
 
         return new HoldingResponse(totalValue, holdingDtos);
     }
+
+    public HoldingResponse getHoldingsByAccount(UUID accountId) {
+        List<Holding> response = holdingRepository.findByAccountId(accountId);
+
+        if (response.isEmpty()) {
+            return new HoldingResponse(BigDecimal.ZERO, List.of());
+        }
+
+        List<HoldingDto> holdingDtos = response.stream()
+                .map(h -> {
+                    BigDecimal holdingValue = h.getQuantity()
+                            .multiply(h.getInstrument().getCurrentPrice());
+                    return new HoldingDto(
+                            h.getInstrument().getName(),
+                            h.getInstrument().getTicker(),
+                            h.getQuantity(),
+                            holdingValue);
+                })
+                .toList();
+
+        BigDecimal totalValue = holdingDtos.stream()
+                .map(HoldingDto::getHoldingValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new HoldingResponse(totalValue, holdingDtos);
+    }
 }
