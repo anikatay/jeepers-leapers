@@ -1,7 +1,7 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.dto.PortfolioResponse;
-import com.neueda.leap.dto.PortfolioResponse.HoldingDto;
+import com.neueda.leap.dto.HoldingResponse;
+import com.neueda.leap.dto.HoldingResponse.HoldingDto;
 import com.neueda.leap.model.Holding;
 import com.neueda.leap.repository.HoldingRepository;
 import org.springframework.stereotype.Service;
@@ -19,11 +19,11 @@ public class HoldingService implements IService {
         this.holdingRepository = holdingRepository;
     }
 
-    public PortfolioResponse getPortfolio(UUID userId) {
+    public HoldingResponse getPortfolio(UUID userId) {
         List<Holding> response = holdingRepository.findByAccountUserId(userId);
 
         if (response.isEmpty()) {
-            return new PortfolioResponse(BigDecimal.ZERO, List.of());
+            return new HoldingResponse(BigDecimal.ZERO, List.of());
         }
 
         List<HoldingDto> holdingDtos = response.stream()
@@ -42,6 +42,6 @@ public class HoldingService implements IService {
                 .map(HoldingDto::getHoldingValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return new PortfolioResponse(totalValue, holdingDtos);
+        return new HoldingResponse(totalValue, holdingDtos);
     }
 }

@@ -1,7 +1,7 @@
 package com.neueda.leap.controller;
 
 import com.neueda.leap.service.HoldingService;
-import com.neueda.leap.dto.PortfolioResponse;
+import com.neueda.leap.dto.HoldingResponse;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,17 +13,17 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
-public class PortfolioController {
+public class HoldingController {
 
     private final HoldingService holdingService;
 
-    public PortfolioController(HoldingService holdingService) {
+    public HoldingController(HoldingService holdingService) {
         this.holdingService = holdingService;
     }
 
-    @GetMapping("/portfolio/{userId}")
-    public ResponseEntity<PortfolioResponse> getPortfolio(@PathVariable UUID userId) {
-        PortfolioResponse response = holdingService.getPortfolio(userId);
+    @GetMapping("/holding/{userId}")
+    public ResponseEntity<HoldingResponse> getPortfolio(@PathVariable UUID userId) {
+        HoldingResponse response = holdingService.getPortfolio(userId);
 
         if (response.getHoldings().isEmpty()) {
             return ResponseEntity.notFound().build();
