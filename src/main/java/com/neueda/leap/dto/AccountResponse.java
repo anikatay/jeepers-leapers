@@ -7,6 +7,7 @@ import java.util.UUID;
 public class AccountResponse {
 
     private UUID accountId;
+    private UUID userId;
     private String currency;
     private BigDecimal balance;
     private String status;
@@ -15,8 +16,9 @@ public class AccountResponse {
     public AccountResponse() {
     }
 
-    public AccountResponse(UUID accountId, String currency, BigDecimal balance, String status, OffsetDateTime createdAt) {
+    public AccountResponse(UUID accountId,UUID userId, String currency, BigDecimal balance, String status, OffsetDateTime createdAt) {
         this.accountId = accountId;
+        this.userId = userId;
         this.currency = currency;
         this.balance = balance;
         this.status = status;
@@ -25,6 +27,9 @@ public class AccountResponse {
 
     public UUID getAccountId() { return accountId; }
     public void setAccountId(UUID accountId) { this.accountId = accountId; }
+
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
 
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
