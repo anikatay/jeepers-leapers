@@ -1,0 +1,37 @@
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /opt/airflow
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create Airflow home directory
+RUN mkdir -p /opt/airflow/dags /opt/airflow/logs /opt/airflow/plugins
+
+# Initialize Airflow database
+ENV AIRFLOW_HOME=/opt/airflow
+RUN airflow db init || true
+
+# Create default user (optional, for development)
+RUN airflow users create \
+    --username airflow \
+    --password airflow \
+    --firstname Air \
+    --lastname Flow \
+    --role Admin \
+    --email airflow@example.com || true
+
+# Expose Airflow webserver port
+EXPOSE 8080
+
+# Default command
+CMD ["webserver"]
