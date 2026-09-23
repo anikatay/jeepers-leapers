@@ -1,41 +1,59 @@
-admin-users.component.html
-<input
+<!-- <input
   type="text"
   class="search-input"
   placeholder="Search users by name..."
   [(ngModel)]="searchTerm" />
 
-  <table class="users-table">
+  <table
+    class="holdings-table"
+    *ngIf="trades() as data">
+
     <thead>
       <tr>
-        <th *ngFor="let type of columnsName">
-          {{ type }}
+        <th *ngFor="let col of columns">
+          {{ col.header }}
         </th>
       </tr>
     </thead>
 
-    <tbody class="user-list">
-    
-        <tr *ngFor="let user of filteredUsers" (click)="selectUser(user)">
-          {{ user.name }}, {{ user.trades }}, {{ user.gains }}, {{ user.onlineStatus }}
-        </tr>
+    <tbody>
+      <tr *ngFor="let trade of data">
+
+        <td *ngFor="let col of columns">
+          {{ getCellValue(trade, col.field) }}
+        </td>
+
+      </tr>
     </tbody>
 
   </table>
 
-<!-- <ul class="user-list" >
-   the (click) option is used whenever the user actually clicks on one of the user.name
-  <li *ngFor="let user of filteredUsers" (click)="selectUser(user)">
-    {{ user.name }}, {{ user.trades }}, {{ user.gains }}, {{ user.onlineStatus }}
-  </li>
-</ul> -->
 
-<!-- when the user.name is clicked it assigned the selectedUser variable whatever you clicked, cause it was defaulted to null -->
 <div class="user-detail-layout" *ngIf="selectedUser">
   <button (click)="clearSelection()">&larr; Back to list</button>
   <p>Selected: {{ selectedUser.name }}</p>
-  <p>Trades: {{ selectedUser.trades }}</p>
-  <p>Gains: {{ selectedUser.gains }}</p>
-  <p>Status: {{ selectedUser.onlineStatus }}</p>
 
-</div>
+</div> -->
+
+<table
+  class="holdings-table"
+  *ngIf="accounts()">
+
+    <thead>
+      <tr>
+        <th *ngFor="let col of columns">
+          {{ col.header }}
+        </th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr *ngFor="let account of knownAccounts">
+        <td *ngFor="let col of columns">
+          {{ getCellValue(account, col.header) }}
+        </td>
+
+      </tr>
+    </tbody>
+
+</table>
