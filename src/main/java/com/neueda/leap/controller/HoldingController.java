@@ -39,7 +39,11 @@ public class HoldingController {
     @GetMapping("/holdings")
     public ResponseEntity<List<HoldingResponse>> getAllHoldings() {
         // call service to get all holdings for admin only. must check if admin
-        return ResponseEntity.notFound().build();
+        List<HoldingResponse> response = holdingService.getAllHoldings();
+        if (response.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/holdings/{accountId}")
