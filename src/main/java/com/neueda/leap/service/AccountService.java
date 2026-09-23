@@ -129,4 +129,19 @@ public class AccountService implements IService {
                         a.getCreatedAt()))
                 .toList();
     }
+
+    public List<AccountResponse> getAllAccounts() {
+        List<Account> accounts = accountRepository.findAll();
+
+        List<AccountResponse> response = accounts.stream()
+                .map(a -> new AccountResponse(
+                        a.getAccountId(),
+                        a.getCurrency(),
+                        a.getBalance(),
+                        a.getStatus(),
+                        a.getCreatedAt()))
+                .toList();
+
+        return response;
+    }
 }
