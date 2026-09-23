@@ -38,13 +38,22 @@ public class HoldingController {
 
     @GetMapping("/holdings")
     public ResponseEntity<List<HoldingResponse>> getAllHoldings() {
-
+        // call service to get all holdings for admin only. must check if admin
         return ResponseEntity.notFound().build();
     }
 
     @GetMapping("/holdings/{accountId}")
     public ResponseEntity<HoldingResponse> getHoldingsByAccount(@PathVariable UUID accountId) {
-        return ResponseEntity.notFound().build();
+        // TODO: check if account matches the logged-in user or if the user is an admin
+
+        // call service to get holdings by account if authorized
+        HoldingResponse response = holdingService.getHoldingsByAccount(accountId);
+
+        if (response.getHoldings().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/holdings")

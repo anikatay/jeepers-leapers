@@ -22,5 +22,6 @@ public interface HoldingRepository extends JpaRepository<Holding, HoldingId> {
      * Find all holdings for one specific account (useful if you ever need
      * per-account views rather than the aggregated cross-account portfolio).
      */
-    List<Holding> findByAccountAccountId(UUID accountId);
+    @Query("SELECT h FROM Holding h WHERE h.account.accountId = :accountId")
+    List<Holding> findByAccountId(@Param("accountId") UUID accountId);
 }
