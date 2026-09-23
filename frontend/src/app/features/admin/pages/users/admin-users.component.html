@@ -37,7 +37,7 @@
 
 <table
   class="holdings-table"
-  *ngIf="userData() as data">
+  *ngIf="accounts()">
 
     <thead>
       <tr>
@@ -48,9 +48,9 @@
     </thead>
 
     <tbody>
-      <tr *ngFor="let user of data">
+      <tr *ngFor="let account of knownAccounts">
         <td *ngFor="let col of columns">
-          {{ getCellValue(user, col.header) }}
+          {{ getCellValue(account, col.header) }}
         </td>
 
       </tr>
