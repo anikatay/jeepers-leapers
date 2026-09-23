@@ -136,6 +136,7 @@ public class AccountService implements IService {
         List<AccountResponse> response = accounts.stream()
                 .map(a -> new AccountResponse(
                         a.getAccountId(),
+                        a.getUser().getUserId(),
                         a.getCurrency(),
                         a.getBalance(),
                         a.getStatus(),

@@ -1,10 +1,12 @@
-import { Component, OnInit, effect } from '@angular/core';
+import { Component, OnInit, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AccountService } from '../../../../core/services/accounts.service';
 import { Trade } from '../../../../core/models/trade.model';
 import { Account } from '../../../../core/models/account.model';
 import { TradesService } from '../../../../core/services/trades.service';
+import { InstrumentService } from '../../../../core/services/instrument.model';
+import { Instrument } from '../../../../core/models/instrument.model';
 
 @Component({
   selector: 'app-admin-users',
@@ -14,66 +16,225 @@ import { TradesService } from '../../../../core/services/trades.service';
   styleUrl: './admin-users.component.css'
 })
 export class AdminUsersComponent implements OnInit{
-    accounts;
-    trades;
+    accounts = signal<Account[]>([]);
+    instruments = signal<Instrument | null>(null);
+    tradesByUserId = signal<Map<string, Trade[]>>(new Map());
     searchTerm = ''; 
-
-    accountIdToUser = new Map<string, { name: string; userId: string }>([
-        ['d4000000-0000-0000-0000-000000000001', { name: 'Alice',   userId: 'a1000000-0000-0000-0000-000000000001' }],
-        ['d4000000-0000-0000-0000-000000000002', { name: 'Bob',     userId: 'a1000000-0000-0000-0000-000000000002' }],
-        ['d4000000-0000-0000-0000-000000000003', { name: 'Charlie', userId: 'a1000000-0000-0000-0000-000000000003' }],
-      ]);
-    // columns: { header: string; field: keyof Trade or keyof Account; }[] = [
-    //     { header: 'Name', field: accountIdToUserId },
-    //     { header: 'Balance', field: 'balance' },
-    //     { header: 'Trades', field: trades[userId].length},
-    //     { header: 'Current Portfolio Profit', field: calculateCurrentProfit() },
-    //     { header: 'All-Time Profit', field: calculateAlltimeProfit() },
-    //     { header: 'Online Status', field: 'status' },
-    //   ];
+    pendingUserIds = new Set<string>(); 
     columns: { header: string }[] = [
         { header: 'Name' },
         { header: 'Balance' },
+        { header: 'Trade Count' },
       ];
+
+    userData = computed(() => {
+      const accountsData = this.accounts() || [];
+      const tradesMap = this.tradesByUserId(); // Read the signal
+      return accountsData.map(account => ({
+        accountId: account.accountId,
+        userId: account.userId,
+        name: this.getUserName(account.userId),
+        balance: account.balance,
+        tradeCount: this.loadAndGetTradeCount(account.userId),
+        profit: this.getProfit(account.userId)
+      }));
+
+    });
     
 
 
-    constructor(private accountService: AccountService, private tradeService: TradesService) {
-        this.accounts = this.accountService.allAccounts;
-        this.trades = this.tradeService.trades;
-    
+    constructor(private accountService: AccountService, private tradeService: TradesService, private instrumentService: InstrumentService) {
         effect(() => {
-          const accountsData = this.accounts();
+          const accountsData = this.accountService.allAccounts();
           if (accountsData) {
+            this.accounts.set(accountsData);
             console.log('Accounts loaded:', accountsData);
+            
+            // Load trades sequentially after accounts load
+            this.loadTradesSequentially(accountsData);
           }
         });
 
         effect(() => {
-            const tradesData = this.trades();
-            if (tradesData) {
-              console.log('Accounts loaded:', tradesData);
-            }
-          });
+          const instrumentsData = this.instrumentService.instruments();
+          if (instrumentsData) {
+            this.instruments.set(instrumentsData);
+            console.log('Instruments loaded:', instrumentsData);
+          }
+        });
+
     }
 
     ngOnInit(){
-        this.accountService.getAllAccounts();
-        this.tradeService.getTrades('a1000000-0000-0000-0000-000000000001');
+      this.accountService.getAllAccounts();
     }
 
-    get knownAccounts() {
-        const data = this.accounts();
-        if (!data) return [];
-        return data.filter(account => this.accountIdToUser.has(account.accountId));
+    private loadTradesSequentially(accounts: Account[]): void {
+      if (accounts.length === 0) return;
+
+      let index = 0;
+
+      const loadNext = () => {
+        if (index >= accounts.length) {
+          console.log('✓ All trades loaded');
+          return;
+        }
+
+        const userId = accounts[index].userId;
+        const currentMap = this.tradesByUserId();
+
+        if (currentMap.has(userId)) {
+          console.log('✓ Already have trades for', userId);
+          index++;
+          loadNext();
+          return;
+        }
+
+        console.log('→ Loading trades for', userId);
+
+        // Track this pending request
+        this.pendingUserIds.add(userId);
+
+        // Request trades for this user
+        this.tradeService.getTrades(userId);
+
+        // Wait for trades signal to update
+        let attempts = 0;
+        const pollInterval = setInterval(() => {
+          const tradesData = this.tradeService.trades();
+
+          if (tradesData && tradesData.length > 0) {
+            // Update the map and trigger the signal
+            const updatedMap = new Map(this.tradesByUserId());
+            updatedMap.set(userId, tradesData);
+            this.tradesByUserId.set(updatedMap); // Update signal
+            this.pendingUserIds.delete(userId);
+            console.log('✓ Stored', tradesData.length, 'trades for', userId);
+            clearInterval(pollInterval);
+
+            // Move to next user
+            index++;
+            setTimeout(loadNext, 300);
+          } else if (attempts > 50) { // 50 * 100ms = 5 second timeout
+            console.warn('⚠ Timeout loading trades for', userId);
+            clearInterval(pollInterval);
+            this.pendingUserIds.delete(userId);
+            index++;
+            loadNext();
+          }
+
+          attempts++;
+        }, 100);
+      };
+
+      loadNext();
+    }
+    
+    getUserName(userId: string): string {
+      if(userId == "a1000000-0000-0000-0000-000000000001")
+        return "Alice";
+      if(userId == "a1000000-0000-0000-0000-000000000002")
+        return "Bob";
+      if(userId == "a1000000-0000-0000-0000-000000000003")
+        return "Charlie";
+      return '';
+    }
+
+    getProfit(userId: string): number {
+      const userTrades = this.tradesByUserId().get(userId) || [];
+      if (userTrades.length === 0) return 0;
+
+      let realizedProfit = 0;
+      let unrealizedProfit = 0;
+      const buyTradesByTicker = new Map<string, any[]>(); // Track BUY trades by ticker
+      const soldQuantityByTicker = new Map<string, number>(); // Track qty sold per ticker
+
+      // First pass: organize BUY trades by ticker and calculate realized profit from SELLs
+      for (const trade of userTrades) {
+        if (trade.side === 'BUY') {
+          if (!buyTradesByTicker.has(trade.ticker)) {
+            buyTradesByTicker.set(trade.ticker, []);
+          }
+          buyTradesByTicker.get(trade.ticker)!.push(trade);
+        }
       }
 
-    getCellValue(account: any, header: string): string {
+      // Second pass: process SELL trades and match with BUYs
+      for (const trade of userTrades) {
+        if (trade.side === 'SELL') {
+          // Find matching BUY trades for this ticker
+          const matchingBuys = buyTradesByTicker.get(trade.ticker) || [];
+          
+          // Find the BUY that was executed before this SELL
+          const matchingBuy = matchingBuys.find(
+            buy => new Date(buy.executedAt) < new Date(trade.executedAt)
+          );
+
+          if (matchingBuy) {
+            // Calculate realized profit: SELL value - BUY value
+            realizedProfit += trade.tradeValue - matchingBuy.tradeValue;
+            soldQuantityByTicker.set(
+              trade.ticker, 
+              (soldQuantityByTicker.get(trade.ticker) || 0) + trade.quantity
+            );
+          }
+        }
+      }
+
+      // Third pass: calculate unrealized profit from unsold BUY holdings
+      for (const [ticker, buyTrades] of buyTradesByTicker.entries()) {
+        const totalBought = buyTrades.reduce((sum, t) => sum + t.quantity, 0);
+        const totalSold = soldQuantityByTicker.get(ticker) || 0;
+        const remainingQty = totalBought - totalSold;
+
+        if (remainingQty > 0) {
+          // Get current price for this ticker
+          const currentPrice = this.getInstrumentPrice(ticker);
+          if (currentPrice) {
+            const totalBuyValue = buyTrades.reduce((sum, t) => sum + t.tradeValue, 0);
+            const currentValue = currentPrice * remainingQty;
+            unrealizedProfit += currentValue - totalBuyValue;
+          }
+        }
+      }
+
+      return realizedProfit + unrealizedProfit;
+    }
+
+    private getInstrumentPrice(ticker: string): number | null {
+      // Get all instruments and find by ticker
+      // This assumes instruments is loaded as a list/array
+      // Adjust based on your instruments data structure
+      const instrumentsList = this.instruments(); // Assuming this returns an array
+      
+      if (Array.isArray(instrumentsList)) {
+        const instrument = instrumentsList.find((i: any) => i.ticker === ticker);
+        return instrument?.currentPrice || null;
+      }
+      
+      // If instruments is a single object with properties
+      if (instrumentsList && instrumentsList[ticker as keyof typeof instrumentsList]) {
+        return instrumentsList[ticker as keyof typeof instrumentsList]?.currentPrice || null;
+      }
+
+      return null;
+    }
+
+    loadAndGetTradeCount(userId: string): number {
+      const tradesMap = this.tradesByUserId();
+      return tradesMap.get(userId)?.length || 0;
+    }
+
+    getCellValue(user: any, header: string): any {
         switch (header) {
             case 'Name':
-                return this.accountIdToUser.get(account.accountId)?.name ?? '';
+                return user.name;
             case 'Balance':
-              return account.balance;
+              return user.balance;
+            case 'Trade Count':
+              return user.tradeCount;
+            case 'Profit':
+              return user.profit;
             default:
               return '';
           }
