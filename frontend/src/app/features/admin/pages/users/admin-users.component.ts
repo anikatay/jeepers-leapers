@@ -25,6 +25,8 @@ export class AdminUsersComponent implements OnInit{
         { header: 'Name' },
         { header: 'Balance' },
         { header: 'Trade Count' },
+        { header: 'Profit' },
+        { header: 'Status' }, 
       ];
 
     userData = computed(() => {
@@ -36,7 +38,8 @@ export class AdminUsersComponent implements OnInit{
         name: this.getUserName(account.userId),
         balance: account.balance,
         tradeCount: this.loadAndGetTradeCount(account.userId),
-        profit: this.getProfit(account.userId)
+        profit: this.getProfit(account.userId),
+        status: account.status
       }));
 
     });
@@ -202,19 +205,19 @@ export class AdminUsersComponent implements OnInit{
     }
 
     private getInstrumentPrice(ticker: string): number | null {
-      // Get all instruments and find by ticker
-      // This assumes instruments is loaded as a list/array
-      // Adjust based on your instruments data structure
-      const instrumentsList = this.instruments(); // Assuming this returns an array
+      const instrumentsList = this.instruments();
       
       if (Array.isArray(instrumentsList)) {
         const instrument = instrumentsList.find((i: any) => i.ticker === ticker);
         return instrument?.currentPrice || null;
       }
       
-      // If instruments is a single object with properties
-      if (instrumentsList && instrumentsList[ticker as keyof typeof instrumentsList]) {
-        return instrumentsList[ticker as keyof typeof instrumentsList]?.currentPrice || null;
+      // If instruments is an object, try to access it as a keyed object
+      if (instrumentsList && typeof instrumentsList === 'object') {
+        const instrument = (instrumentsList as any)[ticker];
+        if (instrument && typeof instrument === 'object' && 'currentPrice' in instrument) {
+          return instrument.currentPrice as number;
+        }
       }
 
       return null;
@@ -235,6 +238,8 @@ export class AdminUsersComponent implements OnInit{
               return user.tradeCount;
             case 'Profit':
               return user.profit;
+            case 'Status':
+              return user.status;
             default:
               return '';
           }
