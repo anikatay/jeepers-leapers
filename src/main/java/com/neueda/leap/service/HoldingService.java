@@ -45,6 +45,29 @@ public class HoldingService implements IService {
         return new HoldingResponse(totalValue, holdingDtos);
     }
 
+
+    public List<HoldingResponse> getAllHoldings() {
+        List<Holding> response = holdingRepository.findAll();
+
+        if (response.isEmpty()) {
+            return List.of();
+        }
+
+        return response.stream()
+                .map(h -> {
+                    BigDecimal holdingValue = h.getQuantity()
+                            .multiply(h.getInstrument().getCurrentPrice());
+                    HoldingDto holdingDto = new HoldingDto(
+                            h.getInstrument().getName(),
+                            h.getInstrument().getTicker(),
+                            h.getQuantity(),
+                            holdingValue);
+                    BigDecimal totalValue = holdingValue; // Since each HoldingResponse represents a single holding
+                    return new HoldingResponse(totalValue, List.of(holdingDto));
+                })
+                .toList();
+    }
+
     public HoldingResponse getHoldingsByAccount(UUID accountId) {
         List<Holding> response = holdingRepository.findByAccountId(accountId);
 
