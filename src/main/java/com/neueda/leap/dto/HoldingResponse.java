@@ -3,15 +3,15 @@ package com.neueda.leap.dto;
 import java.math.BigDecimal;
 import java.util.List;
 
-public class PortfolioResponse {
+public class HoldingResponse {
 
     private BigDecimal totalPortfolioValue;
     private List<HoldingDto> holdings;
 
-    public PortfolioResponse() {
+    public HoldingResponse() {
     }
 
-    public PortfolioResponse(BigDecimal totalPortfolioValue, List<HoldingDto> holdings) {
+    public HoldingResponse(BigDecimal totalPortfolioValue, List<HoldingDto> holdings) {
         this.totalPortfolioValue = totalPortfolioValue;
         this.holdings = holdings;
     }
