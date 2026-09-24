@@ -27,6 +27,30 @@ public class TradeService implements IService {
         List<TradeResponse> response = trades.stream()
                 .map(t -> new TradeResponse(
                         t.getTradeId(),
+                        t.getAccount().getAccountId(),
+                        t.getInstrument().getName(),
+                        t.getInstrument().getTicker(),
+                        t.getSide(),
+                        t.getQuantity(),
+                        t.getExecutionPrice(),
+                        t.getTradeValue(),
+                        t.getExecutedAt()))
+                .toList();
+
+        return response;
+    }
+
+    public List<TradeResponse> getAllTrades() {
+        List<Trade> trades = tradeRepository.findAll();
+
+        if (trades.isEmpty()) {
+            return List.of();
+        }
+
+        List<TradeResponse> response = trades.stream()
+                .map(t -> new TradeResponse(
+                        t.getTradeId(),
+                        t.getAccount().getAccountId(),
                         t.getInstrument().getName(),
                         t.getInstrument().getTicker(),
                         t.getSide(),

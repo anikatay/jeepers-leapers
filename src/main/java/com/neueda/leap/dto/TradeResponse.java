@@ -7,6 +7,7 @@ import java.util.UUID;
 public class TradeResponse {
 
     private UUID tradeId;
+    private UUID accountId;
     private String instrumentName;
     private String ticker;
     private String side;
@@ -18,10 +19,11 @@ public class TradeResponse {
     public TradeResponse() {
     }
 
-    public TradeResponse(UUID tradeId, String instrumentName, String ticker, String side,
+    public TradeResponse(UUID tradeId, UUID accountId, String instrumentName, String ticker, String side,
                           BigDecimal quantity, BigDecimal executionPrice, BigDecimal tradeValue,
                           OffsetDateTime executedAt) {
         this.tradeId = tradeId;
+        this.accountId = accountId;
         this.instrumentName = instrumentName;
         this.ticker = ticker;
         this.side = side;
@@ -33,6 +35,9 @@ public class TradeResponse {
 
     public UUID getTradeId() { return tradeId; }
     public void setTradeId(UUID tradeId) { this.tradeId = tradeId; }
+
+    public UUID getAccountId() { return accountId; }
+    public void setAccountId(UUID accountId) { this.accountId = accountId; }
 
     public String getInstrumentName() { return instrumentName; }
     public void setInstrumentName(String instrumentName) { this.instrumentName = instrumentName; }
