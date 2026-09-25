@@ -26,6 +26,7 @@
 |------|---|-----------|-----------|
 |`GET`|`/holdings`|For admin only|200|
 |`GET`|`/holdings/{account_id}`|Get all holdings of an account|200, 404|
+|`GET`|`/holdings/{account_id}/{instrument_id}`|Get a specific instrument holding of an account|200, 404|
 |`POST`|`/holdings`|Create a holding|201,200|
 |`PATCH`|`/holdings/{account_id}/{instrument_id}/{quantity}`|Update a specific holding|200,404,409|
 
