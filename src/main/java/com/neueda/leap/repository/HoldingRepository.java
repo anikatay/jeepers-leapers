@@ -27,4 +27,7 @@ public interface HoldingRepository extends JpaRepository<Holding, HoldingId> {
      */
     @Query("SELECT h FROM Holding h WHERE h.account.accountId = :accountId")
     List<Holding> findByAccountId(@Param("accountId") UUID accountId);
+
+    @Query("INSERT INTO Holding h (h.account.accountId, h.instrument.instrumentId, h.quantity) VALUES (:accountId, :instrumentId, :quantity)")
+    void insertHolding(@Param("") UUID accountId, @Param("instrumentId") UUID instrumentId, @Param("quantity") int quantity);
 }

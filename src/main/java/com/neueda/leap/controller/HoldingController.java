@@ -62,7 +62,14 @@ public class HoldingController {
 
     @PostMapping("/holdings")
     public ResponseEntity<HoldingResponse> createHolding(@RequestBody HoldingResponse holdingResponse) {
-        return ResponseEntity.notFound().build();
+        // validate holding
+        HoldingResponse validatedResponse = holdingResponse;
+        if (validatedResponse.getHoldings().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        HoldingResponse response =holdingService.createHolding(validatedResponse);
+    
+        return ResponseEntity.ok(validatedResponse);
     }
 
     @PatchMapping("/{holdings/{accountId}/{instrumentId}/{quantity}")
