@@ -16,7 +16,7 @@ from airflow.utils.task_group import TaskGroup
 
 # Import ETL modules
 import sys
-sys.path.insert(0, '/opt/airflow/dags/analytics')
+sys.path.insert(0, '/opt/airflow')
 
 from etl.extract import run_extraction
 
