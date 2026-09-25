@@ -31,7 +31,7 @@ RUN airflow users create \
     --email airflow@example.com || true
 
 # Expose Airflow webserver port
-EXPOSE 8080
+EXPOSE 8082
 
-# Default command
-CMD ["webserver"]
+# Default command (overridden by docker-compose)
+CMD ["airflow", "webserver"]

@@ -35,9 +35,9 @@ services:
     build:
       context: ./analytics
       dockerfile: docker/Dockerfile.airflow
-    command: webserver
+    command: airflow webserver
     ports:
-      - "8082:8080"
+      - "8082:8082"
     depends_on:
       - db
     environment:
@@ -63,7 +63,7 @@ services:
     build:
       context: ./analytics
       dockerfile: docker/Dockerfile.airflow
-    command: scheduler
+    command: airflow scheduler
     depends_on:
       - db
       - airflow-webserver
