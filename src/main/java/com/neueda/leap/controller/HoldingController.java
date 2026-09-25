@@ -21,7 +21,8 @@ public class HoldingController {
         this.holdingService = holdingService;
     }
 
-    @GetMapping("/holding/{userId}")
+    //TODO: Remove
+    @GetMapping("/holdings/{userId}")
     public ResponseEntity<HoldingResponse> getPortfolio(@PathVariable UUID userId) {
         HoldingResponse response = holdingService.getPortfolio(userId);
 
