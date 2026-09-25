@@ -93,4 +93,10 @@ public class HoldingService implements IService {
 
         return new HoldingResponse(totalValue, holdingDtos);
     }
+
+    public HoldingResponse createHolding(HoldingResponse holdingResponse) {
+        
+        return holdingResponse;
+    }
+
 }
