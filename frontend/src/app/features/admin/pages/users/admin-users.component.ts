@@ -22,18 +22,20 @@ export class AdminUsersComponent implements OnInit{
         { header: 'Name' },
         { header: 'Balance' },
         { header: 'Trade Count' },
+        { header: 'Created At' },
         { header: 'Status' }, 
       ];
 
     userData = computed(() => {
       const accountsData = this.accounts() || [];
-      const tradesMap = this.tradesByUserId(); // Read the signal
+
       return accountsData.map(account => ({
         accountId: account.accountId,
         userId: account.userId,
         name: this.getUserName(account.userId),
         balance: account.balance,
         tradeCount: this.loadAndGetTradeCount(account.userId),
+        CreatedAt: account.createdAt,
         status: account.status
       }));
 
@@ -52,6 +54,7 @@ export class AdminUsersComponent implements OnInit{
           }
         });
 
+      
     }
 
     ngOnInit(){
@@ -142,6 +145,8 @@ export class AdminUsersComponent implements OnInit{
               return user.balance;
             case 'Trade Count':
               return user.tradeCount;
+            case 'Created At':
+              return user.createdAt;
             case 'Status':
               return user.status;
             default:
