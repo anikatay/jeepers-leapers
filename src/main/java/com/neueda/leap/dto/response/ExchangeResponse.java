@@ -1,4 +1,4 @@
-package com.neueda.leap.dto;
+package com.neueda.leap.dto.response;
 
 public class ExchangeResponse {
 
