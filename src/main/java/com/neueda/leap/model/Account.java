@@ -16,7 +16,7 @@ public class Account {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private User userId;
 
     @Column(nullable = false)
     private String currency = "USD";
@@ -36,8 +36,8 @@ public class Account {
     public UUID getAccountId() { return accountId; }
     public void setAccountId(UUID accountId) { this.accountId = accountId; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public User getUser() { return userId; }
+    public void setUser(User userId) { this.userId = userId; }
 
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
