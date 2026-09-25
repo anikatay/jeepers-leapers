@@ -5,8 +5,6 @@ import { AccountService } from '../../../../core/services/accounts.service';
 import { Trade } from '../../../../core/models/trade.model';
 import { Account } from '../../../../core/models/account.model';
 import { TradesService } from '../../../../core/services/trades.service';
-import { InstrumentService } from '../../../../core/services/instrument.model';
-import { Instrument } from '../../../../core/models/instrument.model';
 
 @Component({
   selector: 'app-admin-users',
@@ -17,7 +15,6 @@ import { Instrument } from '../../../../core/models/instrument.model';
 })
 export class AdminUsersComponent implements OnInit{
     accounts = signal<Account[]>([]);
-    instruments = signal<Instrument | null>(null);
     tradesByUserId = signal<Map<string, Trade[]>>(new Map());
     searchTerm = ''; 
     pendingUserIds = new Set<string>(); 
@@ -43,7 +40,7 @@ export class AdminUsersComponent implements OnInit{
     });
 
 
-    constructor(private accountService: AccountService, private tradeService: TradesService, private instrumentService: InstrumentService) {
+    constructor(private accountService: AccountService, private tradeService: TradesService) {
         effect(() => {
           const accountsData = this.accountService.allAccounts();
           if (accountsData) {
@@ -52,14 +49,6 @@ export class AdminUsersComponent implements OnInit{
             
             // Load trades sequentially after accounts load
             this.loadTradesSequentially(accountsData);
-          }
-        });
-
-        effect(() => {
-          const instrumentsData = this.instrumentService.instruments();
-          if (instrumentsData) {
-            this.instruments.set(instrumentsData);
-            console.log('Instruments loaded:', instrumentsData);
           }
         });
 
