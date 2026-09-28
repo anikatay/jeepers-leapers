@@ -1,11 +1,19 @@
 package com.neueda.leap.service;
 
-
 import com.neueda.leap.dto.response.AccountResponse;
+import com.neueda.leap.mapper.AccountMapper;
 import com.neueda.leap.model.Account;
-import com.neueda.leap.repository.AccountRepository;
+
+import com.neueda.leap.exception.InvalidAccountException;
+import com.neueda.leap.exception.AccountNotFoundException;
+
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+
+import java.time.LocalDateTime;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,26 +21,112 @@ import java.util.UUID;
 @Service
 public class AccountService implements IService {
 
-    private final AccountRepository accountRepository;
+    private final AccountMapper accountMapper;
 
-    public AccountService(AccountRepository accountRepository) {
-        this.accountRepository = accountRepository;
+    public AccountService(AccountMapper accountMapper) {
+        this.accountMapper = accountMapper;
     }
 
+    @Transactional 
+    public Account createAccount(Account account){
+        if(account == null){
+            throw new IllegalArgumentException("Account cannot be null");
+        }
+        if(account.getUserId() == null){
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        if(account.getAccountId() == null){
+            account.setAccountId(UUID.randomUUID());
+        }
+        if(account.getBalance() == null){
+            account.setBalance(BigDecimal.ZERO);
+        }
+        if(account.getCurrency() == null){
+            account.setCurrency("USD");
+        }
+        if(account.getStatus() == null){
+            account.setStatus("ACTIVE");
+        }
+        if(account.getCreatedAt() == null){
+            account.setCreatedAt(LocalDateTime.now());
+        }
+        accountMapper.createAccount(account);
+        return account;
+    }
 
-    public List<AccountResponse> getAccountsForUser(UUID userId) {
-        List<Account> accounts = accountRepository.findByUserUserId(userId);
+    public Account getAccount(UUID accountId){
+        if(accountId == null){
+            throw new IllegalArgumentException("Account ID cannot be null");
+        }
 
-        List<AccountResponse> response = accounts.stream()
+        Account account = accountMapper.findByAccountId(accountId);
+        if(account == null){
+            throw new AccountNotFoundException("Account not found with ID: " + accountId);
+        }
+        return account;
+    }
+
+    @Transactional 
+    public void updateBalance(UUID accountId, BigDecimal amount){
+        if(accountId == null){
+            throw new IllegalArgumentException("Account ID cannot be null");
+        }
+        if(amount == null){
+            throw new IllegalArgumentException("Amount cannot be null");
+        }
+        if(amount.compareTo(BigDecimal.ZERO) < 0){
+            throw new IllegalArgumentException("Amount cannot be negative!");
+        }
+        Account account = getAccount(accountId);
+        if(!"ACTIVE".equals(account.getStatus())){
+            throw new InvalidAccountException("Account is not active: " + accountId);
+        }
+
+        accountMapper.updateBalance(accountId, amount);
+        accountMapper.updateLastModified(accountId, LocalDateTime.now());
+    }
+
+    @Transactional 
+    public void closeAccount(UUID accountId){
+        if(accountId == null){
+            throw new IllegalArgumentException("Account ID cannot be null ");
+        }
+        accountMapper.updateStatus(accountId, "CLOSED");
+        accountMapper.updateLastModified(accountId, LocalDateTime.now());
+    }
+
+    @Transactional 
+    public void incrementBalance(UUID accountId, BigDecimal amount){
+        if(accountId == null){
+            throw new IllegalArgumentException("Account ID cannot be null");
+        }
+        accountMapper.incrementBalance(accountId, amount);
+        accountMapper.updateLastModified(accountId, LocalDateTime.now());
+    }
+
+    @Transactional 
+    public void DecrementBalance(UUID accountId, BigDecimal amount){
+        if(accountId == null){
+            throw new IllegalArgumentException("Account ID cannot be null");
+        }
+        accountMapper.decrementBalance(accountId, amount);
+        accountMapper.updateLastModified(accountId, LocalDateTime.now());
+    }
+
+    public List<AccountResponse> getUserAccounts(UUID userId) {
+        if(userId == null){
+            throw new IllegalArgumentException("User ID can not be null");
+        }
+        List<Account> accounts = accountMapper.findAllByUserId(userId);
+
+        return accounts.stream()
                 .map(a -> new AccountResponse(
                         a.getAccountId(),
-                        a.getUser().getUserId(),
+                        a.getUserId(),
                         a.getCurrency(),
                         a.getBalance(),
                         a.getStatus(),
                         a.getCreatedAt()))
                 .toList();
-
-        return response;
     }
 }
