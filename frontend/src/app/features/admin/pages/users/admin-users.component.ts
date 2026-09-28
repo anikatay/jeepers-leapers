@@ -22,7 +22,6 @@ export class AdminUsersComponent implements OnInit{
         { header: 'Name' },
         { header: 'Balance' },
         { header: 'Trade Count' },
-        { header: 'Created At' },
         { header: 'Status' }, 
       ];
 
@@ -35,7 +34,10 @@ export class AdminUsersComponent implements OnInit{
         name: this.getUserName(account.userId),
         balance: account.balance,
         tradeCount: this.loadAndGetTradeCount(account.userId),
+<<<<<<< HEAD
         CreatedAt: account.createdAt,
+=======
+>>>>>>> 2329ed0 (fixing frontend merge conflicts)
         status: account.status
       }));
 
@@ -157,8 +159,11 @@ export class AdminUsersComponent implements OnInit{
               return user.balance;
             case 'Trade Count':
               return user.tradeCount;
+<<<<<<< HEAD
             case 'Created At':
               return user.createdAt;
+=======
+>>>>>>> 2329ed0 (fixing frontend merge conflicts)
             case 'Status':
               return user.status;
             default:
