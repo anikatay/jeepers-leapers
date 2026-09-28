@@ -13,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
+
 import java.time.OffsetDateTime;
+
 
 import java.util.List;
 import java.util.UUID;
@@ -48,6 +50,7 @@ public class AccountService implements IService {
             account.setStatus("ACTIVE");
         }
         if(account.getCreatedAt() == null){
+
             account.setCreatedAt(OffsetDateTime.now());
         }
         accountMapper.createAccount(account);
@@ -111,6 +114,7 @@ public class AccountService implements IService {
         }
         accountMapper.decrementBalance(accountId, amount);
         accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+
     }
 
     public List<AccountResponse> getUserAccounts(UUID userId) {
