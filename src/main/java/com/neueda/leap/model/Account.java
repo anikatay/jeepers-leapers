@@ -25,7 +25,7 @@ public class Account {
     public UUID getAccountId() { return accountId; }
     public void setAccountId(UUID accountId) { this.accountId = accountId; }
 
-    public User getUser() { return userId; }
+    public UUID getUser() { return userId; }
     public void setUser(UUID userId) { this.userId = userId; }
 
     public String getCurrency() { return currency; }
