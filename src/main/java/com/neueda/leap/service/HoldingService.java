@@ -1,10 +1,9 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.dto.response.HoldingResponse;
-import com.neueda.leap.dto.response.HoldingResponse.HoldingDto;
-
+import com.neueda.leap.dto.HoldingResponse;
+import com.neueda.leap.dto.HoldingResponse.HoldingDto;
+import com.neueda.leap.mapper.HoldingMapper;
 import com.neueda.leap.model.Holding;
-import com.neueda.leap.repository.HoldingRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -14,14 +13,14 @@ import java.util.UUID;
 @Service
 public class HoldingService implements IService {
 
-    private final HoldingRepository holdingRepository;
+    private final HoldingMapper holdingMapper;
 
-    public HoldingService(HoldingRepository holdingRepository) {
-        this.holdingRepository = holdingRepository;
+    public HoldingService(HoldingMapper holdingMapper) {
+        this.holdingMapper = holdingMapper;
     }
 
-    public HoldingResponse getPortfolio(UUID userId) {
-        List<Holding> response = holdingRepository.findByAccountUserId(userId);
+    public HoldingResponse getHoldings(UUID userId) {
+        List<Holding> response = holdingMapper.getHoldingsByAccountId(userId);
 
         if (response.isEmpty()) {
             return new HoldingResponse(BigDecimal.ZERO, List.of());
@@ -29,13 +28,7 @@ public class HoldingService implements IService {
 
         List<HoldingDto> holdingDtos = response.stream()
                 .map(h -> {
-                    BigDecimal holdingValue = h.getQuantity()
-                            .multiply(h.getInstrument().getCurrentPrice());
-                    return new HoldingDto(
-                            h.getInstrument().getName(),
-                            h.getInstrument().getTicker(),
-                            h.getQuantity(),
-                            holdingValue);
+                    
                 })
                 .toList();
 
