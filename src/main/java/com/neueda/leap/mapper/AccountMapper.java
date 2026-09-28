@@ -74,5 +74,6 @@ public interface  AccountMapper {
     // update last modified date and time
     @Update("UPDATE accounts  SET updated_at = #{updatedAt} WHERE account_id = #{accountId}")
     void updateLastModified(@Param("accountId") UUID accountId, @Param("updatedAt")OffsetDateTime updatedAt);
+
     
 }
