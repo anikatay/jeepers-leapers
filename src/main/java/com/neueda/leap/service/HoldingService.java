@@ -1,7 +1,12 @@
 package com.neueda.leap.service;
 
+<<<<<<< HEAD
 import com.neueda.leap.dto.HoldingResponse;
 import com.neueda.leap.dto.HoldingResponse.HoldingDto;
+=======
+import com.neueda.leap.dto.response.PortfolioResponse;
+import com.neueda.leap.dto.response.PortfolioResponse.HoldingDto;
+>>>>>>> 6915989c (Fix service DTO imports)
 import com.neueda.leap.model.Holding;
 import com.neueda.leap.repository.HoldingRepository;
 import org.springframework.stereotype.Service;
