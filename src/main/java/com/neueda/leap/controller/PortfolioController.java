@@ -1,7 +1,7 @@
 package com.neueda.leap.controller;
 
 import com.neueda.leap.service.HoldingService;
-import com.neueda.leap.dto.PortfolioResponse;
+import com.neueda.leap.dto.response.PortfolioResponse;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

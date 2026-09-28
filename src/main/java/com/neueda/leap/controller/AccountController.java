@@ -1,6 +1,6 @@
 package com.neueda.leap.controller;
 
-import com.neueda.leap.dto.AccountResponse;
+import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.service.AccountService;
 
 import org.springframework.http.ResponseEntity;

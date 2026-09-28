@@ -1,6 +1,6 @@
 package com.neueda.leap.controller;
 
-import com.neueda.leap.dto.InstrumentResponse;
+import com.neueda.leap.dto.response.InstrumentResponse;
 import com.neueda.leap.service.InstrumentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
