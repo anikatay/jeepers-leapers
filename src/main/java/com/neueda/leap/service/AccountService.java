@@ -1,7 +1,7 @@
 package com.neueda.leap.service;
 
 
-import com.neueda.leap.dto.AccountResponse;
+import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.model.Account;
 import com.neueda.leap.repository.AccountRepository;
 import org.springframework.stereotype.Service;
@@ -26,6 +26,7 @@ public class AccountService implements IService {
         List<AccountResponse> response = accounts.stream()
                 .map(a -> new AccountResponse(
                         a.getAccountId(),
+                        a.getUser().getUserId(),
                         a.getCurrency(),
                         a.getBalance(),
                         a.getStatus(),

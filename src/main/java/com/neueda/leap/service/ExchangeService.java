@@ -2,7 +2,7 @@ package com.neueda.leap.service;
 
 import org.springframework.stereotype.Service;
 
-import com.neueda.leap.dto.ExchangeResponse;
+import com.neueda.leap.dto.response.ExchangeResponse;
 import com.neueda.leap.model.Exchange;
 import com.neueda.leap.repository.ExchangeRepository;
 
