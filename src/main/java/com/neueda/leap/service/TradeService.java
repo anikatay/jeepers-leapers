@@ -1,6 +1,6 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.dto.TradeResponse;
+import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.model.Trade;
 import com.neueda.leap.repository.TradeRepository;
 import org.springframework.stereotype.Service;
@@ -27,13 +27,13 @@ public class TradeService implements IService {
         List<TradeResponse> response = trades.stream()
                 .map(t -> new TradeResponse(
                         t.getTradeId(),
-                        t.getInstrument().getName(),
                         t.getInstrument().getTicker(),
+                        t.getInstrument().getName(),
                         t.getSide(),
-                        t.getQuantity(),
+                        t.getQuantity().intValue(),
                         t.getExecutionPrice(),
                         t.getTradeValue(),
-                        t.getExecutedAt()))
+                        t.getExecutedAt().toLocalDateTime()))
                 .toList();
 
         return response;
