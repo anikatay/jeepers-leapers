@@ -72,5 +72,5 @@ public interface  AccountMapper {
     // update last modified date and time
     @Update("UPDATE accounts as a SET a.updated_at = #{updatedAt} WHERE a.account_id = #{accountId}")
     void updateLastModified(@Param("accountId") UUID accountId, @Param("updatedAt")LocalDateTime updatedAt);
-
+    
 }
