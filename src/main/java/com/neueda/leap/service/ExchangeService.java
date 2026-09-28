@@ -2,39 +2,77 @@ package com.neueda.leap.service;
 
 import org.springframework.stereotype.Service;
 
+import com.neueda.leap.dto.request.ExchangeRequest;
 import com.neueda.leap.dto.response.ExchangeResponse;
+import com.neueda.leap.mapper.ExchangeMapper;
 import com.neueda.leap.model.Exchange;
-import com.neueda.leap.repository.ExchangeRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ExchangeService implements IService {
 
-    private final ExchangeRepository exchangeRepository;
+    private final ExchangeMapper exchangeMapper;
 
-    public ExchangeService(ExchangeRepository exchangeRepository) {
-        this.exchangeRepository = exchangeRepository;
+    public ExchangeService(ExchangeMapper exchangeMapper) {
+        this.exchangeMapper = exchangeMapper;
     }
 
     public List<ExchangeResponse> getAllExchanges() {
-        return exchangeRepository.findAll().stream()
-                .map(this::toDto)
+        return exchangeMapper.findAll().stream()
+                .map(this::toResponse)
                 .toList();
     }
 
-    public Optional<ExchangeResponse> getByExchangeId(String exchangeId) {
-        return exchangeRepository.findById(exchangeId)
-                .map(this::toDto);
+    public ExchangeResponse getExchangeById(String exchangeId) {
+        return exchangeMapper.findById(exchangeId)
+                .map(this::toResponse)
+                .orElseThrow(() -> new RuntimeException("Exchange not found: " + exchangeId));
     }
 
-    private ExchangeResponse toDto(Exchange e) {
+    public ExchangeResponse createExchange(ExchangeRequest request) {
+        Exchange exchange = new Exchange(
+                request.exchangeId(),
+                request.name(),
+                request.region(),
+                request.timezone(),
+                request.currency()
+        );
+        exchangeMapper.insert(exchange);
+        return toResponse(exchange);
+    }
+
+    public ExchangeResponse updateExchange(String exchangeId, ExchangeRequest request) {
+        // Verify exchange exists
+        exchangeMapper.findById(exchangeId)
+                .orElseThrow(() -> new RuntimeException("Exchange not found: " + exchangeId));
+
+        Exchange exchange = new Exchange(
+                exchangeId,
+                request.name(),
+                request.region(),
+                request.timezone(),
+                request.currency()
+        );
+        exchangeMapper.update(exchange);
+        return toResponse(exchange);
+    }
+
+    public void deleteExchange(String exchangeId) {
+        // Verify exchange exists
+        exchangeMapper.findById(exchangeId)
+                .orElseThrow(() -> new RuntimeException("Exchange not found: " + exchangeId));
+
+        exchangeMapper.deleteById(exchangeId);
+    }
+
+    private ExchangeResponse toResponse(Exchange exchange) {
         return new ExchangeResponse(
-                e.getExchangeId(),
-                e.getName(),
-                e.getRegion(),
-                e.getTimezone(),
-                e.getCurrency());
+                exchange.getExchangeId(),
+                exchange.getName(),
+                exchange.getRegion(),
+                exchange.getTimezone(),
+                exchange.getCurrency()
+        );
     }
 }
