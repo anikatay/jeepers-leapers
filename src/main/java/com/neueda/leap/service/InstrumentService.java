@@ -1,7 +1,7 @@
 package com.neueda.leap.service;
 import org.springframework.stereotype.Service;
 
-import com.neueda.leap.dto.InstrumentResponse;
+import com.neueda.leap.dto.response.InstrumentResponse;
 import com.neueda.leap.model.Instrument;
 import com.neueda.leap.repository.InstrumentRepository;
 
