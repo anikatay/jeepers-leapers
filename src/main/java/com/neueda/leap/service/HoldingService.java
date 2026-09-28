@@ -1,7 +1,7 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.dto.PortfolioResponse;
-import com.neueda.leap.dto.PortfolioResponse.HoldingDto;
+import com.neueda.leap.dto.response.PortfolioResponse;
+import com.neueda.leap.dto.response.PortfolioResponse.HoldingDto;
 import com.neueda.leap.model.Holding;
 import com.neueda.leap.repository.HoldingRepository;
 import org.springframework.stereotype.Service;

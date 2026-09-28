@@ -1,6 +1,6 @@
 package com.neueda.leap.controller;
 
-import com.neueda.leap.dto.ExchangeResponse;
+import com.neueda.leap.dto.response.ExchangeResponse;
 import com.neueda.leap.service.ExchangeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
