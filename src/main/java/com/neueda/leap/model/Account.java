@@ -29,7 +29,7 @@ public class Account {
     public void setAccountId(UUID accountId) { this.accountId = accountId; }
 
     public UUID getUserId() { return userId; }
-    public void setUser(UUID userId) { this.userId = userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
 
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
