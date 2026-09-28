@@ -61,6 +61,18 @@ export class AdminUsersComponent implements OnInit{
       this.accountService.getAllAccounts();
     }
 
+    // loadTradesSequentially(accounts: Account[]): void {
+    //   let i = 0;
+    //   for (i = 0; i < accounts.length; i++) {
+    //     const userId = accounts[i].userId;
+    //     const tradesData = this.tradeService.trades();
+    //     if(tradesData){
+    //        this.tradeService.getTrades(userId);
+    //     }
+
+    //   }
+    // }
+
     private loadTradesSequentially(accounts: Account[]): void {
       if (accounts.length === 0) return;
 
