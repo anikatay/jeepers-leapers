@@ -1,6 +1,6 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.dto.response.TradeResponse;
+import com.neueda.leap.dto.TradeResponse;
 import com.neueda.leap.model.Trade;
 import com.neueda.leap.repository.TradeRepository;
 import org.springframework.stereotype.Service;
@@ -27,15 +27,44 @@ public class TradeService implements IService {
         List<TradeResponse> response = trades.stream()
                 .map(t -> new TradeResponse(
                         t.getTradeId(),
-                        t.getInstrument().getTicker(),
+                        t.getAccount().getAccountId(),
                         t.getInstrument().getName(),
+                        t.getInstrument().getTicker(),
                         t.getSide(),
-                        t.getQuantity().intValue(),
+                        t.getQuantity(),
                         t.getExecutionPrice(),
                         t.getTradeValue(),
-                        t.getExecutedAt().toLocalDateTime()))
+                        t.getExecutedAt()))
                 .toList();
 
         return response;
+    }
+
+    public List<TradeResponse> getAllTrades() {
+        List<Trade> trades = tradeRepository.findAll();
+
+        if (trades.isEmpty()) {
+            return List.of();
+        }
+
+        List<TradeResponse> response = trades.stream()
+                .map(t -> new TradeResponse(
+                        t.getTradeId(),
+                        t.getAccount().getAccountId(),
+                        t.getInstrument().getName(),
+                        t.getInstrument().getTicker(),
+                        t.getSide(),
+                        t.getQuantity(),
+                        t.getExecutionPrice(),
+                        t.getTradeValue(),
+                        t.getExecutedAt()))
+                .toList();
+
+        return response;
+    }
+
+    public int getTradeCountForUser(UUID userId) {
+        List<Trade> trades = tradeRepository.findByAccountUserUserId(userId);
+        return trades.size();
     }
 }
