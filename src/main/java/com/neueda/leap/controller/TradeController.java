@@ -1,6 +1,6 @@
 package com.neueda.leap.controller;
 
-import com.neueda.leap.dto.TradeResponse;
+import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.service.TradeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
