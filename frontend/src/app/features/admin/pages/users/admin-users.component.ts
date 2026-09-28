@@ -25,7 +25,6 @@ export class AdminUsersComponent implements OnInit{
         { header: 'Name' },
         { header: 'Balance' },
         { header: 'Trade Count' },
-        { header: 'Profit' },
         { header: 'Status' }, 
       ];
 
@@ -38,12 +37,10 @@ export class AdminUsersComponent implements OnInit{
         name: this.getUserName(account.userId),
         balance: account.balance,
         tradeCount: this.loadAndGetTradeCount(account.userId),
-        profit: this.getProfit(account.userId),
         status: account.status
       }));
 
     });
-    
 
 
     constructor(private accountService: AccountService, private tradeService: TradesService, private instrumentService: InstrumentService) {
@@ -143,86 +140,6 @@ export class AdminUsersComponent implements OnInit{
       return '';
     }
 
-    getProfit(userId: string): number {
-      const userTrades = this.tradesByUserId().get(userId) || [];
-      if (userTrades.length === 0) return 0;
-
-      let realizedProfit = 0;
-      let unrealizedProfit = 0;
-      const buyTradesByTicker = new Map<string, any[]>(); // Track BUY trades by ticker
-      const soldQuantityByTicker = new Map<string, number>(); // Track qty sold per ticker
-
-      // First pass: organize BUY trades by ticker and calculate realized profit from SELLs
-      for (const trade of userTrades) {
-        if (trade.side === 'BUY') {
-          if (!buyTradesByTicker.has(trade.ticker)) {
-            buyTradesByTicker.set(trade.ticker, []);
-          }
-          buyTradesByTicker.get(trade.ticker)!.push(trade);
-        }
-      }
-
-      // Second pass: process SELL trades and match with BUYs
-      for (const trade of userTrades) {
-        if (trade.side === 'SELL') {
-          // Find matching BUY trades for this ticker
-          const matchingBuys = buyTradesByTicker.get(trade.ticker) || [];
-          
-          // Find the BUY that was executed before this SELL
-          const matchingBuy = matchingBuys.find(
-            buy => new Date(buy.executedAt) < new Date(trade.executedAt)
-          );
-
-          if (matchingBuy) {
-            // Calculate realized profit: SELL value - BUY value
-            realizedProfit += trade.tradeValue - matchingBuy.tradeValue;
-            soldQuantityByTicker.set(
-              trade.ticker, 
-              (soldQuantityByTicker.get(trade.ticker) || 0) + trade.quantity
-            );
-          }
-        }
-      }
-
-      // Third pass: calculate unrealized profit from unsold BUY holdings
-      for (const [ticker, buyTrades] of buyTradesByTicker.entries()) {
-        const totalBought = buyTrades.reduce((sum, t) => sum + t.quantity, 0);
-        const totalSold = soldQuantityByTicker.get(ticker) || 0;
-        const remainingQty = totalBought - totalSold;
-
-        if (remainingQty > 0) {
-          // Get current price for this ticker
-          const currentPrice = this.getInstrumentPrice(ticker);
-          if (currentPrice) {
-            const totalBuyValue = buyTrades.reduce((sum, t) => sum + t.tradeValue, 0);
-            const currentValue = currentPrice * remainingQty;
-            unrealizedProfit += currentValue - totalBuyValue;
-          }
-        }
-      }
-
-      return realizedProfit + unrealizedProfit;
-    }
-
-    private getInstrumentPrice(ticker: string): number | null {
-      const instrumentsList = this.instruments();
-      
-      if (Array.isArray(instrumentsList)) {
-        const instrument = instrumentsList.find((i: any) => i.ticker === ticker);
-        return instrument?.currentPrice || null;
-      }
-      
-      // If instruments is an object, try to access it as a keyed object
-      if (instrumentsList && typeof instrumentsList === 'object') {
-        const instrument = (instrumentsList as any)[ticker];
-        if (instrument && typeof instrument === 'object' && 'currentPrice' in instrument) {
-          return instrument.currentPrice as number;
-        }
-      }
-
-      return null;
-    }
-
     loadAndGetTradeCount(userId: string): number {
       const tradesMap = this.tradesByUserId();
       return tradesMap.get(userId)?.length || 0;
@@ -236,8 +153,6 @@ export class AdminUsersComponent implements OnInit{
               return user.balance;
             case 'Trade Count':
               return user.tradeCount;
-            case 'Profit':
-              return user.profit;
             case 'Status':
               return user.status;
             default:

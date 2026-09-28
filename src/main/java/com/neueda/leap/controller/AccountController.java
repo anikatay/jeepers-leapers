@@ -70,7 +70,7 @@ public class AccountController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/admin/accounts")
+    @GetMapping("/accounts")
     public ResponseEntity<List<AccountResponse>> getAllAccounts() {
         List<AccountResponse> response = accountService.getAllAccounts();
         

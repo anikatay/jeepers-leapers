@@ -35,7 +35,7 @@ export class AccountService {
     this.loading.set(true);
     this.error.set(null);
 
-    this.http.get<Account[]>(`/api/admin/accounts`)
+    this.http.get<Account[]>(`/api/accounts`)
       .subscribe({
         next: (data) => {
           this.allAccounts.set(data);
