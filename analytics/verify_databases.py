@@ -14,11 +14,13 @@ from dotenv import load_dotenv
 def main():
     load_dotenv()
     
+    source_db_url = os.getenv('PAYSPRINT_SOURCE_DB_URL')
+    analytics_db_url = os.getenv('PAYSPRINT_ANALYTICS_DB_URL')
     db_password = os.getenv('DB_PASSWORD')
     db_host = os.getenv('DB_HOST')
     
-    if not db_password or not db_host:
-        print("[ERROR] DB_PASSWORD and DB_HOST environment variables required")
+    if not source_db_url or not analytics_db_url:
+        print("[ERROR] PAYSPRINT_SOURCE_DB_URL and PAYSPRINT_ANALYTICS_DB_URL environment variables required")
         return False
     
     # Step 1: Verify paysprint database exists
@@ -27,8 +29,7 @@ def main():
     print("=" * 60)
     
     try:
-        conn_str = f'postgresql://paysprint:{db_password}@{db_host}:5432/paysprint'
-        conn = psycopg2.connect(conn_str)
+        conn = psycopg2.connect(source_db_url)
         cursor = conn.cursor()
         cursor.execute("SELECT version()")
         version = cursor.fetchone()[0]
@@ -49,8 +50,9 @@ def main():
     
     try:
         # Connect to 'postgres' database to check/create paysprint_analytics
-        postgres_str = f'postgresql://paysprint:{db_password}@{db_host}:5432/postgres'
-        conn = psycopg2.connect(postgres_str)
+        # Extract host and port from source_db_url for postgres database connection
+        postgres_url = source_db_url.replace('/paysprint', '/postgres')
+        conn = psycopg2.connect(postgres_url)
         conn.autocommit = True
         cursor = conn.cursor()
         
@@ -83,8 +85,7 @@ def main():
     print("=" * 60)
     
     try:
-        analytics_str = f'postgresql://paysprint:{db_password}@{db_host}:5432/paysprint_analytics'
-        conn = psycopg2.connect(analytics_str)
+        conn = psycopg2.connect(analytics_db_url)
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
         cursor.close()
@@ -102,11 +103,14 @@ def main():
     print("=" * 60)
     print()
     print("Database URLs configured in .env:")
-    print(f"  Source (OLTP):     postgresql://paysprint:***@{db_host}:5432/paysprint")
-    print(f"  Analytics (Staging): postgresql://paysprint:***@{db_host}:5432/paysprint_analytics")
+    # Mask passwords in output
+    source_masked = source_db_url.replace(db_password, '***')
+    analytics_masked = analytics_db_url.replace(db_password, '***')
+    print(f"  Source (OLTP):     {source_masked}")
+    print(f"  Analytics (Staging): {analytics_masked}")
     print()
     print("Ready to run ETL script:")
-    print("  python analytics/etl/simple_etl.py")
+    print("  python3 analytics/etl/simple_etl.py")
     print()
     
     return True
