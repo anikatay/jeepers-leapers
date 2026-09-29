@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import com.neueda.leap.model.Account;
+
+
 public class AccountResponse {
 
     private UUID accountId;
@@ -61,5 +64,15 @@ public class AccountResponse {
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
-
+    
+    public static AccountResponse mapToResponse(Account account){
+        return new AccountResponse(
+            account.getAccountId(),
+            account.getUserId(),
+            account.getCurrency(),
+            account.getBalance(),
+            account.getStatus(),
+            account.getCreatedAt()
+        );
+    }
 }
