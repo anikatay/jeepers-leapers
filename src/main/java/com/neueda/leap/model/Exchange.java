@@ -1,11 +1,25 @@
 package com.neueda.leap.model;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "exchanges")
 public class Exchange {
 
+    @Id
+    @Column(name = "exchange_id")
     private String exchangeId;
+    
+    @Column(nullable = false)
     private String name;
+    
+    @Column(nullable = false)
     private String region;
+    
+    @Column(nullable = false)
     private String timezone;
+    
+    @Column(nullable = false)
     private String currency = "USD";
 
     public Exchange() {
