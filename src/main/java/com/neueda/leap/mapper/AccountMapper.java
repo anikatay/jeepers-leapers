@@ -28,51 +28,51 @@ public interface  AccountMapper {
     void deleteAccount(@Param("accountId") UUID accountId);
     
     // find account by account id -> account
-    @Select("SELECT * FROM accounts as a WHERE a.account_id = #{accountId}")
+    @Select("SELECT * FROM accounts  WHERE account_id = #{accountId}")
     Account findByAccountId(@Param("accountId")UUID accountId);
 
     // find all accounts for a user -> List<account>
-    @Select("SELECT * FROM accounts as a WHERE a.user_id = #{userId}")
+    @Select("SELECT * FROM accounts  WHERE user_id = #{userId}")
     List<Account> findAllByUserId(@Param("userId")UUID userId); 
     
     // find all active accounts -> List<Account>
-    @Select("SELECT * FROM accounts as a WHERE a.status = 'ACTIVE'")
+    @Select("SELECT * FROM accounts  WHERE status = 'ACTIVE'")
     List<Account> findAllActiveAccounts();
 
     // find account Id by user ID -> UUID
-    @Select("SELECT a.account_id FROM accounts as a WHERE a.user_id = #{userId}")
+    @Select("SELECT account_id FROM accounts  WHERE user_id = #{userId}")
     UUID findAccountIdByUserId(@Param("userId")UUID userId);
 
     // get account bal -> BigDecimal
-    @Select("SELECT a.balance FROM accounts as a WHERE a.account_id = #{accountId}")
+    @Select("SELECT balance FROM accounts  WHERE account_id = #{accountId}")
     BigDecimal getAccountBalance(@Param("accountId")UUID accountId);
 
     // find account status by account Id -> String
-    @Select("SELECT a.status FROM accounts as a WHERE a.account_id = #{accountId}")
+    @Select("SELECT status FROM accounts  WHERE account_id = #{accountId}")
     String findAccountStatusByAccountId(@Param("accountId")UUID accountId);
 
     // update balance
-    @Update("UPDATE accounts as a SET a.balance = #{balance} WHERE a.account_id = #{accountId}")
+    @Update("UPDATE accounts  SET balance = #{balance} WHERE account_id = #{accountId}")
     void updateBalance(@Param("accountId") UUID accountId,@Param("balance") BigDecimal balance);
 
     // update status
-    @Update("UPDATE accounts as a SET a.status = #{status} WHERE a.account_id = #{accountId}")
+    @Update("UPDATE accounts  SET status = #{status} WHERE account_id = #{accountId}")
     void updateStatus(@Param("accountId") UUID accountId,@Param("status") String status);
 
     // increment balance
-    @Update("UPDATE accounts as a SET a.balance = a.balance + #{amount} WHERE a.account_id = #{accountId}")
+    @Update("UPDATE accounts  SET balance = balance + #{amount} WHERE account_id = #{accountId}")
     void incrementBalance(@Param("accountId") UUID accountId, @Param("amount") BigDecimal amount);
 
     // Decrement balance
-    @Update("UPDATE accounts as a SET a.balance = a.balance - #{amount} WHERE a.account_id = #{accountId}")
+    @Update("UPDATE accounts  SET balance = balance - #{amount} WHERE account_id = #{accountId}")
     void decrementBalance(@Param("accountId") UUID accountId, @Param("amount") BigDecimal amount);
 
     // check if account exists -> boolean
-    @Select("SELECT COUNT(*) FROM accounts as a WHERE a.account_id = #{accountId}")
+    @Select("SELECT COUNT(*) FROM accounts  WHERE account_id = #{accountId}")
     boolean accountExists(@Param("accountId") UUID accountId);
 
     // update last modified date and time
-    @Update("UPDATE accounts as a SET a.updated_at = #{updatedAt} WHERE a.account_id = #{accountId}")
+    @Update("UPDATE accounts  SET updated_at = #{updatedAt} WHERE account_id = #{accountId}")
     void updateLastModified(@Param("accountId") UUID accountId, @Param("updatedAt")OffsetDateTime updatedAt);
     
 }
