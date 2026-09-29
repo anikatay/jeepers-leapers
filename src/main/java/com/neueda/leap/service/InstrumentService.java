@@ -34,6 +34,6 @@ public class InstrumentService implements IService {
                 i.getTicker(),
                 i.getName(),
                 i.getCurrentPrice(),
-                i.getExchangeId());
+                i.getExchange().getExchangeId());
     }
 }
