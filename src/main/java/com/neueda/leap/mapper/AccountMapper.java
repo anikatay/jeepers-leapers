@@ -5,16 +5,18 @@ import java.util.List;
 
 import java.math.BigDecimal;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import com.neueda.leap.model.Account;
 
+@Mapper 
 public interface  AccountMapper {
     // insert new account
     @Insert("INSERT INTO accounts (account_id, user_id, balance,status,created_at) " + 
@@ -71,6 +73,6 @@ public interface  AccountMapper {
 
     // update last modified date and time
     @Update("UPDATE accounts as a SET a.updated_at = #{updatedAt} WHERE a.account_id = #{accountId}")
-    void updateLastModified(@Param("accountId") UUID accountId, @Param("updatedAt")LocalDateTime updatedAt);
+    void updateLastModified(@Param("accountId") UUID accountId, @Param("updatedAt")OffsetDateTime updatedAt);
     
 }
