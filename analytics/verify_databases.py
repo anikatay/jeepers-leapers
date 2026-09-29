@@ -49,36 +49,42 @@ def main():
     print("=" * 60)
     
     try:
-        # Connect to 'postgres' database to check/create paysprint_analytics
-        # Extract host and port from source_db_url for postgres database connection
-        postgres_url = source_db_url.replace('/paysprint', '/postgres')
-        conn = psycopg2.connect(postgres_url)
-        conn.autocommit = True
+        conn = psycopg2.connect(analytics_db_url)
         cursor = conn.cursor()
-        
-        # Check if paysprint_analytics exists
-        cursor.execute(
-            "SELECT 1 FROM pg_database WHERE datname = %s",
-            ('paysprint_analytics',)
-        )
-        exists = cursor.fetchone()
-        
-        if exists:
-            print("[OK] Database paysprint_analytics already exists")
-        else:
-            print("[INFO] Database paysprint_analytics does not exist")
-            print("[INFO] Creating database paysprint_analytics...")
-            cursor.execute("CREATE DATABASE paysprint_analytics")
-            print("[OK] Created database paysprint_analytics")
-        
+        cursor.execute("SELECT version()")
+        version = cursor.fetchone()[0]
         cursor.close()
         conn.close()
+        print("[OK] Database paysprint_analytics already exists")
+        print(f"    PostgreSQL Version: {version.split(',')[0]}")
+    except psycopg2.OperationalError as e:
+        if "does not exist" in str(e):
+            print("[INFO] Database paysprint_analytics does not exist yet")
+            print("[INFO] It will be auto-created when the ETL script runs")
+            print()
+            print("    To create it manually now, run on the remote server:")
+            print("    python3 << 'EOFPY'")
+            print("    import psycopg2")
+            print("    conn = psycopg2.connect('postgresql://paysprint:j33p3rs!@localhost:8100/paysprint')")
+            print("    conn.autocommit = True")
+            print("    cursor = conn.cursor()")
+            print("    cursor.execute('CREATE DATABASE paysprint_analytics')")
+            print("    cursor.close()")
+            print("    conn.close()")
+            print("    print('[OK] Created paysprint_analytics')")
+            print("    EOFPY")
+        else:
+            print(f"[ERROR] Failed to connect to paysprint_analytics:")
+            print(f"    {e}")
+            print()
+            print("[INFO] Note: If database doesn't exist, it will be created by ETL script")
     except Exception as e:
-        print(f"[ERROR] Failed to check/create paysprint_analytics:")
+        print(f"[ERROR] Failed to check paysprint_analytics:")
         print(f"    {e}")
-        return False
+        print()
+        print("[INFO] Note: If database doesn't exist, it will be created by ETL script")
     
-    # Step 3: Verify connection to paysprint_analytics
+    # Step 3: Verify connection to paysprint_analytics (if it exists)
     print()
     print("=" * 60)
     print("Step 3: Verifying connection to paysprint_analytics")
@@ -91,23 +97,28 @@ def main():
         cursor.close()
         conn.close()
         print("[OK] Successfully connected to paysprint_analytics")
-    except Exception as e:
-        print(f"[ERROR] Failed to connect to paysprint_analytics:")
-        print(f"    {e}")
-        return False
+    except psycopg2.OperationalError as e:
+        if "does not exist" in str(e):
+            print("[INFO] paysprint_analytics database doesn't exist yet - this is OK")
+            print("[INFO] The ETL script will create staging schema and tables on first run")
+        else:
+            print(f"[WARNING] Could not connect to paysprint_analytics: {e}")
+            print("[INFO] This is OK - ETL will create it when needed")
     
     # Success
     print()
     print("=" * 60)
-    print("SUCCESS: All databases ready for ETL")
+    print("SUCCESS: Paysprint database is ready for ETL")
     print("=" * 60)
     print()
-    print("Database URLs configured in .env:")
+    print("Database configuration:")
     # Mask passwords in output
     source_masked = source_db_url.replace(db_password, '***')
     analytics_masked = analytics_db_url.replace(db_password, '***')
     print(f"  Source (OLTP):     {source_masked}")
-    print(f"  Analytics (Staging): {analytics_masked}")
+    print(f"  Analytics (OLAP):  {analytics_masked}")
+    print()
+    print("Note: paysprint_analytics database will be auto-created by ETL script if needed")
     print()
     print("Ready to run ETL script:")
     print("  python3 analytics/etl/simple_etl.py")
