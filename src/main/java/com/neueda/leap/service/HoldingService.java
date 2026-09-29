@@ -1,12 +1,10 @@
 package com.neueda.leap.service;
 
 import com.neueda.leap.dto.response.HoldingResponse;
-import com.neueda.leap.dto.response.HoldingResponse.HoldingDto;
 import com.neueda.leap.mapper.HoldingMapper;
 import com.neueda.leap.model.Holding;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,24 +17,22 @@ public class HoldingService implements IService {
         this.holdingMapper = holdingMapper;
     }
 
-    public HoldingResponse getHoldings(UUID userId) {
-        List<Holding> response = holdingMapper.getHoldingsByAccountId(userId);
+    public List<HoldingResponse> getHoldingsByAccountId(UUID accountID) {
+        List<Holding> response = holdingMapper.getHoldingsByAccountId(accountID);
 
         if (response.isEmpty()) {
-            return new HoldingResponse(BigDecimal.ZERO, List.of());
+            return null;
         }
 
-        List<HoldingDto> holdingDtos = response.stream()
-                .map(h -> {
-                    
-                })
+        List<HoldingResponse> holdingDtos = response.stream()
+                .map(h -> new HoldingResponse(
+                    h.getAccountId(),
+                    h.getInstrumentId(),
+                    h.getQuantity()
+                ))
                 .toList();
 
-        BigDecimal totalValue = holdingDtos.stream()
-                .map(HoldingDto::getHoldingValue)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return new HoldingResponse(totalValue, holdingDtos);
+        return holdingDtos;
     }
 
     public HoldingResponse createHolding(HoldingResponse holdingResponse) {
