@@ -129,7 +129,7 @@ class ETLExtractor:
             logger.info(f"Extracting trades from last {days} days...")
             query = f"""
                 SELECT * FROM paysprint.public.trades
-                WHERE trade_date >= NOW() - INTERVAL '{days} days'
+                WHERE executed_at >= NOW() - INTERVAL '{days} days'
             """
             df = pd.read_sql(query, self.engine)
             logger.info(f"Extracted {len(df)} trades from last {days} days")
@@ -208,8 +208,13 @@ class ETLLoader:
         try:
             with self.engine.connect() as conn:
                 conn.execute(text("CREATE SCHEMA IF NOT EXISTS staging"))
+                # Drop old staging tables if they exist (to recreate with correct schema)
+                conn.execute(text("DROP TABLE IF EXISTS staging.exchanges_raw CASCADE"))
+                conn.execute(text("DROP TABLE IF EXISTS staging.accounts_raw CASCADE"))
+                conn.execute(text("DROP TABLE IF EXISTS staging.instruments_raw CASCADE"))
+                conn.execute(text("DROP TABLE IF EXISTS staging.trades_raw CASCADE"))
                 conn.commit()
-            logger.info("Staging schema is ready")
+            logger.info("Staging schema is ready (old tables dropped)")
             return True
         except Exception as e:
             logger.error(f"Failed to create staging schema: {e}")
