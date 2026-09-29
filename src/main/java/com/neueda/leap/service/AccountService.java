@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import java.util.List;
 import java.util.UUID;
@@ -48,7 +48,7 @@ public class AccountService implements IService {
             account.setStatus("ACTIVE");
         }
         if(account.getCreatedAt() == null){
-            account.setCreatedAt(LocalDateTime.now());
+            account.setCreatedAt(OffsetDateTime.now());
         }
         accountMapper.createAccount(account);
         return account;
@@ -83,7 +83,7 @@ public class AccountService implements IService {
         }
 
         accountMapper.updateBalance(accountId, amount);
-        accountMapper.updateLastModified(accountId, LocalDateTime.now());
+        accountMapper.updateLastModified(accountId, OffsetDateTime.now());
     }
 
     @Transactional 
@@ -92,7 +92,7 @@ public class AccountService implements IService {
             throw new IllegalArgumentException("Account ID cannot be null ");
         }
         accountMapper.updateStatus(accountId, "CLOSED");
-        accountMapper.updateLastModified(accountId, LocalDateTime.now());
+        accountMapper.updateLastModified(accountId, OffsetDateTime.now());
     }
 
     @Transactional 
@@ -101,16 +101,16 @@ public class AccountService implements IService {
             throw new IllegalArgumentException("Account ID cannot be null");
         }
         accountMapper.incrementBalance(accountId, amount);
-        accountMapper.updateLastModified(accountId, LocalDateTime.now());
+        accountMapper.updateLastModified(accountId, OffsetDateTime.now());
     }
 
     @Transactional 
-    public void DecrementBalance(UUID accountId, BigDecimal amount){
+    public void decrementBalance(UUID accountId, BigDecimal amount){
         if(accountId == null){
             throw new IllegalArgumentException("Account ID cannot be null");
         }
         accountMapper.decrementBalance(accountId, amount);
-        accountMapper.updateLastModified(accountId, LocalDateTime.now());
+        accountMapper.updateLastModified(accountId, OffsetDateTime.now());
     }
 
     public List<AccountResponse> getUserAccounts(UUID userId) {
