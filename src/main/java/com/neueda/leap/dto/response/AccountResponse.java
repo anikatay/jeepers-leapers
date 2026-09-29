@@ -1,7 +1,7 @@
 package com.neueda.leap.dto.response;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import com.neueda.leap.model.Account;
@@ -14,13 +14,13 @@ public class AccountResponse {
     private String currency;
     private BigDecimal balance;
     private String status;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     public AccountResponse() {
     }
 
     public AccountResponse(UUID accountId, UUID userId, String currency, BigDecimal balance, String status,
-                           LocalDateTime createdAt) {
+                           OffsetDateTime createdAt) {
         this.accountId = accountId;
         this.userId = userId;
         this.currency = currency;
@@ -61,7 +61,7 @@ public class AccountResponse {
         this.status = status;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
     
