@@ -19,16 +19,15 @@ from etl.config import get_staging_engine
 logger = logging.getLogger(__name__)
 
 
-def generate_date_dimension(start_year: int = 2024, end_year: int = 2028) -> None:
+def generate_date_dimension(num_days: int = 60) -> None:
     """
     Generate date dimension table for analytics schema.
     
-    Creates one row per date from start_year through end_year (inclusive).
+    Creates one row per date for a specified number of days.
     Includes columns for year, month, quarter, week, day_of_week, and is_trading_day flag.
     
     Args:
-        start_year: First year to generate (default: 2024)
-        end_year: Last year to generate (default: 2028)
+        num_days: Number of days to generate (default: 60 for testing)
     
     Returns:
         None (inserts directly into database)
@@ -37,14 +36,17 @@ def generate_date_dimension(start_year: int = 2024, end_year: int = 2028) -> Non
         Exception: If database connection fails
     """
     try:
-        logger.info(f"Generating date dimension for {start_year}-{end_year}")
+        logger.info(f"Generating date dimension for {num_days} days")
         
-        # Generate date range
-        start_date = datetime(start_year, 1, 1)
-        end_date = datetime(end_year, 12, 31)
+        # Generate date range: last 30 days + next 30 days (centered on today)
+        # This gives a good window for testing without huge tables
+        from datetime import timedelta
+        today = datetime.now().date()
+        start_date = today - timedelta(days=num_days // 2)
+        end_date = today + timedelta(days=num_days // 2)
         date_range = pd.date_range(start=start_date, end=end_date, freq='D')
         
-        logger.info(f"Generated {len(date_range)} dates")
+        logger.info(f"Generated {len(date_range)} dates from {start_date} to {end_date}")
         
         # Create DataFrame with all date components
         df = pd.DataFrame({
