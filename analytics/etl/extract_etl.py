@@ -105,7 +105,7 @@ class DataExtractor:
     def _clear_staging_tables(self) -> None:
         """
         Clear staging tables from previous run.
-        Uses TRUNCATE (safer than DROP) to preserve table structure.
+        Uses DROP TABLE IF EXISTS (compatible with older PostgreSQL versions).
         """
         logger.info("Clearing staging tables from previous run")
         
@@ -121,13 +121,13 @@ class DataExtractor:
             # First ensure staging schema exists
             conn.execute(text("CREATE SCHEMA IF NOT EXISTS staging"))
             
-            # Then truncate each table if it exists
+            # Then drop each table if it exists (recreates schema on load)
             for table in tables_to_clear:
                 try:
-                    conn.execute(text(f"TRUNCATE TABLE IF EXISTS {table} CASCADE"))
-                    logger.debug(f"Cleared {table}")
+                    conn.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE"))
+                    logger.debug(f"Dropped {table}")
                 except Exception as e:
-                    logger.warning(f"Could not clear {table}: {str(e)}")
+                    logger.warning(f"Could not drop {table}: {str(e)}")
     
     def _extract_exchanges(self) -> Tuple[int, int]:
         """
@@ -141,11 +141,10 @@ class DataExtractor:
         query = """
         SELECT
             exchange_id,
-            name as exchange_name,
+            name,
             region,
             timezone,
-            currency,
-            created_at
+            currency
         FROM public.exchanges
         """
         
@@ -180,11 +179,10 @@ class DataExtractor:
         SELECT
             account_id,
             user_id,
-            status,
             currency,
             balance,
-            created_at,
-            updated_at
+            status,
+            created_at
         FROM public.accounts
         """
         
@@ -218,12 +216,10 @@ class DataExtractor:
         query = """
         SELECT
             instrument_id,
+            ticker,
+            name,
             exchange_id,
-            symbol,
-            name as instrument_name,
-            instrument_type,
-            currency,
-            created_at,
+            current_price,
             updated_at
         FROM public.instruments
         """
@@ -257,13 +253,9 @@ class DataExtractor:
         
         query = """
         SELECT
-            holding_id,
             account_id,
             instrument_id,
-            quantity,
-            cost_basis,
-            created_at,
-            updated_at
+            quantity
         FROM public.holdings
         """
         
@@ -308,8 +300,7 @@ class DataExtractor:
             side,
             quantity,
             execution_price,
-            executed_at,
-            created_at
+            executed_at
         FROM public.trades
         WHERE executed_at >= NOW() - INTERVAL '{days} days'
         """
