@@ -1,5 +1,6 @@
 package com.neueda.leap.mapper;
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.apache.ibatis.annotations.Delete;
@@ -7,6 +8,8 @@ import java.util.List;
 import java.util.UUID;
 
 import com.neueda.leap.model.Holding;
+
+@Mapper
 public interface HoldingMapper {
     
     @Select("SELECT * FROM holdings")
