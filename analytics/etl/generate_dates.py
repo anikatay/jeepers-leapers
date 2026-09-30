@@ -65,11 +65,18 @@ def generate_date_dimension(start_year: int = 2024, end_year: int = 2028) -> Non
         engine = get_staging_engine()  # Use staging engine (paysprint_analytics)
         
         logger.info("Loading date dimension to analytics.dim_dates...")
+        
+        # Truncate existing data (can't use DROP due to FK constraints)
+        with engine.begin() as conn:
+            conn.execute(text("TRUNCATE TABLE analytics.dim_dates"))
+            logger.info("Truncated existing data from analytics.dim_dates")
+        
+        # Insert new data
         df.to_sql(
             'dim_dates',
             engine,
             schema='analytics',
-            if_exists='replace',  # Replace entire table (idempotent)
+            if_exists='append',  # Append to already-created table (just truncated)
             index=False,
             chunksize=1000,
             method='multi'
