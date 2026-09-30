@@ -1,47 +1,43 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.dto.response.PortfolioResponse;
-import com.neueda.leap.dto.response.PortfolioResponse.HoldingDto;
+import com.neueda.leap.dto.response.HoldingResponse;
+import com.neueda.leap.mapper.HoldingMapper;
 import com.neueda.leap.model.Holding;
-import com.neueda.leap.repository.HoldingRepository;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 public class HoldingService implements IService {
 
-    private final HoldingRepository holdingRepository;
+    private final HoldingMapper holdingMapper;
 
-    public HoldingService(HoldingRepository holdingRepository) {
-        this.holdingRepository = holdingRepository;
+    public HoldingService(HoldingMapper holdingMapper) {
+        this.holdingMapper = holdingMapper;
     }
 
-    public PortfolioResponse getPortfolio(UUID userId) {
-        List<Holding> response = holdingRepository.findByAccountUserId(userId);
+    public List<HoldingResponse> getHoldingsByAccountId(UUID accountID) {
+        List<Holding> response = holdingMapper.getHoldingsByAccountId(accountID);
 
         if (response.isEmpty()) {
-            return new PortfolioResponse(BigDecimal.ZERO, List.of());
+            return null;
         }
 
-        List<HoldingDto> holdingDtos = response.stream()
-                .map(h -> {
-                    BigDecimal holdingValue = h.getQuantity()
-                            .multiply(h.getInstrument().getCurrentPrice());
-                    return new HoldingDto(
-                            h.getInstrument().getName(),
-                            h.getInstrument().getTicker(),
-                            h.getQuantity(),
-                            holdingValue);
-                })
+        List<HoldingResponse> holdingDtos = response.stream()
+                .map(h -> new HoldingResponse(
+                    h.getAccountId(),
+                    h.getInstrumentId(),
+                    h.getQuantity()
+                ))
                 .toList();
 
-        BigDecimal totalValue = holdingDtos.stream()
-                .map(HoldingDto::getHoldingValue)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return new PortfolioResponse(totalValue, holdingDtos);
+        return holdingDtos;
     }
+
+    public HoldingResponse createHolding(HoldingResponse holdingResponse) {
+        
+        return holdingResponse;
+    }
+
 }
