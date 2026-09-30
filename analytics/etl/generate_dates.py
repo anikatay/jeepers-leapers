@@ -53,7 +53,7 @@ def generate_date_dimension(start_year: int = 2024, end_year: int = 2028) -> Non
             'month': date_range.month,
             'quarter': date_range.quarter,
             'week_of_year': date_range.isocalendar().week,
-            'day_of_week': date_range.day_name,
+            'day_of_week': date_range.day_name(),
             'day_of_month': date_range.day,
             # is_trading_day: True for Mon-Fri (0-4), False for Sat-Sun (5-6)
             'is_trading_day': ~date_range.dayofweek.isin([5, 6])
