@@ -49,9 +49,50 @@ public class HoldingService implements IService {
         );
     }
 
-    public HoldingResponse createHolding(HoldingResponse holdingResponse) {
+    public HoldingResponse createHolding(HoldingRequest request) {
+        // TODO: verify trade success first
+        Holding createdHolding = holdingMapper.insertHolding(
+            request.accountId(),
+            request.instrumentId(),
+            request.quantity()
+        );
+
+        if( createdHolding == null ) {
+            return null;
+        }
         
-        return holdingResponse;
+        return new HoldingResponse(
+                createdHolding.getAccountId(),
+                createdHolding.getInstrumentId(),
+                createdHolding.getQuantity()
+        );
+    }
+
+    public HoldingResponse updateHoldingQuantity(HoldingRequest request) {
+        // TODO: verify trade success first
+        Holding updatedHolding = holdingMapper.updateHoldingQuantity(
+            request.accountId(),
+            request.instrumentId(),
+            request.quantity()
+        );
+
+        if (updatedHolding == null) {
+            return null;
+        }
+
+        return new HoldingResponse(
+                updatedHolding.getAccountId(),
+                updatedHolding.getInstrumentId(),
+                updatedHolding.getQuantity()
+        );
+    }
+
+    public void deleteHolding(UUID accountId, UUID instrumentId) {
+        holdingMapper.deleteHolding(accountId, instrumentId);
+    }
+
+    public void deleteHoldingsByAccountId(UUID accountId) {
+        holdingMapper.deleteHoldingsByAccountId(accountId);
     }
 
 }
