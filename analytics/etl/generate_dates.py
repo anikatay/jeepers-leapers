@@ -66,10 +66,10 @@ def generate_date_dimension(start_year: int = 2024, end_year: int = 2028) -> Non
         
         logger.info("Loading date dimension to analytics.dim_dates...")
         
-        # Truncate existing data (can't use DROP due to FK constraints)
+        # Truncate existing data with CASCADE (needed due to FK constraints from fact tables)
         with engine.begin() as conn:
-            conn.execute(text("TRUNCATE TABLE analytics.dim_dates"))
-            logger.info("Truncated existing data from analytics.dim_dates")
+            conn.execute(text("TRUNCATE TABLE analytics.dim_dates CASCADE"))
+            logger.info("Truncated existing data from analytics.dim_dates (with CASCADE)")
         
         # Insert new data
         df.to_sql(
