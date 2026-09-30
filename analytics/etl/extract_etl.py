@@ -32,7 +32,7 @@ from typing import Dict, Tuple, Optional
 import pandas as pd
 from sqlalchemy import create_engine, text, inspect
 
-from config import (
+from .config import (
     get_oltp_engine,
     get_staging_engine,
     ETL_LOOKBACK_DAYS,
