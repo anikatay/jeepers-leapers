@@ -35,9 +35,9 @@ public class AccountController {
     @PostMapping 
     public ResponseEntity<AccountResponse> createAccount(@RequestBody AccountRequest request){
         Account account = new Account();
-        account.setUserId(request.getUserId());
-        account.setBalance(request.getInitialBalance() != null ? request.getInitialBalance() : BigDecimal.ZERO);
-        account.setCurrency(request.getCurrency() != null ? request.getCurrency() : "USD");
+        account.setUserId(request.userId());
+        account.setBalance(request.initialBalance() != null ? request.initialBalance() : BigDecimal.ZERO);
+        account.setCurrency(request.currency() != null ? request.currency() : "USD");
 
         Account createdAccount = accountService.createAccount(account);
         
@@ -60,13 +60,13 @@ public class AccountController {
 
     @PatchMapping("/{accountId}/deposit")
     public ResponseEntity<Void> incrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request){
-        accountService.incrementBalance(accountId, request.getAmount());
+        accountService.incrementBalance(accountId, request.amount());
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{accountId}/withdraw")
     public ResponseEntity<Void> decrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request){
-        accountService.decrementBalance(accountId, request.getAmount());
+        accountService.decrementBalance(accountId, request.amount());
         return ResponseEntity.noContent().build();
     }
 
