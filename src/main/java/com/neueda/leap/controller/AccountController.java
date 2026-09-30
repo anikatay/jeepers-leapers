@@ -70,14 +70,4 @@ public class AccountController {
         return ResponseEntity.noContent().build();
     }
 
-
-    @GetMapping("/accounts")
-    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
-        List<AccountResponse> response = accountService.getAllAccounts();
-        
-        return ResponseEntity.ok(response);
-    }
-
-
-
 }
