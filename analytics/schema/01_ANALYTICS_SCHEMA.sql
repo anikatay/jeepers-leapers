@@ -269,7 +269,7 @@ ON CONFLICT (exchange_id) DO UPDATE SET
 INSERT INTO analytics.dim_instruments 
     (instrument_id, ticker, name, exchange_id, current_price, updated_at, etl_run_id, etl_timestamp)
 SELECT 
-    instrument_id, ticker, name, exchange_id, current_price, updated_at, etl_run_id, etl_timestamp
+    instrument_id::UUID, ticker, name, exchange_id, current_price, updated_at, etl_run_id, etl_timestamp
 FROM staging.instruments_raw
 ON CONFLICT (instrument_id) DO UPDATE SET
     ticker = EXCLUDED.ticker,
@@ -284,7 +284,7 @@ ON CONFLICT (instrument_id) DO UPDATE SET
 INSERT INTO analytics.dim_accounts 
     (account_id, user_id, currency, status, created_at, etl_run_id, etl_timestamp)
 SELECT 
-    account_id, user_id, currency, status, created_at, etl_run_id, etl_timestamp
+    account_id::UUID, user_id::UUID, currency, status, created_at, etl_run_id, etl_timestamp
 FROM staging.accounts_raw
 ON CONFLICT (account_id) DO UPDATE SET
     user_id = EXCLUDED.user_id,
