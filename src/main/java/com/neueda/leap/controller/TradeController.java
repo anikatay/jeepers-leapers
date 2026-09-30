@@ -31,11 +31,4 @@ public class TradeController {
 
         return ResponseEntity.ok(response);
     }
-
-    @GetMapping("/trades")
-    public ResponseEntity<List<TradeResponse>> getAllTrades() {
-        List<TradeResponse> response = tradeService.getAllTrades();
-
-        return ResponseEntity.ok(response);
-    }
 }

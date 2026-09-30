@@ -15,8 +15,6 @@ import java.math.BigDecimal;
 
 import java.time.OffsetDateTime;
 
-
-
 import java.util.List;
 import java.util.UUID;
 
@@ -113,8 +111,6 @@ public class AccountService implements IService {
         }
         accountMapper.decrementBalance(accountId, amount);
         accountMapper.updateLastModified(accountId, OffsetDateTime.now());
-
-
     }
 
     public List<AccountResponse> getUserAccounts(UUID userId) {
@@ -132,21 +128,5 @@ public class AccountService implements IService {
                         a.getStatus(),
                         a.getCreatedAt()))
                 .toList();
-    }
-
-    public List<AccountResponse> getAllAccounts() {
-        List<Account> accounts = accountRepository.findAll();
-
-        List<AccountResponse> response = accounts.stream()
-                .map(a -> new AccountResponse(
-                        a.getAccountId(),
-                        a.getUser().getUserId(),
-                        a.getCurrency(),
-                        a.getBalance(),
-                        a.getStatus(),
-                        a.getCreatedAt()))
-                .toList();
-
-        return response;
     }
 }
