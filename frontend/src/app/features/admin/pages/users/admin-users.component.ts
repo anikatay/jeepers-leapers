@@ -34,10 +34,7 @@ export class AdminUsersComponent implements OnInit{
         name: this.getUserName(account.userId),
         balance: account.balance,
         tradeCount: this.loadAndGetTradeCount(account.userId),
-<<<<<<< HEAD
-        CreatedAt: account.createdAt,
-=======
->>>>>>> 2329ed0 (fixing frontend merge conflicts)
+        createdAt: account.createdAt,
         status: account.status
       }));
 
@@ -63,78 +60,80 @@ export class AdminUsersComponent implements OnInit{
       this.accountService.getAllAccounts();
     }
 
-    // loadTradesSequentially(accounts: Account[]): void {
-    //   let i = 0;
-    //   for (i = 0; i < accounts.length; i++) {
-    //     const userId = accounts[i].userId;
-    //     const tradesData = this.tradeService.trades();
-    //     if(tradesData){
-    //        this.tradeService.getTrades(userId);
+    loadTradesSequentially(accounts: Account[]): void {
+      let i = 0;
+      for (i = 0; i < accounts.length; i++) {
+        const userId = accounts[i].userId;
+        const updatedMap = new Map(this.tradesByUserId());
+        const tradesData = this.tradeService.trades();
+        if(tradesData){
+            updatedMap.set(userId, tradesData);
+            this.tradesByUserId.set(updatedMap);
+        }
+
+      }
+    }
+
+    // private loadTradesSequentially(accounts: Account[]): void {
+    //   if (accounts.length === 0) return;
+
+    //   let index = 0;
+
+    //   const loadNext = () => {
+    //     if (index >= accounts.length) {
+    //       console.log('✓ All trades loaded');
+    //       return;
     //     }
 
-    //   }
+    //     const userId = accounts[index].userId;
+    //     const currentMap = this.tradesByUserId();
+
+    //     if (currentMap.has(userId)) {
+    //       console.log('✓ Already have trades for', userId);
+    //       index++;
+    //       loadNext();
+    //       return;
+    //     }
+
+    //     console.log('→ Loading trades for', userId);
+
+    //     // Track this pending request
+    //     this.pendingUserIds.add(userId);
+
+    //     // Request trades for this user
+    //     this.tradeService.getTrades(userId);
+
+    //     // Wait for trades signal to update
+    //     let attempts = 0;
+    //     const pollInterval = setInterval(() => {
+    //       const tradesData = this.tradeService.trades();
+
+    //       if (tradesData && tradesData.length > 0) {
+    //         // Update the map and trigger the signal
+    //         const updatedMap = new Map(this.tradesByUserId());
+    //         updatedMap.set(userId, tradesData);
+    //         this.tradesByUserId.set(updatedMap); // Update signal
+    //         this.pendingUserIds.delete(userId);
+    //         console.log('✓ Stored', tradesData.length, 'trades for', userId);
+    //         clearInterval(pollInterval);
+
+    //         // Move to next user
+    //         index++;
+    //         setTimeout(loadNext, 300);
+    //       } else if (attempts > 50) { // 50 * 100ms = 5 second timeout
+    //         console.warn('⚠ Timeout loading trades for', userId);
+    //         clearInterval(pollInterval);
+    //         this.pendingUserIds.delete(userId);
+    //         index++;
+    //         loadNext();
+    //       }
+
+    //       attempts++;
+    //     }, 100);
+    //   };
+
+    //   loadNext();
     // }
-
-    private loadTradesSequentially(accounts: Account[]): void {
-      if (accounts.length === 0) return;
-
-      let index = 0;
-
-      const loadNext = () => {
-        if (index >= accounts.length) {
-          console.log('✓ All trades loaded');
-          return;
-        }
-
-        const userId = accounts[index].userId;
-        const currentMap = this.tradesByUserId();
-
-        if (currentMap.has(userId)) {
-          console.log('✓ Already have trades for', userId);
-          index++;
-          loadNext();
-          return;
-        }
-
-        console.log('→ Loading trades for', userId);
-
-        // Track this pending request
-        this.pendingUserIds.add(userId);
-
-        // Request trades for this user
-        this.tradeService.getTrades(userId);
-
-        // Wait for trades signal to update
-        let attempts = 0;
-        const pollInterval = setInterval(() => {
-          const tradesData = this.tradeService.trades();
-
-          if (tradesData && tradesData.length > 0) {
-            // Update the map and trigger the signal
-            const updatedMap = new Map(this.tradesByUserId());
-            updatedMap.set(userId, tradesData);
-            this.tradesByUserId.set(updatedMap); // Update signal
-            this.pendingUserIds.delete(userId);
-            console.log('✓ Stored', tradesData.length, 'trades for', userId);
-            clearInterval(pollInterval);
-
-            // Move to next user
-            index++;
-            setTimeout(loadNext, 300);
-          } else if (attempts > 50) { // 50 * 100ms = 5 second timeout
-            console.warn('⚠ Timeout loading trades for', userId);
-            clearInterval(pollInterval);
-            this.pendingUserIds.delete(userId);
-            index++;
-            loadNext();
-          }
-
-          attempts++;
-        }, 100);
-      };
-
-      loadNext();
-    }
     
     getUserName(userId: string): string {
       if(userId == "a1000000-0000-0000-0000-000000000001")
@@ -159,11 +158,8 @@ export class AdminUsersComponent implements OnInit{
               return user.balance;
             case 'Trade Count':
               return user.tradeCount;
-<<<<<<< HEAD
             case 'Created At':
               return user.createdAt;
-=======
->>>>>>> 2329ed0 (fixing frontend merge conflicts)
             case 'Status':
               return user.status;
             default:
