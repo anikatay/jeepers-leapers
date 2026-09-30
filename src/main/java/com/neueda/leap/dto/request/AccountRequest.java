@@ -10,13 +10,13 @@ import jakarta.validation.constraints.Positive;
 public record AccountRequest (
 
     @NotNull (message = "User is Required")
-    UUID userId;
+    UUID userId,
     
     @NotNull (message = "Balance is Required")
     @Positive (message = "Balance must be positive")
-    BigDecimal initialBalance;
+    BigDecimal initialBalance,
 
     @NotBlank (message = "currency is Required")
-    String currency;
+    String currency
 
 ) {}
