@@ -48,7 +48,7 @@
     </thead>
 
     <tbody>
-      <tr *ngFor="let account of knownAccounts">
+      <tr *ngFor="let account of accounts()">
         <td *ngFor="let col of columns">
           {{ getCellValue(account, col.header) }}
         </td>
