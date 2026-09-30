@@ -1,0 +1,20 @@
+# Analytics ETL Pipeline Requirements
+# Python 3.11+
+
+# Core ETL dependencies (tested & compatible)
+numpy==1.24.3
+pandas==2.1.1
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+python-dateutil==2.8.2
+python-dotenv==1.0.0
+
+# Testing
+pytest==7.4.0
+pytest-cov==4.1.0
+
+# Airflow (optional - for future DAG integration)
+# Uncomment when ready for Airflow orchestration
+# apache-airflow==2.7.1
+# apache-airflow-providers-postgres==5.10.0
+# pendulum>=2.0,<3.0
