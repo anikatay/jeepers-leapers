@@ -35,6 +35,20 @@ public class HoldingService implements IService {
         return holdingDtos;
     }
 
+    public HoldingResponse getHoldingByAccountIdAndInstrumentId(UUID accountId, UUID instrumentId) {
+        Holding holding = holdingMapper.getHoldingByAccountIdAndInstrumentId(accountId, instrumentId);
+
+        if (holding == null) {
+            return null;
+        }
+
+        return new HoldingResponse(
+                holding.getAccountId(),
+                holding.getInstrumentId(),
+                holding.getQuantity()
+        );
+    }
+
     public HoldingResponse createHolding(HoldingResponse holdingResponse) {
         
         return holdingResponse;

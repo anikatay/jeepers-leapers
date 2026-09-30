@@ -32,4 +32,16 @@ public class HoldingController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{accountId}/{instrumentId}")
+    public ResponseEntity<HoldingResponse> getHolding(@PathVariable UUID accountId, @PathVariable UUID instrumentId) {
+        HoldingResponse response = holdingService.getHoldingByAccountIdAndInstrumentId(accountId, instrumentId);
+
+        if (response == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(response);
+    }
+    
 }
