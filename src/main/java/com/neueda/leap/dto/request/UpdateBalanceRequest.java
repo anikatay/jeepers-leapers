@@ -5,15 +5,8 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
-public class UpdateBalanceRequest {
-    @NotNull 
-    @Positive 
-    private BigDecimal amount;
-
-    public BigDecimal getAmount(){
-        return  amount;
-    }
-    public void setAmount(BigDecimal amount){
-        this.amount = amount;
-    }
-}
+public record UpdateBalanceRequest (
+    @NotNull (message = "Amount is required")
+    @Positive (message = "Amount must be positive")
+    BigDecimal amount;
+){}
