@@ -1,29 +1,33 @@
 package com.neueda.leap.dto.response;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public class TradeResponse {
 
     private UUID tradeId;
+    private UUID accountId;
+    private UUID instrumentId;
     private String ticker;
-    private String instrumentName;
+    private String name;
     private String side;
     private int quantity;
     private BigDecimal executionPrice;
     private BigDecimal tradeValue;
-    private LocalDateTime executedAt;
+    private OffsetDateTime executedAt;
 
     public TradeResponse() {
     }
 
-    public TradeResponse(UUID tradeId, String ticker, String instrumentName, String side,
+    public TradeResponse(UUID tradeId, UUID accountId, UUID instrumentId, String ticker, String name, String side,
                          int quantity, BigDecimal executionPrice, BigDecimal tradeValue,
-                         LocalDateTime executedAt) {
+                         OffsetDateTime executedAt) {
         this.tradeId = tradeId;
+        this.accountId = accountId;
+        this.instrumentId = instrumentId;
         this.ticker = ticker;
-        this.instrumentName = instrumentName;
+        this.name = name;
         this.side = side;
         this.quantity = quantity;
         this.executionPrice = executionPrice;
@@ -35,16 +39,21 @@ public class TradeResponse {
         return tradeId;
     }
 
+    public UUID getAccountId() {
+        return accountId;
+    }
 
-    public String getTicker() {
+    public UUID getInstrumentId() {
+        return instrumentId;
+    }
+
+    public String getTicker(){
         return ticker;
     }
 
-
-    public String getInstrumentName() {
-        return instrumentName;
+    public String getInstrumentName(){
+        return name;
     }
-
 
     public String getSide() {
         return side;
@@ -56,13 +65,13 @@ public class TradeResponse {
 
     public BigDecimal getExecutionPrice() {
         return executionPrice;
-    }
+    } 
 
     public BigDecimal getTradeValue() {
         return tradeValue;
     }
 
-    public LocalDateTime getExecutedAt() {
+    public OffsetDateTime getExecutedAt() {
         return executedAt;
     }
 
