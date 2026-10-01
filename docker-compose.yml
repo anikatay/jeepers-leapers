@@ -9,6 +9,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/paysprint
       SPRING_DATASOURCE_USERNAME: paysprint
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_JWT_SHARED_SECRET: ${JWT_SHARED_SECRET}
 
   db:
     image: postgres:16-alpine
