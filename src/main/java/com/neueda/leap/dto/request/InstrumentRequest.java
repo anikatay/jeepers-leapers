@@ -7,8 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public record InstrumentRequest(
-    @NotBlank (message = "exchange id is Required")
-    String exchange,
+    @NotBlank (message = "exchangeId is Required")
+    String exchangeId,
     
     @NotBlank (message = "ticker is required")
     String ticker,
