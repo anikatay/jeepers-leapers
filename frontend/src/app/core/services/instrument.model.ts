@@ -7,16 +7,16 @@ import { Instrument } from '../models/instrument.model';
 })
 export class InstrumentService {
 
-  instruments = signal<Instrument | null>(null);
+  instruments = signal<Instrument[] | null>(null);
   loading = signal<boolean>(false);
   error = signal<string | null>(null);
 
   constructor(private http: HttpClient) {}
 
-  getInstruments(ticker: string): void {
+  getInstruments(accountId: string): void {
     this.loading.set(true);
     this.error.set(null);
-    this.http.get<Instrument>(`/api/instruments/${ticker}`)
+    this.http.get<Instrument[]>(`/api/instruments`)
       .subscribe({
         next: (data) => {
           this.instruments.set(data);

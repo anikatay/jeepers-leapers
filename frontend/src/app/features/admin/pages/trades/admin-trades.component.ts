@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TradesService } from '../../../../core/services/trades.service';
-import { PortfolioService } from '../../../../core/services/portfolio.service';
+import { HoldingService } from '../../../../core/services/holding.service';
 import { FormsModule } from '@angular/forms';
 
 interface TradeWithUser {

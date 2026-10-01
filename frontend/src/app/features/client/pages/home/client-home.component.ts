@@ -15,13 +15,14 @@ import { Holding } from '../../../../core/models/holding.model';
   styleUrl: './client-home.component.css'
 })
 export class ClientHomeComponent implements OnInit{
-  portfolio: Signal<Holding[] | null>;
+  holdings: Signal<Holding[] | null>;
   loading: Signal<boolean>;
   error: Signal<string | null>;
   profileOpen = false;
   isHomeRoute = true;
   userName = 'Joana';
   selectedUserId = 'a1000000-0000-0000-0000-000000000001';
+  selectedAccountId = 'd4000000-0000-0000-0000-000000000001';
   users = [
     { id: 'a1000000-0000-0000-0000-000000000001', name: 'Alice' },
     { id: 'a1000000-0000-0000-0000-000000000002', name: 'Bob' },
@@ -35,7 +36,7 @@ export class ClientHomeComponent implements OnInit{
   ];
 
   constructor(private holdingService: HoldingService, private router: Router ) {
-    this.portfolio = this.holdingService.holdings;
+    this.holdings = this.holdingService.holdings;
     this.loading = this.holdingService.loading;
     this.error = this.holdingService.error;
 
@@ -46,7 +47,7 @@ export class ClientHomeComponent implements OnInit{
     });
 
     effect(() => {
-      const data = this.portfolio();
+      const data = this.holdings();
       if (data) {
         console.log('Portfolio updated:', data);
       }
@@ -54,17 +55,17 @@ export class ClientHomeComponent implements OnInit{
   }
 
   ngOnInit() {
-    this.holdingService.getHoldings(this.selectedUserId);
+    this.holdingService.getHoldings(this.selectedAccountId);
     this.isHomeRoute = this.router.url === '/client';
   }
 
   onUserChange(userId: string) {
-    this.selectedUserId = userId;
+    this.selectedAccountId = userId;
     const user = this.users.find(u => u.id === userId);
     if (user) {
       this.userName = user.name;
     }
-    this.holdingService.getHoldings(userId);
+    this.holdingService.getHoldings(this.selectedAccountId);
   }
   
   handleProfileOption(option: string) {
