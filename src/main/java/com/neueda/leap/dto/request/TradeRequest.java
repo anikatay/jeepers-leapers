@@ -1,6 +1,5 @@
 package com.neueda.leap.dto.request;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 import jakarta.validation.constraints.NotBlank;
@@ -13,9 +12,8 @@ public record TradeRequest (
     @NotNull(message = "Account ID is required")
     UUID accountId,
 
-    @NotBlank(message = "Ticker is required")
-    @Pattern(regexp = "^[A-Z0-9]+$", message = "Ticker must contain only uppercase letters and numbers")
-    String ticker,
+    @NotNull(message = "Instrument ID is required")
+    UUID instrumentId,
 
     @NotBlank(message = "Side is required")
     @Pattern(regexp = "^(BUY|SELL)$", message = "Side must be BUY or SELL")
@@ -23,6 +21,6 @@ public record TradeRequest (
 
     @NotNull(message = "Quantity is required")
     @Positive(message = "Quantity must be greater than 0")
-    BigDecimal quantity
-
+    int quantity
+    
 ){}

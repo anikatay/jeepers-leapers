@@ -34,6 +34,6 @@ public class InstrumentResponse {
     public BigDecimal getCurrentPrice() { return currentPrice; }
     public void setCurrentPrice(BigDecimal currentPrice) { this.currentPrice = currentPrice; }
 
-    public String getExchangeId() { return exchangeId; }
-    public void setExchangeId(String exchangeId) { this.exchangeId = exchangeId; }
+    public String getExchange() { return exchangeId; }
+    public void setExchange(String exchangeId) { this.exchangeId = exchangeId; }
 }
