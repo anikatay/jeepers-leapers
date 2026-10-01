@@ -1,25 +1,25 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Portfolio } from '../models/portfolio.model';
+import { Holding } from '../models/holding.model';
 
 @Injectable({
   providedIn: 'root'
 })
-export class PortfolioService {
+export class HoldingService {
 
-  portfolio = signal<Portfolio | null>(null);
+  holdings = signal<Holding[] | null>(null);
   loading = signal<boolean>(false);
   error = signal<string | null>(null);
 
   constructor(private http: HttpClient) {}
 
-  getPortfolio(userId: string): void {
+  getHoldings(accountId: string): void {
     this.loading.set(true);
     this.error.set(null);
-    this.http.get<Portfolio>(`/api/portfolio/${userId}`)
+    this.http.get<Holding[]>(`/api/holdings/${accountId}`)
       .subscribe({
         next: (data) => {
-          this.portfolio.set(data);
+          this.holdings.set(data);
           this.loading.set(false);
         },
         error: (err) => {

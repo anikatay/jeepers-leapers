@@ -1,10 +1,10 @@
 import { Component, OnInit, ChangeDetectorRef, effect, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PortfolioService } from '../../../../core/services/portfolio.service';
+import { HoldingService } from '../../../../core/services/holding.service';
 import { Router, RouterOutlet, NavigationEnd  } from '@angular/router';
 import { NavbarComponent, NavItem } from '../../../../shared/components/navbar.component';
 import { filter } from 'rxjs/operators';
-import { Portfolio } from '../../../../core/models/portfolio.model';
+import { Holding } from '../../../../core/models/holding.model';
 
 
 @Component({
@@ -15,7 +15,7 @@ import { Portfolio } from '../../../../core/models/portfolio.model';
   styleUrl: './client-home.component.css'
 })
 export class ClientHomeComponent implements OnInit{
-  portfolio: Signal<Portfolio | null>;
+  portfolio: Signal<Holding[] | null>;
   loading: Signal<boolean>;
   error: Signal<string | null>;
   profileOpen = false;
@@ -34,10 +34,10 @@ export class ClientHomeComponent implements OnInit{
     { label: 'Alerts', path: 'alerts' },
   ];
 
-  constructor(private portfolioService: PortfolioService, private router: Router ) {
-    this.portfolio = this.portfolioService.portfolio;
-    this.loading = this.portfolioService.loading;
-    this.error = this.portfolioService.error;
+  constructor(private holdingService: HoldingService, private router: Router ) {
+    this.portfolio = this.holdingService.holdings;
+    this.loading = this.holdingService.loading;
+    this.error = this.holdingService.error;
 
     this.router.events
     .pipe(filter(event => event instanceof NavigationEnd))
@@ -54,7 +54,7 @@ export class ClientHomeComponent implements OnInit{
   }
 
   ngOnInit() {
-    this.portfolioService.getPortfolio(this.selectedUserId);
+    this.holdingService.getHoldings(this.selectedUserId);
     this.isHomeRoute = this.router.url === '/client';
   }
 
@@ -64,7 +64,7 @@ export class ClientHomeComponent implements OnInit{
     if (user) {
       this.userName = user.name;
     }
-    this.portfolioService.getPortfolio(userId);
+    this.holdingService.getHoldings(userId);
   }
   
   handleProfileOption(option: string) {
