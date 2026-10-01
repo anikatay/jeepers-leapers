@@ -10,11 +10,11 @@ import jakarta.validation.constraints.Positive;
 public record HoldingRequest (
 
     @NotNull(message = "Account ID is required")
-    private UUID accountId;
+    UUID accountId,
 
     @NotNull(message = "Instrument ID is required")
-    private UUID instrumentId;
+    UUID instrumentId,
 
     @Positive(message = "Quantity must be positive")
-    private int quantity;
+    int quantity
 ){}
