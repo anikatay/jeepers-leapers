@@ -1,4 +1,4 @@
-<div class="portfolio-container">
+<!-- <div class="portfolio-container">
   <div *ngIf="loading()" class="loading">
     <p>Loading portfolio...</p>
   </div>
@@ -7,7 +7,7 @@
     <p>Error: {{ error() }}</p>
   </div>
 
-  <div *ngIf="!loading() && portfolio() as data" class="portfolio-content">
+  <div *ngIf="!loading() && holding() as data" class="portfolio-content">
     <h1>Total Portfolio Value: {{ data.totalPortfolioValue }}</h1>
 
     <table class="holdings-table">
@@ -24,7 +24,7 @@
     </table>
   </div>
 
-  <div *ngIf="!loading() && !portfolio()" class="no-data">
+  <div *ngIf="!loading() && !holding()" class="no-data">
     <p>No portfolio data available</p>
   </div>
-</div>
+</div> -->

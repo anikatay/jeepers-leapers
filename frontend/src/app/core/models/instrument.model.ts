@@ -3,5 +3,5 @@ export interface Instrument {
     ticker: string;
     name: string;
     currentPrice: number;
-    exchangeId: string;
+    exchange: string;
 }
