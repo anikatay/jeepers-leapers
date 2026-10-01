@@ -12,7 +12,7 @@ public class Instrument {
 
     private String name;
 
-    private String exchange;
+    private String exchangeId;
 
     private BigDecimal currentPrice;
 
@@ -30,8 +30,8 @@ public class Instrument {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public String getExchange() { return exchange; }
-    public void setExchange(String exchange) { this.exchange = exchange; }
+    public String getExchange() { return exchangeId; }
+    public void setExchange(String exchangeId) { this.exchangeId = exchangeId; }
 
     public BigDecimal getCurrentPrice() { return currentPrice; }
     public void setCurrentPrice(BigDecimal currentPrice) { this.currentPrice = currentPrice; }

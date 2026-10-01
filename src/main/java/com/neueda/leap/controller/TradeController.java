@@ -45,7 +45,7 @@ public class TradeController {
         trade.setAccountId(request.accountId());
         trade.setInstrumentId(request.instrumentId());
         trade.setSide(request.side());
-        trade.setQuantity(request.quantity().intValue());
+        trade.setQuantity(request.quantity());
         trade.setExecutionPrice(instrument.getCurrentPrice());  // Use instrument's current price
         
         // Service will calculate tradeValue and update account balance

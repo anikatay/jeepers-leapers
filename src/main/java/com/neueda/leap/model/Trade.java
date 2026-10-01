@@ -14,7 +14,7 @@ public class Trade {
 
     private String side; // BUY, SELL
 
-    private int quantity = 0;
+    private int quantity;
 
     private BigDecimal executionPrice;
 
