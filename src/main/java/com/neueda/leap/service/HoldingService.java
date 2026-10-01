@@ -1,6 +1,7 @@
 package com.neueda.leap.service;
 
 import com.neueda.leap.dto.response.HoldingResponse;
+import com.neueda.leap.dto.request.HoldingRequest;
 import com.neueda.leap.mapper.HoldingMapper;
 import com.neueda.leap.model.Holding;
 import org.springframework.stereotype.Service;
