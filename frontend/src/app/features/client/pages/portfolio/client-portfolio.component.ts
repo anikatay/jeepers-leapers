@@ -1,8 +1,8 @@
 // client-portfolio.component.ts
 import { Component, OnInit, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PortfolioService } from '../../../../core/services/portfolio.service';
-import { Holding, Portfolio } from '../../../../core/models/portfolio.model'; 
+import { PortfolioService } from '../../../../core/services/holding.service';
+import { Holding, Portfolio } from '../../../../core/models/holding.model'; 
 
 @Component({
   selector: 'app-client-portfolio',
