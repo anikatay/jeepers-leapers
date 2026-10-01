@@ -48,9 +48,9 @@
     </thead>
 
     <tbody>
-      <tr *ngFor="let account of accounts()">
+      <tr *ngFor="let user of userData()">
         <td *ngFor="let col of columns">
-          {{ getCellValue(account, col.header) }}
+          {{ getCellValue(user, col.header) }}
         </td>
 
       </tr>
