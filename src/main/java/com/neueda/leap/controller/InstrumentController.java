@@ -32,7 +32,7 @@ public class InstrumentController {
         instrument.setInstrumentId(UUID.randomUUID());
         instrument.setTicker(request.ticker());
         instrument.setName(request.name());
-        instrument.setExchange(request.exchange());
+        instrument.setExchange(request.exchangeId());
         instrument.setCurrentPrice(request.currentPrice());
         
         Instrument created = instrumentService.addInstrument(instrument);
@@ -69,7 +69,7 @@ public class InstrumentController {
         }
     }
 
-    @PutMapping("/{instrumentId}/price")
+    @PatchMapping("/{instrumentId}/price")
     public ResponseEntity<Void> updateInstrumentPrice(
             @PathVariable UUID instrumentId,
             @RequestParam java.math.BigDecimal price) {

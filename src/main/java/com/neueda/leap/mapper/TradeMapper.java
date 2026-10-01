@@ -15,7 +15,7 @@ import com.neueda.leap.model.Trade;
 public interface TradeMapper {
     // insert new Trade
     @Insert("INSERT INTO trades (trade_id, account_id, instrument_id, side, quantity, execution_price, executed_at) " + 
-            "VALUES (#{tradeId}, #{accountId}, #{instrumentId}, #{side}, #{quantity}, #{execution_price}, #{executed_at})")
+            "VALUES (#{tradeId}, #{accountId}, #{instrumentId}, #{side}, #{quantity}, #{executionPrice}, #{executedAt})")
     void createTrade(Trade trade);
 
     // find trades all trades for a given account
