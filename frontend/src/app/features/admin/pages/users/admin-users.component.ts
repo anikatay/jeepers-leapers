@@ -22,7 +22,6 @@ export class AdminUsersComponent{
         { header: 'Name' },
         { header: 'Balance' },
         { header: 'Trade Count' },
-        { header: 'Created At'},
         { header: 'Status' }, 
       ];
 
@@ -34,7 +33,7 @@ export class AdminUsersComponent{
         userId: account.userId,
         name: this.getUserName(account.userId),
         balance: account.balance,
-        tradeCount: this.loadAndGetTradeCount(account.userId),
+        tradeCount: this.tradesByUserId().get(account.userId)?.length || 0,
         createdAt: account.createdAt,
         status: account.status
       }));
@@ -56,24 +55,46 @@ export class AdminUsersComponent{
 
       
     }
-
+  
     loadTradesSequentially(accounts: Account[]): void {
-      let i = 0;
-      for (i = 0; i < accounts.length; i++) {
-
-        //call the trades service for each userID
-        const userId = accounts[i].userId;
-        this.tradeService.getTrades(userId);
-
-        //store the trades in a map with its user_id as the key
-        const updatedMap = new Map(this.tradesByUserId());
-        const tradesData = this.tradeService.trades();
-        if(tradesData){
-            updatedMap.set(userId, tradesData);
-            this.tradesByUserId.set(updatedMap);
+      let i = 0;  // Index counter (like a for loop)
+  
+      // Define a function that calls itself
+      const loadNext = () => {
+        // Base case: stop when all accounts processed
+        if (i >= accounts.length) {
+          console.log('✓ All trades loaded');
+          return;  // Stop recursion
         }
 
-      }
+        // Get current user
+        const userId = accounts[i].userId;
+        this.tradeService.getTrades(userId);  // Fetch trades
+
+        // Poll for data to arrive
+        let attempts = 0;
+        const checkInterval = setInterval(() => {
+          const tradesData = this.tradeService.trades();
+          
+          if (tradesData && tradesData.length > 0) {
+            // Data arrived! Store it
+            const updatedMap = new Map(this.tradesByUserId());
+            updatedMap.set(userId, tradesData);
+            this.tradesByUserId.set(updatedMap);
+            clearInterval(checkInterval);
+            
+            i++;  // Move to next user
+            loadNext();  // 🔄 Recursively call itself for next user
+          } else if (attempts++ > 50) {
+            // Timeout after 5 seconds
+            clearInterval(checkInterval);
+            i++;  // Move to next user anyway
+            loadNext();  // 🔄 Recursively call itself for next user
+          }
+        }, 100);
+      };
+
+      loadNext();  
     }
     
     getUserName(userId: string): string {
