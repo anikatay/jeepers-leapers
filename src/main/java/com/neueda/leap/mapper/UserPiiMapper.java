@@ -29,11 +29,11 @@ public interface UserPiiMapper {
     String getUserEmailById(UUID userId);
 
     @Insert("INSERT INTO user_pii (user_id, first_name, last_name, date_of_birth, ssn, \"address\", phone_number, email) VALUES (#{userId}, #{firstName}, #{lastName}, #{dateOfBirth}, #{ssn}, #{address}, #{phoneNumber}, #{email})")
-    void insertUserPii(UUID userId, String firstName, String lastName, OffsetDateTime dateOfBirth, String ssn, String address, String phoneNumber, String email);
+    int insertUserPii(UserPii userPii);
 
     @Update("UPDATE user_pii SET first_name = #{firstName}, last_name = #{lastName}, date_of_birth = #{dateOfBirth}, ssn = #{ssn}, \"address\" = #{address}, phone_number = #{phoneNumber}, email = #{email} WHERE user_id = #{userId}")
-    void updateUserPii(UUID userId, String firstName, String lastName, OffsetDateTime dateOfBirth, String ssn, String address, String phoneNumber, String email);
+    int updateUserPii(UserPii userPii);
 
     @Delete("DELETE FROM user_pii WHERE user_id = #{userId}")
-    void deleteUserPiiById(UUID userId);
+    int deleteUserPiiById(UUID userId);
 }

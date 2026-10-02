@@ -24,12 +24,12 @@ public interface UserMapper {
     List<User> getAllUsers();
 
     @Insert("INSERT INTO users (user_id, role, status) VALUES (#{userId}, #{role}, #{status})")
-    void insertUser(UUID userId, String role, String status);
+    int insertUser(User user);
 
     @Update("UPDATE users SET status = #{status} WHERE user_id = #{userId}")
-    void updateUserStatus(UUID userId, String status);
+    int updateUserStatus(User user);
 
     @Delete("DELETE FROM users WHERE user_id = #{userId}")
-    void deleteUserById(UUID userId);
+    int deleteUserById(UUID userId);
 
 }
