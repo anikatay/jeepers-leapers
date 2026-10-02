@@ -27,7 +27,7 @@ public interface UserMapper {
     int insertUser(User user);
 
     @Update("UPDATE users SET status = #{status} WHERE user_id = #{userId}")
-    int updateUserStatus(User user);
+    int updateUserStatus(UUID userId, String status);
 
     @Delete("DELETE FROM users WHERE user_id = #{userId}")
     int deleteUserById(UUID userId);
