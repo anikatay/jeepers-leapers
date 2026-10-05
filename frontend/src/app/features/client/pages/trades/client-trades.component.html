@@ -1,0 +1,194 @@
+<div class="pt-5 space-y-5 px-6 pb-8">
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-3 gap-3">
+    <!-- Total Trades Card -->
+    <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
+      <p class="text-xs font-medium" style="color: var(--muted-foreground);">Total Trades</p>
+      <p class="font-bold text-2xl mt-1 font-mono" style="color: var(--foreground);">{{ totalTrades }}</p>
+    </div>
+
+    <!-- Total Bought Card -->
+    <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
+      <p class="text-xs font-medium" style="color: var(--muted-foreground);">Total Bought</p>
+      <p class="font-bold text-2xl mt-1 font-mono text-green-600 dark:text-green-400">
+        ${{ (totalBought).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
+      </p>
+    </div>
+
+    <!-- Total Sold Card -->
+    <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
+      <p class="text-xs font-medium" style="color: var(--muted-foreground);">Total Sold</p>
+      <p class="font-bold text-2xl mt-1 font-mono text-red-500">
+        ${{ (totalSold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Trading History Section -->
+  <div class="border rounded-2xl p-5" style="background: var(--card); border-color: var(--border);">
+    <!-- Header -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+      <h2 class="font-bold text-lg" style="color: var(--foreground);">Trading History</h2>
+      <button (click)="openNewTrade()" 
+        class="px-4 py-2 text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
+        style="background: var(--primary); color: var(--primary-foreground);">
+        New Trade
+      </button>
+    </div>
+
+    <!-- Search & Filters -->
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+      <!-- Search Input -->
+      <div class="relative flex-1 min-w-[170px]">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3-5 h-3-5" fill="none" stroke="currentColor" 
+          stroke-width="2" viewBox="0 0 24 24" style="color: var(--muted-foreground);">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path stroke-linecap="round" d="M21 21l-4.35-4.35"></path>
+        </svg>
+        <input [value]="search()" (input)="onSearchChange($event.target.value)" 
+          placeholder="Search symbol..."
+          class="w-full pl-8 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          style="background: var(--secondary); border-color: var(--border); color: var(--foreground);" />
+      </div>
+
+      <!-- Type Filter -->
+      <select [value]="typeFilter()" (change)="onTypeFilterChange($event)"
+        aria-label="Type"
+        class="px-3 py-2 rounded-lg border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
+        style="background: var(--secondary); border-color: var(--border); color: var(--foreground);">
+        <option value="all">All Trades</option>
+        <option value="Buy">Buy</option>
+        <option value="Sell">Sell</option>
+      </select>
+
+      <!-- Date Filter Toggle -->
+      <button (click)="toggleDateFilter()" [attr.aria-expanded]="showDateFilter()"
+        class="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors"
+        [style]="{ 
+          background: (fromDate() || toDate()) ? 'var(--primary)' : 'var(--secondary)',
+          borderColor: 'var(--border)',
+          color: (fromDate() || toDate()) ? 'var(--primary-foreground)' : 'var(--foreground)'
+        }">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4"></path>
+        </svg>
+        Filter
+      </button>
+
+      <!-- Sort -->
+      <select [value]="sortOrder()" (change)="onSortChange($event)"
+        aria-label="Sort By"
+        class="px-3 py-2 rounded-lg border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
+        style="background: var(--secondary); border-color: var(--border); color: var(--foreground);">
+        <option value="newest">Newest</option>
+        <option value="oldest">Oldest</option>
+      </select>
+
+      <!-- Clear Filters -->
+      <button *ngIf="hasActiveFilters" (click)="clearFilters()" 
+        class="px-2 py-2 text-xs font-semibold underline underline-offset-2"
+        style="color: var(--primary);">
+        Clear Filters
+      </button>
+    </div>
+
+    <!-- Date Range Filter Expand -->
+    <div *ngIf="showDateFilter()" class="flex flex-wrap items-center gap-2 mb-3 p-3 rounded-xl border"
+      style="background: var(--secondary); border-color: var(--border);">
+      <span class="text-xs font-semibold" style="color: var(--foreground);">Date Range</span>
+      <label class="flex items-center gap-2 text-xs" style="color: var(--muted-foreground);">
+        From
+        <input type="date" [value]="fromDate()" (change)="onFromDateChange($event)"
+          class="px-2 py-1-5 rounded-lg border focus:outline-none focus:ring-2 focus:ring-ring"
+          style="background: var(--card); border-color: var(--border); color: var(--foreground);" />
+      </label>
+      <label class="flex items-center gap-2 text-xs" style="color: var(--muted-foreground);">
+        To
+        <input type="date" [value]="toDate()" [min]="fromDate() || undefined" (change)="onToDateChange($event)"
+          class="px-2 py-1-5 rounded-lg border focus:outline-none focus:ring-2 focus:ring-ring"
+          style="background: var(--card); border-color: var(--border); color: var(--foreground);" />
+      </label>
+    </div>
+
+    <!-- Active Filters Display -->
+    <div *ngIf="hasActiveFilters" class="flex flex-wrap items-center gap-1-5 mb-4" aria-live="polite">
+      <span class="text-xs font-medium" style="color: var(--muted-foreground);">Active Filters:</span>
+      <span *ngIf="search().trim()" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
+        Symbol: {{ search().trim() }}
+      </span>
+      <span *ngIf="typeFilter() !== 'all'" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
+        {{ typeFilter() === 'Buy' ? 'Buy' : 'Sell' }}
+      </span>
+      <span *ngIf="fromDate() || toDate()" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
+        Date Range: {{ fromDate() || '…' }} – {{ toDate() || '…' }}
+      </span>
+      <span *ngIf="sortOrder() === 'oldest'" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
+        Oldest
+      </span>
+    </div>
+
+    <!-- Trades Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm min-w-[600px]">
+        <thead>
+          <tr class="border-b" style="border-color: var(--border);">
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Date</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Time</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Symbol</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Type</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Quantity</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Price</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Trade Rows -->
+          <tr *ngFor="let trade of filteredTrades; let i = index" 
+            class="border-b last:border-0 hover:bg-secondary/40 transition-colors"
+            style="border-color: rgba(200,230,210,0.4);">
+            <td class="py-3 pr-4 text-xs" style="color: var(--muted-foreground);">{{ trade.date }}</td>
+            <td class="py-3 pr-4 text-xs" style="color: var(--muted-foreground);">{{ trade.time }}</td>
+            <td class="py-3 pr-4">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-xl inline-flex items-center justify-center flex-shrink-0 font-bold border shadow-sm text-[10px]"
+                  [style]="{
+                    background: getStockIcon(trade.symbol).background,
+                    color: getStockIcon(trade.symbol).color,
+                    borderColor: 'var(--border)'
+                  }"
+                  [attr.aria-label]="trade.symbol + ' logo'">
+                  {{ getStockIcon(trade.symbol).label }}
+                </span>
+                <div>
+                  <span class="block font-mono font-bold" style="color: var(--primary);">{{ trade.symbol }}</span>
+                  <span class="block text-xs hidden sm:block" style="color: var(--muted-foreground);">{{ trade.name }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 pr-4">
+              <span [ngClass]="{
+                'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': trade.type === 'Buy',
+                'bg-red-100 dark:bg-red-900/30 text-red-600': trade.type === 'Sell'
+              }" class="px-2 py-0-5 rounded-full text-xs font-semibold">
+                {{ trade.type === 'Buy' ? 'Buy' : 'Sell' }}
+              </span>
+            </td>
+            <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ trade.qty }}</td>
+            <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">${{ trade.price.toFixed(2) }}</td>
+            <td class="py-3 font-mono font-semibold" style="color: var(--foreground);">${{ trade.total.toFixed(2) }}</td>
+          </tr>
+
+          <!-- Empty State -->
+          <tr *ngIf="filteredTrades.length === 0">
+            <td [attr.colspan]="7" class="py-10 text-center text-sm" style="color: var(--muted-foreground);">
+              <p>No trades match your filters</p>
+              <button (click)="clearFilters()" class="mt-2 text-xs font-semibold underline underline-offset-2" style="color: var(--primary);">
+                Clear Filters
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
