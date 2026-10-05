@@ -1,98 +1,240 @@
-<div class="portfolio-page">
-  <div *ngIf="loading()" class="loading-state">
-    <p>Loading portfolio...</p>
-  </div>
-
-  <div *ngIf="error()" class="error-state">
-    <p>Error: {{ error() }}</p>
-  </div>
-
-  <div *ngIf="!loading() && !error()" class="portfolio-content">
-    <!-- Summary Cards Grid -->
+<!-- Figma-compliant Portfolio page matching Portfolio.tsx exactly -->
+<div class="portfolio-shell">
+  <div class="portfolio-content">
+    <!-- Summary Cards Grid - 2 col (mobile) → 4 col (desktop) -->
     <div class="summary-cards-grid">
-      <div *ngFor="let card of getSummaryCards()" class="summary-card">
+      <div *ngFor="let card of summaryCards()" class="summary-card">
         <p class="summary-label">{{ card.label }}</p>
-        <p class="summary-value" [class.positive]="card.isPositive === true" [class.negative]="card.isPositive === false">
-          {{ card.value }}
-        </p>
+        <p class="summary-value" [class.positive]="card.isPositive === true">{{ card.value }}</p>
       </div>
     </div>
 
-    <!-- Holdings Card -->
+    <!-- Holdings Card with Search, Filter, and Table -->
     <div class="holdings-card">
       <!-- Search and Filter Bar -->
       <div class="search-filter-bar">
+        <!-- Search Input -->
         <div class="search-container">
           <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="8"/>
-            <path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+            <circle cx="11" cy="11" r="8" />
+            <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
           </svg>
           <input
             type="text"
             class="search-input"
-            placeholder="Search holdings..."
+            placeholder="Search holdings"
             [(ngModel)]="searchQuery"
             (ngModelChange)="searchQuery.set($event)" />
         </div>
+
+        <!-- Filter Buttons (All / Gain / Loss) -->
         <div class="filter-button-group">
           <button
             *ngFor="let f of filterOptions"
+            class="filter-button"
             [class.active]="filterType() === f"
-            (click)="setFilter(f)"
-            class="filter-button">
-            {{ f | titlecase }}
+            (click)="setFilter(f)">
+            {{ f === 'all' ? 'All' : f === 'gain' ? 'Gains' : 'Losses' }}
           </button>
         </div>
       </div>
 
       <!-- Holdings Table -->
-      <div class="table-container">
+      <div class="table-wrapper">
         <table class="holdings-table">
           <thead>
             <tr>
               <th class="col-symbol">Symbol</th>
               <th class="col-company">Company</th>
-              <th class="col-sortable" (click)="toggleSort('quantity')">
+              <th class="col-sortable" (click)="toggleSort('shares')">
                 <button class="sort-header">
                   Shares
-                  <span *ngIf="sortBy() === 'quantity'" class="sort-indicator">
+                  <span *ngIf="sortBy() === 'shares'" class="sort-indicator">
                     {{ sortDir() === 'desc' ? '↓' : '↑' }}
                   </span>
                 </button>
               </th>
-              <th class="col-price">Buying Price</th>
-              <th class="col-price">Current Price</th>
-              <th class="col-value">Current Value</th>
-              <th class="col-gain">Gain/Loss</th>
+              <th class="col-sortable" (click)="toggleSort('buyingPrice')">
+                <button class="sort-header">
+                  Buying Price
+                  <span *ngIf="sortBy() === 'buyingPrice'" class="sort-indicator">
+                    {{ sortDir() === 'desc' ? '↓' : '↑' }}
+                  </span>
+                </button>
+              </th>
+              <th class="col-sortable" (click)="toggleSort('currentPrice')">
+                <button class="sort-header">
+                  Current Price
+                  <span *ngIf="sortBy() === 'currentPrice'" class="sort-indicator">
+                    {{ sortDir() === 'desc' ? '↓' : '↑' }}
+                  </span>
+                </button>
+              </th>
+              <th class="col-sortable" (click)="toggleSort('currentValue')">
+                <button class="sort-header">
+                  Current Value
+                  <span *ngIf="sortBy() === 'currentValue'" class="sort-indicator">
+                    {{ sortDir() === 'desc' ? '↓' : '↑' }}
+                  </span>
+                </button>
+              </th>
+              <th class="col-sortable" (click)="toggleSort('gain')">
+                <button class="sort-header">
+                  Gain/Loss
+                  <span *ngIf="sortBy() === 'gain'" class="sort-indicator">
+                    {{ sortDir() === 'desc' ? '↓' : '↑' }}
+                  </span>
+                </button>
+              </th>
               <th class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let holding of getFilteredPortfolio()" class="holding-row">
+            <tr *ngFor="let holding of filteredAndSorted()" class="holding-row">
+              <!-- Symbol with Stock Icon -->
               <td class="col-symbol">
                 <div class="symbol-badge">
-                  <span class="stock-icon">{{ getStockIconLabel(holding.ticker) }}</span>
-                  <span class="instrument-id">{{ holding.ticker }}</span>
+                  <div class="stock-icon"
+                       [style.background]="getStockIcon(holding.symbol).background"
+                       [style.color]="getStockIcon(holding.symbol).color">
+                    {{ getStockIcon(holding.symbol).label }}
+                  </div>
+                  <span class="symbol-text font-mono-data">{{ holding.symbol }}</span>
                 </div>
               </td>
+
+              <!-- Company Name -->
               <td class="col-company">{{ holding.name }}</td>
-              <td class="col-quantity">{{ holding.quantity }}</td>
-              <td class="col-price">N/A</td>
-              <td class="col-price">${{ holding.currentPrice.toLocaleString('en-US', {maximumFractionDigits: 2}) }}</td>
-              <td class="col-value">${{ holding.currentValue.toLocaleString('en-US', {maximumFractionDigits: 2}) }}</td>
-              <td class="col-gain">N/A</td>
+
+              <!-- Shares -->
+              <td class="col-numeric font-mono-data">{{ holding.shares }}</td>
+
+              <!-- Buying Price -->
+              <td class="col-numeric font-mono-data">${{ holding.buyingPrice.toFixed(2) }}</td>
+
+              <!-- Current Price -->
+              <td class="col-numeric font-mono-data">${{ holding.currentPrice.toFixed(2) }}</td>
+
+              <!-- Current Value -->
+              <td class="col-numeric font-mono-data">{{ '$' + holding.currentValue.toLocaleString() }}</td>
+
+              <!-- Gain/Loss with % and $ -->
+              <td class="col-gain" [class.gain-positive]="holding.gain >= 0" [class.gain-negative]="holding.gain < 0">
+                <div class="gain-content">
+                  <p class="gain-pct font-mono-data">
+                    {{ holding.gainPct >= 0 ? '↑ ' : '↓ ' }}{{ holding.gainPct.toFixed(2) }}%
+                  </p>
+                  <p class="gain-dollar font-mono-data">
+                    {{ holding.gain >= 0 ? '+' : '-' }}${{ Math.abs(holding.gain).toLocaleString() }}
+                  </p>
+                </div>
+              </td>
+
+              <!-- Buy More / Sell Buttons -->
               <td class="col-actions">
                 <div class="action-buttons">
-                  <button class="btn-buy" (click)="onBuy(holding)">Buy More</button>
-                  <button class="btn-sell" (click)="onSell(holding)">Sell</button>
+                  <button class="btn-buy" (click)="openTradeModal(holding, 'BUY')">Buy More</button>
+                  <button class="btn-sell" (click)="openTradeModal(holding, 'SELL')">Sell</button>
                 </div>
               </td>
             </tr>
-            <tr *ngIf="getFilteredPortfolio().length === 0" class="empty-row">
-              <td [attr.colspan]="8" class="empty-message">No holdings found</td>
+
+            <!-- Empty State -->
+            <tr *ngIf="filteredAndSorted().length === 0" class="empty-row">
+              <td [attr.colspan]="8" class="empty-cell">No holdings found</td>
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buy/Sell Modal (Figma-compliant) -->
+  <div *ngIf="isModalOpen()" class="modal-overlay" (click)="closeModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <!-- Success State -->
+      <div *ngIf="tradeSuccess()" class="success-state">
+        <div class="success-icon">
+          <svg width="28" height="28" fill="none" stroke="#22c55e" stroke-width="2.5" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <p class="success-message font-display">Success</p>
+      </div>
+
+      <!-- Trade Form -->
+      <div *ngIf="!tradeSuccess()" class="trade-form">
+        <!-- Header with Symbol and Price -->
+        <div class="modal-header">
+          <div>
+            <div class="symbol-line">
+              <span class="symbol-name font-mono-data">{{ selectedHolding()?.symbol }}</span>
+              <span class="company-name">{{ selectedHolding()?.name }}</span>
+            </div>
+            <p class="current-price font-mono-data">${{ selectedHolding()?.currentPrice?.toFixed(2) }}</p>
+          </div>
+          <button class="close-button" (click)="closeModal()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Buy / Sell Toggle -->
+        <div class="mode-toggle">
+          <button class="toggle-btn"
+                  [class.active]="modalMode() === 'BUY'"
+                  (click)="modalMode.set('BUY')">
+            Buy Shares
+          </button>
+          <button class="toggle-btn sell-mode"
+                  [class.active]="modalMode() === 'SELL'"
+                  (click)="modalMode.set('SELL')">
+            Sell Shares
+          </button>
+        </div>
+
+        <!-- Order Type (Market/Limit placeholder) -->
+        <div class="order-type-section">
+          <p class="section-label">Order Type</p>
+          <div class="order-buttons">
+            <button class="order-btn active">Market</button>
+            <button class="order-btn">Limit</button>
+          </div>
+        </div>
+
+        <!-- Shares Input -->
+        <div class="input-section">
+          <p class="section-label">Shares</p>
+          <input
+            type="number"
+            min="0"
+            class="quantity-input"
+            placeholder="0"
+            [(ngModel)]="modalQuantity"
+            (ngModelChange)="modalQuantity.set($event)" />
+        </div>
+
+        <!-- Estimated Total -->
+        <div class="estimated-total">
+          <span class="total-label">Estimated Total</span>
+          <span class="total-value font-mono-data">
+            ${{ ((parseFloat(modalQuantity()) || 0) * (selectedHolding()?.currentPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+          </span>
+        </div>
+
+        <!-- Confirm Button -->
+        <button class="confirm-button"
+                [class.buy-mode]="modalMode() === 'BUY'"
+                [class.sell-mode]="modalMode() === 'SELL'"
+                [disabled]="(parseFloat(modalQuantity()) || 0) <= 0 || isSubmitting()"
+                (click)="confirmTrade()">
+          <span *ngIf="isSubmitting()" class="spinner"></span>
+          {{ isSubmitting() ? 'Processing...' : (modalMode() === 'BUY' ? 'Confirm Buy' : 'Confirm Sell') }}
+        </button>
+
+        <!-- Cancel Button -->
+        <button class="cancel-button" (click)="closeModal()">Cancel</button>
       </div>
     </div>
   </div>
