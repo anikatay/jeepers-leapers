@@ -56,7 +56,8 @@ public class UserPii {
 
     public int getAge() {
         if (dateOfBirth == null) {
-            return 0;
+            // TODO: Change exception to proper response body
+            throw new IllegalStateException("Date of birth is not set");
         }
         return Period.between(dateOfBirth.toLocalDate(), OffsetDateTime.now().toLocalDate()).getYears();
     }

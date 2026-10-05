@@ -3,6 +3,7 @@ import org.springframework.web.bind.annotation.*;
 import com.neueda.leap.service.UserService;
 import com.neueda.leap.model.User;
 import com.neueda.leap.model.UserPii;
+import com.neueda.leap.dto.request.CreateUserRequest;
 import java.util.UUID;
 import java.util.List;
 @RestController
@@ -26,7 +27,22 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@RequestBody User user, @RequestBody UserPii userPii) {
+    public User createUser(@RequestBody CreateUserRequest createUserRequest) {
+        User user = new User(
+            createUserRequest.userId(),
+            createUserRequest.role(),
+            createUserRequest.status(),
+            createUserRequest.firstName(),
+            createUserRequest.lastName()
+        );
+        UserPii userPii = new UserPii(
+            createUserRequest.userId(),
+            createUserRequest.dateOfBirth(),
+            createUserRequest.ssn(),
+            createUserRequest.address(),
+            createUserRequest.phoneNumber(),
+            createUserRequest.email()
+        );
         return userService.createUser(user, userPii);
     }
 
