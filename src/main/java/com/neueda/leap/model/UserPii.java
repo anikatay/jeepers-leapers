@@ -27,6 +27,28 @@ public class UserPii {
     public UserPii() {
     }
 
+    public UserPii(
+        UUID userId, 
+        User user, 
+        String firstName, 
+        String lastName, 
+        OffsetDateTime dateOfBirth, 
+        String ssn, 
+        String address, 
+        String phoneNumber, 
+        String email
+    ) {
+        this.userId = userId;
+        this.user = user;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.dateOfBirth = dateOfBirth;
+        this.ssn = ssn;
+        this.address = address;
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+    }
+
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) { this.userId = userId; }
 

@@ -1,8 +1,10 @@
 package com.neueda.leap.service;
-
+import org.springframework.stereotype.Service;
 import com.neueda.leap.service.UserPiiMapper;
+import com.neueda.leap.model.UserPii;
 import java.util.UUID;
 
+@Service
 public class UserPiiService {
     private UserPiiMapper userPiiMapper;
 
@@ -26,8 +28,8 @@ public class UserPiiService {
         return userPiiMapper.getUserEmailById(id);
     }
 
-    public String getUserPhoneById(UUID id) {
-        String phoneNumber = userPiiMapper.getUserPhoneById(id);
+    public String getUserPhoneNumberById(UUID id) {
+        String phoneNumber = userPiiMapper.getUserPhoneNumberById(id);
         // TODO: regex check
         return phoneNumber;
     }

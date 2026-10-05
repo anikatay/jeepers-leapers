@@ -35,19 +35,27 @@ public class UserService {
 
         // Check if user is an adult
         if (userPii.getAge() < 18) {
-            // TODO: make new exception?
+            // TODO: make new exception with response body
             throw new IllegalArgumentException("User must be an adult");
         }
 
         // Check if user already exists
         User existingUser = userMapper.getUserById(user.getUserId());
         if (existingUser != null) {
+            // TODO: make new exception with response body
             throw new IllegalArgumentException("User already exists");
         }
 
-        int rowsInserted = userMapper.insertUser(user);
-        if (rowsInserted == 0) {
+        int insertUserFlag = userMapper.insertUser(user);
+        if (insertUserFlag == 0) {
+            // TODO: make new exception with response body
             throw new IllegalStateException("Failed to insert user");
+        }
+
+        int insertPiiFlag = userPiiService.insertUserPii(userPii) != null ? 1 : 0;
+        if (insertPiiFlag == 0) {
+            // TODO: make new exception with response body
+            throw new IllegalStateException("Failed to insert user PII");
         }
         return user;
     }

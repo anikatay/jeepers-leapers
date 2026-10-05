@@ -28,7 +28,6 @@ public record CreateUserRequest(
 
     @NotNull (message = "Date of birth is required")
     @Past (message = "Date of birth must be in the past")
-    @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "Date of birth must be YYYY-MM-DD")
     OffsetDateTime dateOfBirth, 
 
     @NotEmpty (message = "SSN is required")
