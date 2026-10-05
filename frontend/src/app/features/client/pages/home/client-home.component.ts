@@ -1,98 +1,118 @@
-import { Component, OnInit, ChangeDetectorRef, effect, Signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PortfolioService } from '../../../../core/services/portfolio.service';
-import { Router, RouterOutlet, NavigationEnd  } from '@angular/router';
-import { NavbarComponent, NavItem } from '../../../../shared/components/navbar.component';
-import { filter } from 'rxjs/operators';
-import { Portfolio } from '../../../../core/models/portfolio.model';
+import { Router } from '@angular/router';
 
+export interface StockHolding {
+  symbol: string;
+  name: string;
+  pct: number;
+  value: number;
+  price: number;
+}
+
+export interface Trade {
+  time: string;
+  symbol: string;
+  type: 'Buy' | 'Sell';
+  qty: number;
+  price: number;
+  total: number;
+}
+
+type Period = '1D' | '1W' | '1M' | '3M' | '1Y' | 'All';
 
 @Component({
   selector: 'app-client-home',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, NavbarComponent],
+  imports: [CommonModule],
   templateUrl: './client-home.component.html',
   styleUrl: './client-home.component.css'
 })
-export class ClientHomeComponent implements OnInit{
-  portfolio: Signal<Portfolio | null>;
-  loading: Signal<boolean>;
-  error: Signal<string | null>;
-  profileOpen = false;
-  isHomeRoute = true;
-  userName = 'Joana';
-  selectedUserId = 'a1000000-0000-0000-0000-000000000001';
-  users = [
-    { id: 'a1000000-0000-0000-0000-000000000001', name: 'Alice' },
-    { id: 'a1000000-0000-0000-0000-000000000002', name: 'Bob' },
-    { id: 'a1000000-0000-0000-0000-000000000003', name: 'Charlie' },
-  ];
-  navItems: NavItem[] = [
-    { label: 'Home', path: '' },
-    { label: 'Portfolio', path: 'portfolio' },
-    { label: 'Orders', path: 'orders' },
-    { label: 'Alerts', path: 'alerts' },
+export class ClientHomeComponent implements OnInit {
+  userInitial = 'J';
+  userName = 'Joanna';
+
+  holdings: StockHolding[] = [
+    { symbol: 'AAPL', name: 'Apple Inc.', pct: 40, value: 20972, price: 175.20 },
+    { symbol: 'TSLA', name: 'Tesla Inc.', pct: 25, value: 13108, price: 242.15 },
+    { symbol: 'MSFT', name: 'Microsoft Corp.', pct: 15, value: 7865, price: 415.30 },
+    { symbol: 'NVDA', name: 'NVIDIA Corp.', pct: 10, value: 5243, price: 894.60 },
+    { symbol: 'Others', name: 'Other Holdings', pct: 10, value: 5242, price: 0 },
   ];
 
-  constructor(private portfolioService: PortfolioService, private router: Router ) {
-    this.portfolio = this.portfolioService.portfolio;
-    this.loading = this.portfolioService.loading;
-    this.error = this.portfolioService.error;
+  completedTrades: Trade[] = [
+    { time: '10:24 AM', symbol: 'AAPL', type: 'Buy', qty: 10, price: 175.20, total: 1752.00 },
+    { time: '11:08 AM', symbol: 'TSLA', type: 'Sell', qty: 5, price: 242.15, total: 1210.75 },
+    { time: '1:32 PM', symbol: 'MSFT', type: 'Buy', qty: 8, price: 415.30, total: 3322.40 },
+    { time: '3:10 PM', symbol: 'NVDA', type: 'Sell', qty: 3, price: 894.60, total: 2683.80 },
+  ];
 
-    this.router.events
-    .pipe(filter(event => event instanceof NavigationEnd))
-    .subscribe(() => {
-      this.isHomeRoute = this.router.url === '/client';
-    });
+  selectedPeriod = signal<Period>('1M');
+  activePieIndex = signal<number | undefined>(undefined);
+  periodOptions: Period[] = ['1D', '1W', '1M', '3M', '1Y', 'All'];
 
-    effect(() => {
-      const data = this.portfolio();
-      if (data) {
-        console.log('Portfolio updated:', data);
-      }
-    });
-  }
+  portfolioValue = '$52,430';
+  todaysGain = '+2.35%';
+  overallGain = '+12.48%';
+  cashRemaining = '$18,250';
+
+  stockIconStyles: Record<string, { label: string; background: string; color: string }> = {
+    AAPL: { label: 'A', background: '#111827', color: '#ffffff' },
+    TSLA: { label: 'T', background: '#dc2626', color: '#ffffff' },
+    MSFT: { label: 'M', background: '#2563eb', color: '#ffffff' },
+    NVDA: { label: 'N', background: '#65a30d', color: '#ffffff' },
+    GOOGL: { label: 'G', background: '#f3f4f6', color: '#2563eb' },
+    AMZN: { label: 'a', background: '#111827', color: '#f59e0b' },
+    META: { label: 'M', background: '#2563eb', color: '#ffffff' },
+    'BRK.B': { label: 'B', background: '#1e3a8a', color: '#ffffff' },
+    Others: { label: 'O', background: 'var(--secondary)', color: 'var(--primary)' },
+  };
+
+  constructor(private router: Router) {}
 
   ngOnInit() {
-    this.portfolioService.getPortfolio(this.selectedUserId);
-    this.isHomeRoute = this.router.url === '/client';
+    // Component initialization - UI only, no backend calls
   }
 
-  onUserChange(userId: string) {
-    this.selectedUserId = userId;
-    const user = this.users.find(u => u.id === userId);
-    if (user) {
-      this.userName = user.name;
-    }
-    this.portfolioService.getPortfolio(userId);
+  getStockIcon(symbol: string) {
+    return this.stockIconStyles[symbol] ?? {
+      label: symbol.slice(0, 2).toUpperCase(),
+      background: 'var(--secondary)',
+      color: 'var(--primary)',
+    };
   }
-  
+
+  setPeriod(period: Period) {
+    this.selectedPeriod.set(period);
+  }
+
+  setPieActive(index: number) {
+    this.activePieIndex.set(index);
+  }
+
+  clearPieActive() {
+    this.activePieIndex.set(undefined);
+  }
+
+  onStockClick(holding: StockHolding) {
+    if (holding.symbol !== 'Others') {
+      console.log('Navigate to stock:', holding.symbol);
+    }
+  }
+
+  goToPortfolio() {
+    this.router.navigate(['/client/portfolio']);
+  }
+
+  goToTrades() {
+    this.router.navigate(['/client/trades']);
+  }
+
+  goToProfile() {
+    this.router.navigate(['/client/profile']);
+  }
+
   handleProfileOption(option: string) {
-    if (option === 'Logout') {
-      // your logout logic
-    }
-  }
-
-  periods = ['1M', '3M', '6M', '1Y', 'All'];
-  activePeriod = '6M';
-
-  allocation = [
-    { name: 'Stocks', value: 55, color: '#16a34a' },
-    { name: 'Bonds', value: 25, color: '#0ea5e9' },
-    { name: 'Cash', value: 20, color: '#f59e0b' }
-  ];
-
-  toggleProfile(event: Event) {
-    event.stopPropagation();
-    this.profileOpen = !this.profileOpen;
-  }
-
-  selectProfileOption(option: string) {
-    console.log(`Selected: ${option}`);
-    this.profileOpen = false;
-  }
-
-  setPeriod(period: string) {
-    this.activePeriod = period;
+    console.log('Profile option:', option);
   }
 }
