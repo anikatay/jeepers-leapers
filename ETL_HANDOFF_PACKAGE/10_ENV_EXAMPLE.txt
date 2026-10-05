@@ -1,0 +1,25 @@
+.env.example
+# OLTP Database (Source - Production)
+OLTP_HOST=localhost
+OLTP_PORT=5432
+OLTP_DB=trading_platform
+OLTP_USER=postgres
+OLTP_PASSWORD=your_password
+
+# OLAP Database (Target - Analytics)
+OLAP_HOST=localhost
+OLAP_PORT=5432
+OLAP_DB=trading_analytics
+OLAP_USER=postgres
+OLAP_PASSWORD=your_password
+
+# Environment
+ENVIRONMENT=local
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=logs/etl.log
+
+# ETL Settings
+ETL_START_DATE=2025-01-01
+ETL_LOOKBACK_DAYS=90

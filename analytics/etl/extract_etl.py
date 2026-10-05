@@ -327,18 +327,36 @@ class DataExtractor:
         """
         Load DataFrame to staging table.
         
+        Creates the table even if empty to prevent "table not found" errors downstream.
+        
         Args:
             df: DataFrame to load
             table_name: Target table name in staging schema
         
         Returns:
-            Number of rows loaded (0 if empty or error)
+            Number of rows loaded (0 if empty, but table still created)
         """
-        if df is None or df.empty:
-            logger.warning(f"Skipping empty DataFrame for table: staging.{table_name}")
-            return 0
-        
         try:
+            # CRITICAL: Always create the table, even if empty
+            # Downstream ETL phases (Phase 3, etc.) expect these tables to exist
+            if df is None or df.empty:
+                logger.warning(f"Empty DataFrame for table: staging.{table_name} - creating table schema anyway")
+                
+                # Create table schema even if no data
+                # Use if_exists='replace' to ensure table is created with correct schema
+                df_empty = pd.DataFrame() if df is None else df  # Use original df if not None
+                df_empty.to_sql(
+                    name=table_name,
+                    con=self.staging_engine,
+                    schema='staging',
+                    if_exists='replace',  # Replace to ensure table exists
+                    index=False,
+                    method='multi',
+                    chunksize=BATCH_SIZE
+                )
+                logger.info(f"Created empty table schema for staging.{table_name}")
+                return 0
+            
             rows_count = len(df)
             logger.debug(f"Loading {rows_count} rows to staging.{table_name}...")
             
