@@ -13,11 +13,11 @@ export class TradesService {
 
   constructor(private http: HttpClient) {}
 
-  getTrades(userId: string): void {
+  getTrades(accountId: string): void {
     this.loading.set(true);
     this.error.set(null);
 
-    this.http.get<Trade[]>(`/api/trades/${userId}`)
+    this.http.get<Trade[]>(`api/trades/account/${accountId}`)
       .subscribe({
         next: (data) => {
           this.trades.set(data);
@@ -29,4 +29,4 @@ export class TradesService {
         }
       });
   }
-}
+}          // Fetch trades

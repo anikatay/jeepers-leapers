@@ -1,44 +1,39 @@
-<!-- <input
-  type="text"
-  class="search-input"
-  placeholder="Search users by name..."
-  [(ngModel)]="searchTerm" />
+<!-- Selected User Detail View -->
+<div class="user-detail-layout" *ngIf="selectedUser()">
+  <button (click)="clearSelection()">&larr; Back to list</button>
+  <h2>{{ selectedUser().name }}'s Trades</h2>
+  <p>Account ID: {{ selectedUser().accountId }}</p>
+  <p>Balance: {{ selectedUser().balance }}</p>
 
-  <table
-    class="holdings-table"
-    *ngIf="trades() as data">
-
+  <table class="trades-table" *ngIf="selectedUserTrades().length > 0">
     <thead>
       <tr>
-        <th *ngFor="let col of columns">
-          {{ col.header }}
-        </th>
+        <th>Trade ID</th>
+        <th>Ticker</th>
+        <th>Side</th>
+        <th>Quantity</th>
+        <th>Price</th>
+        <th>Date</th>
       </tr>
     </thead>
-
     <tbody>
-      <tr *ngFor="let trade of data">
-
-        <td *ngFor="let col of columns">
-          {{ getCellValue(trade, col.field) }}
-        </td>
-
+      <tr *ngFor="let trade of selectedUserTrades()">
+        <td>{{ trade.tradeId }}</td>
+        <td>{{ trade.ticker }}</td>
+        <td>{{ trade.side }}</td>
+        <td>{{ trade.quantity }}</td>
+        <td>{{ trade.executionPrice }}</td>
+        <td>{{ trade.executedAt }}</td>
       </tr>
     </tbody>
-
   </table>
 
+  <p *ngIf="selectedUserTrades().length === 0">No trades found for this user.</p>
+</div>
 
-<div class="user-detail-layout" *ngIf="selectedUser">
-  <button (click)="clearSelection()">&larr; Back to list</button>
-  <p>Selected: {{ selectedUser.name }}</p>
-
-</div> -->
-
-<table
-  class="holdings-table"
-  *ngIf="accounts()">
-
+<!-- User List View -->
+<div *ngIf="!selectedUser()">
+  <table class="holdings-table" *ngIf="accounts()">
     <thead>
       <tr>
         <th *ngFor="let col of columns">
@@ -48,12 +43,11 @@
     </thead>
 
     <tbody>
-      <tr *ngFor="let user of userData()">
+      <tr *ngFor="let user of userData()" (click)="selectUser(user)" style="cursor: pointer;">
         <td *ngFor="let col of columns">
           {{ getCellValue(user, col.header) }}
         </td>
-
       </tr>
     </tbody>
-
-</table>
+  </table>
+</div>

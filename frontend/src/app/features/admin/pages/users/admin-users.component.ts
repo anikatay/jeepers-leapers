@@ -15,14 +15,16 @@ import { TradesService } from '../../../../core/services/trades.service';
 })
 export class AdminUsersComponent{
     accounts = signal<Account[]>([]);
-    tradesByUserId = signal<Map<string, Trade[]>>(new Map());
+    tradesByAccountId = signal<Map<string, Trade[]>>(new Map());
+    selectedUser = signal<any>(null);
     searchTerm = ''; 
     pendingUserIds = new Set<string>(); 
     columns: { header: string }[] = [
         { header: 'Name' },
         { header: 'Balance' },
-        { header: 'Trade Count' },
-        { header: 'Status' }, 
+        { header: 'Trades' },
+        { header: 'Created At' },
+        { header: 'Status' }
       ];
 
     userData = computed(() => {
@@ -30,10 +32,9 @@ export class AdminUsersComponent{
 
       return accountsData.map(account => ({
         accountId: account.accountId,
-        userId: account.userId,
         name: this.getUserName(account.userId),
         balance: account.balance,
-        tradeCount: this.tradesByUserId().get(account.userId)?.length || 0,
+        tradeCount: this.tradesByAccountId().get(account.accountId)?.length || 0,
         createdAt: account.createdAt,
         status: account.status
       }));
@@ -42,6 +43,9 @@ export class AdminUsersComponent{
 
 
     constructor(private accountService: AccountService, private tradeService: TradesService) {
+        // Trigger the API call
+        this.accountService.getAllAccounts();
+        
         effect(() => {
           const accountsData = this.accountService.allAccounts();
           if (accountsData) {
@@ -68,8 +72,9 @@ export class AdminUsersComponent{
         }
 
         // Get current user
-        const userId = accounts[i].userId;
-        this.tradeService.getTrades(userId);  // Fetch trades
+        const accountId = accounts[i].accountId;
+        console.log('accountId:', accountId, 'userId:', accounts[i].userId);
+        this.tradeService.getTrades(accountId); // Fetch trades
 
         // Poll for data to arrive
         let attempts = 0;
@@ -78,9 +83,9 @@ export class AdminUsersComponent{
           
           if (tradesData && tradesData.length > 0) {
             // Data arrived! Store it
-            const updatedMap = new Map(this.tradesByUserId());
-            updatedMap.set(userId, tradesData);
-            this.tradesByUserId.set(updatedMap);
+            const updatedMap = new Map(this.tradesByAccountId());
+            updatedMap.set(accountId, tradesData);
+            this.tradesByAccountId.set(updatedMap);
             clearInterval(checkInterval);
             
             i++;  // Move to next user
@@ -107,18 +112,13 @@ export class AdminUsersComponent{
       return '';
     }
 
-    loadAndGetTradeCount(userId: string): number {
-      const tradesMap = this.tradesByUserId();
-      return tradesMap.get(userId)?.length || 0;
-    }
-
     getCellValue(user: any, header: string): any {
         switch (header) {
             case 'Name':
                 return user.name;
             case 'Balance':
               return user.balance;
-            case 'Trade Count':
+            case 'Trades':
               return user.tradeCount;
             case 'Created At':
               return user.createdAt;
@@ -129,31 +129,19 @@ export class AdminUsersComponent{
           }
     }
 
-//   get filteredUsers() {
-//     const term = this.searchTerm.trim().toLowerCase();
-//     if (!term) return this.allUsers;
+    // Computed signal to get the selected user's trades
+    selectedUserTrades = computed(() => {
+      const selected = this.selectedUser();
+      if (!selected) return [];
+      return this.tradesByAccountId().get(selected.accountId) || [];
+    });
 
-//     return this.allUsers
-//       .filter(u => u.name.toLowerCase().includes(term))
-//       .sort((a, b) => {
-//         const aStarts = a.name.toLowerCase().startsWith(term);
-//         const bStarts = b.name.toLowerCase().startsWith(term);
-//         if (aStarts && !bStarts) return -1;
-//         if (!aStarts && bStarts) return 1;
-//         return a.name.localeCompare(b.name);
-//       });
-//   }
+    selectUser(user: any) {
+      this.selectedUser.set(user);  // Set the clicked user
+    }
 
-//   selectUser(user: typeof this.allUsers[number]) {
-//     this.selectedUser = user;
-//   }
-
-//   clearSelection() {
-//     this.selectedUser = null;
-//   }
-
-//   displayUsers(){
-
-//   }
+    clearSelection() {
+      this.selectedUser.set(null);
+    }
 
 }
