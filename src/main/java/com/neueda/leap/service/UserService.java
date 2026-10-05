@@ -3,6 +3,8 @@ package com.neueda.leap.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.neueda.leap.mapper.UserMapper;
+import com.neueda.leap.service.UserPiiService;
+import com.neueda.leap.model.UserPii;
 
 import com.neueda.leap.model.User;
 import java.util.UUID;
@@ -12,9 +14,11 @@ import java.util.List;
 public class UserService {
 
     private final UserMapper userMapper;
+    private final UserPiiService userPiiService;
 
-    public UserService(UserMapper userMapper) {
+    public UserService(UserMapper userMapper, UserPiiService userPiiService) {
         this.userMapper = userMapper;
+        this.userPiiService = userPiiService;
     }
 
     public User getUserById(UUID userId) {
