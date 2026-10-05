@@ -299,6 +299,61 @@ def calculate_pnl_fifo(staging_engine, analytics_engine) -> pd.DataFrame:
     return pnl_df
 
 
+def validate_staging_tables(staging_engine) -> Tuple[bool, str]:
+    """
+    Validate that staging schema and required tables exist.
+    
+    Args:
+        staging_engine: SQLAlchemy engine for staging database
+    
+    Returns:
+        Tuple of (is_valid: bool, message: str)
+    """
+    try:
+        with staging_engine.begin() as conn:
+            # Check if staging.trades_raw exists
+            result = conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.tables 
+                    WHERE table_schema = 'staging' 
+                    AND table_name = 'trades_raw'
+                )
+            """))
+            trades_table_exists = result.scalar()
+            
+            if not trades_table_exists:
+                return False, (
+                    "❌ staging.trades_raw table not found!\n"
+                    "This table is created by Phase 0 (schema initialization).\n\n"
+                    "🔧 FIX: Run Phase 0 first:\n"
+                    "   python3 -c \"from etl.schema_init import initialize_database; initialize_database()\"\n\n"
+                    "📋 Full pipeline order:\n"
+                    "   1. Phase 0: Initialize schema\n"
+                    "   2. Seed trades (optional): Generate test data\n"
+                    "   3. Phase 1: Extract from OLTP to staging\n"
+                    "   4. Phase 3: Transform (FIFO P&L)\n\n"
+                    "🚀 Quick fix with orchestrator:\n"
+                    "   python3 etl/run_pipeline.py"
+                )
+            
+            # Check if staging schema has at least some data
+            result = conn.execute(text("SELECT COUNT(*) FROM staging.trades_raw"))
+            trades_count = result.scalar()
+            
+            if trades_count == 0:
+                logger.warning(
+                    "⚠️  staging.trades_raw is empty! "
+                    "No trades will be processed.\n"
+                    "   → Run Phase 1 to extract trades: "
+                    "python3 -c \"from etl.extract_etl import run_etl; print(run_etl())\""
+                )
+            
+            return True, "staging tables exist"
+    
+    except Exception as e:
+        return False, f"Error validating staging tables: {str(e)}"
+
+
 def run_pnl_transformation(etl_run_id: str = None) -> Dict:
     """
     Main entry point: Run complete P&L transformation pipeline.
@@ -322,6 +377,16 @@ def run_pnl_transformation(etl_run_id: str = None) -> Dict:
     try:
         staging_engine = get_staging_engine()
         analytics_engine = get_analytics_engine()
+        
+        # Validate that staging tables exist and have data
+        logger.info("Validating staging tables...")
+        is_valid, validation_msg = validate_staging_tables(staging_engine)
+        if not is_valid:
+            logger.error(validation_msg)
+            return {
+                'status': 'failed',
+                'error': validation_msg
+            }
         
         # Step 1: Calculate P&L with FIFO matching
         logger.info("Step 1: FIFO matching...")
