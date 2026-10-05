@@ -120,17 +120,20 @@ def run_phase_1() -> Dict[str, Any]:
         logger.info("Extracting data from OLTP to staging...")
         result = run_etl()
         
+        # Extract the stats from the result dict
+        extraction_stats = result.get('extraction_stats', result)  # Handle both old and new formats
+        
         logger.info("Extraction results:")
-        for table, (extracted, loaded) in result.items():
+        for table, (extracted, loaded) in extraction_stats.items():
             logger.info(f"  {table:15} | extracted: {extracted:>3} | loaded: {loaded:>3}")
         
-        total_rows = sum(loaded for _, (_, loaded) in result.items())
+        total_rows = sum(loaded for _, (_, loaded) in extraction_stats.items())
         logger.info(f"✅ Phase 1 complete: {total_rows} total rows loaded")
         
         return {
             'status': 'success',
             'phase': 1,
-            'extraction_results': result,
+            'extraction_results': extraction_stats,
             'total_rows': total_rows
         }
     except Exception as e:
