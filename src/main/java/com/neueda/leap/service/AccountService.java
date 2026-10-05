@@ -4,8 +4,9 @@ import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.mapper.AccountMapper;
 import com.neueda.leap.model.Account;
 
-import com.neueda.leap.exception.InvalidAccountException;
-import com.neueda.leap.exception.AccountNotFoundException;
+import com.neueda.leap.exception.ObjectInvalidException;
+import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.exception.ObjectNotProcessedException;
 
 import org.springframework.stereotype.Service;
 
@@ -44,13 +45,16 @@ public class AccountService implements IService {
         if(account.getCurrency() == null){
             account.setCurrency("USD");
         }
-        if(account.getStatus() == null){
+        if(account.getStatus() == null){ 
             account.setStatus("ACTIVE");
         }
         if(account.getCreatedAt() == null){
             account.setCreatedAt(OffsetDateTime.now());
         }
-        accountMapper.createAccount(account);
+        int accountCreatedFlag = accountMapper.createAccount(account);
+        if(accountCreatedFlag < 1){
+            throw new ObjectNotProcessedException("Could not create new account");
+        }
         return account;
     }
 
@@ -61,7 +65,7 @@ public class AccountService implements IService {
 
         Account account = accountMapper.findByAccountId(accountId);
         if(account == null){
-            throw new AccountNotFoundException("Account not found with ID: " + accountId);
+            throw new ObjectNotFoundException("Account not found with ID: " + accountId);
         }
         return account;
     }
@@ -79,11 +83,17 @@ public class AccountService implements IService {
         }
         Account account = getAccount(accountId);
         if(!"ACTIVE".equals(account.getStatus())){
-            throw new InvalidAccountException("Account is not active: " + accountId);
+            throw new ObjectInvalidException("Account is not active: " + accountId);
         }
 
-        accountMapper.updateBalance(accountId, amount);
-        accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+        int balanceUpdateFlag = accountMapper.updateBalance(accountId, amount);
+        if(balanceUpdateFlag < 1){
+            throw new ObjectNotProcessedException("Was unable to update balance for account " + accountId);
+        }
+        int modifierUpdateFlag = accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+        if(modifierUpdateFlag < 1){
+            throw new ObjectNotProcessedException("Was unable to update");
+        }
     }
 
     @Transactional 
@@ -91,8 +101,14 @@ public class AccountService implements IService {
         if(accountId == null){
             throw new IllegalArgumentException("Account ID cannot be null ");
         }
-        accountMapper.updateStatus(accountId, "CLOSED");
-        accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+        int updateStatusFlag = accountMapper.updateStatus(accountId, "CLOSED");
+        if(updateStatusFlag < 1){
+            throw new ObjectNotProcessedException("Was unable to update status for account " + accountId);
+        }
+        int modifierUpdateFlag = accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+        if(modifierUpdateFlag < 1){
+            throw new ObjectNotProcessedException("Was unable to update");
+        }
     }
 
     @Transactional 
@@ -100,8 +116,14 @@ public class AccountService implements IService {
         if(accountId == null){
             throw new IllegalArgumentException("Account ID cannot be null");
         }
-        accountMapper.incrementBalance(accountId, amount);
-        accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+        int balanceUpdateFlag = accountMapper.incrementBalance(accountId, amount);
+        if(balanceUpdateFlag < 1){
+            throw new ObjectNotProcessedException("Was unable to update balance for account " + accountId);
+        }
+        int modifierUpdateFlag = accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+        if(modifierUpdateFlag < 1){
+            throw new ObjectNotProcessedException("Was unable to update");
+        }
     }
 
     @Transactional 
@@ -109,8 +131,14 @@ public class AccountService implements IService {
         if(accountId == null){
             throw new IllegalArgumentException("Account ID cannot be null");
         }
-        accountMapper.decrementBalance(accountId, amount);
-        accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+        int balanceUpdateFlag = accountMapper.decrementBalance(accountId, amount);
+        if(balanceUpdateFlag < 1){
+            throw new ObjectNotProcessedException("Was unable to update balance for account " + accountId);
+        }
+        int modifierUpdateFlag = accountMapper.updateLastModified(accountId, OffsetDateTime.now());
+        if(modifierUpdateFlag < 1){
+            throw new ObjectNotProcessedException("Was unable to update");
+        }
     }
 
     public List<AccountResponse> getUserAccounts(UUID userId) {

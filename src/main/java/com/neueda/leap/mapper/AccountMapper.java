@@ -21,11 +21,11 @@ public interface  AccountMapper {
     // insert new account
     @Insert("INSERT INTO accounts (account_id, user_id, balance,status,created_at) " + 
             "VALUES (#{accountId}, #{userId}, #{balance}, #{status}, #{createdAt})")
-    void createAccount(Account account);
+    int createAccount(Account account);
     
     // Delete account
     @Delete("DELETE FROM accounts WHERE account_id = #{accountId}")
-    void deleteAccount(@Param("accountId") UUID accountId);
+    int deleteAccount(@Param("accountId") UUID accountId);
     
     // find account by account id -> account
     @Select("SELECT * FROM accounts  WHERE account_id = #{accountId}")
@@ -42,7 +42,7 @@ public interface  AccountMapper {
     // find account Id by user ID -> UUID
     @Select("SELECT account_id FROM accounts  WHERE user_id = #{userId}")
     UUID findAccountIdByUserId(@Param("userId")UUID userId);
-
+ 
     // get account bal -> BigDecimal
     @Select("SELECT balance FROM accounts  WHERE account_id = #{accountId}")
     BigDecimal getAccountBalance(@Param("accountId")UUID accountId);
@@ -53,19 +53,19 @@ public interface  AccountMapper {
 
     // update balance
     @Update("UPDATE accounts  SET balance = #{balance} WHERE account_id = #{accountId}")
-    void updateBalance(@Param("accountId") UUID accountId,@Param("balance") BigDecimal balance);
+    int updateBalance(@Param("accountId") UUID accountId,@Param("balance") BigDecimal balance);
 
     // update status
     @Update("UPDATE accounts  SET status = #{status} WHERE account_id = #{accountId}")
-    void updateStatus(@Param("accountId") UUID accountId,@Param("status") String status);
+    int updateStatus(@Param("accountId") UUID accountId,@Param("status") String status);
 
     // increment balance
     @Update("UPDATE accounts  SET balance = balance + #{amount} WHERE account_id = #{accountId}")
-    void incrementBalance(@Param("accountId") UUID accountId, @Param("amount") BigDecimal amount);
+    int incrementBalance(@Param("accountId") UUID accountId, @Param("amount") BigDecimal amount);
 
     // Decrement balance
     @Update("UPDATE accounts  SET balance = balance - #{amount} WHERE account_id = #{accountId}")
-    void decrementBalance(@Param("accountId") UUID accountId, @Param("amount") BigDecimal amount);
+    int decrementBalance(@Param("accountId") UUID accountId, @Param("amount") BigDecimal amount);
 
     // check if account exists -> boolean
     @Select("SELECT COUNT(*) FROM accounts  WHERE account_id = #{accountId}")
@@ -73,6 +73,6 @@ public interface  AccountMapper {
 
     // update last modified date and time
     @Update("UPDATE accounts  SET updated_at = #{updatedAt} WHERE account_id = #{accountId}")
-    void updateLastModified(@Param("accountId") UUID accountId, @Param("updatedAt")OffsetDateTime updatedAt);
+    int updateLastModified(@Param("accountId") UUID accountId, @Param("updatedAt")OffsetDateTime updatedAt);
     
 }

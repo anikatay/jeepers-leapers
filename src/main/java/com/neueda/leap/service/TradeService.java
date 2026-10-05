@@ -1,7 +1,13 @@
 package com.neueda.leap.service;
 
 import com.neueda.leap.dto.response.TradeResponse;
+import com.neueda.leap.exception.ObjectInvalidException;
+import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.TradeMapper;
+import com.neueda.leap.model.Account;
+import com.neueda.leap.model.Holding;
+import com.neueda.leap.model.Instrument;
 import com.neueda.leap.model.Trade;
 
 import jakarta.transaction.Transactional;
@@ -19,11 +25,13 @@ public class TradeService implements IService {
     private final TradeMapper tradeMapper;
     private final AccountService accountService;
     private final InstrumentService instrumentService;
+    private final HoldingService holdingService;
     
-    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService) {
+    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService) {
         this.tradeMapper = tradeMapper;
         this.accountService = accountService;
         this.instrumentService = instrumentService;
+        this.holdingService = holdingService;
     }
     
     @Transactional 
@@ -38,8 +46,10 @@ public class TradeService implements IService {
         if(trade.getInstrumentId() == null){
             throw new IllegalArgumentException("Instrument ID cannot be null");
         }
-        instrumentService.getInstrumentById(trade.getInstrumentId());
-        
+        final Instrument instrument = instrumentService.getInstrumentById(trade.getInstrumentId());
+        if(instrument == null){
+            throw new ObjectNotFoundException("This instrument does not exist");
+        }
 
         if(trade.getSide() == null){
             throw new IllegalArgumentException("Side cannot be null");
@@ -60,14 +70,44 @@ public class TradeService implements IService {
             BigDecimal tradeValue = trade.getExecutionPrice().multiply(BigDecimal.valueOf(trade.getQuantity()));
             trade.setTradeValue(tradeValue);
         }
-        tradeMapper.createTrade(trade);
+        int tradeCreatedFlag = tradeMapper.createTrade(trade);
+        if(tradeCreatedFlag < 1){
+            throw new ObjectNotProcessedException("Could not create trade");
+        }
+    
         if(trade.getSide().equals("BUY")){
+            Account account = accountService.getAccount(trade.getAccountId());
+            Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
+            
+            if(account.getBalance().compareTo(trade.getTradeValue()) < 0){
+                throw new ObjectInvalidException("Insufficient balance for trade");
+            }
+            if(holding == null){
+                holding = new Holding(
+                    trade.getAccountId(),
+                    instrument.getInstrumentId(),
+                    trade.getQuantity()
+                );
+                holdingService.createHoldingInternal(holding);
+            }else if(holding != null){
+               holdingService.incrementHoldingQuantityImternal(holding, trade.getQuantity());
+            }
             accountService.decrementBalance(trade.getAccountId(), trade.getTradeValue());
         }else if(trade.getSide().equals("SELL")){
+            Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
+            if(holding == null){
+                throw new ObjectInvalidException("No holding exits for this instrument");
+            }
+            if(holding.getQuantity() < trade.getQuantity()){
+                throw new ObjectInvalidException("INsufficient quantity to sell");
+            }
+            holdingService.decrementHoldingQuantityImternal(holding, trade.getQuantity());
             accountService.incrementBalance(trade.getAccountId(), trade.getTradeValue());
         }
         return trade;
     }
+
+    
 
     public List<TradeResponse> getTradesByAccountAndInstrument(UUID accountId, UUID instrumentId) {
         if(accountId == null){

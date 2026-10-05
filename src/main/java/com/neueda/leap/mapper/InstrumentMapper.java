@@ -17,7 +17,7 @@ public interface InstrumentMapper {
     // Add new Instrument 
     @Insert ("INSERT INTO instruments (instrument_id, ticker, name, exchange_id, current_price, updated_at) " +
         "VALUES (#{instrumentId}, #{ticker}, #{name}, #{exchangeId}, #{currentPrice}, #{updatedAt})")
-    void addInstrument(Instrument instrument);
+    int addInstrument(Instrument instrument);
     
     // Read a single instrument
     @Select("SELECT * FROM instruments WHERE instrument_id = #{instrumentId}")
@@ -31,9 +31,9 @@ public interface InstrumentMapper {
 
     @Update("UPDATE instruments SET current_price = #{currentPrice}, updated_at = #{updatedAt} " +
             "WHERE instrument_id = #{instrumentId}")
-    void updatePrice(Instrument instrument);
+    int updatePrice(Instrument instrument);
 
     @Delete("DELETE FROM instruments WHERE instrument_id = #{instrumentId}")
-    void deleteInstrument(@Param("instrumentId") UUID instrumentId);
+    int deleteInstrument(@Param("instrumentId") UUID instrumentId);
 
 }

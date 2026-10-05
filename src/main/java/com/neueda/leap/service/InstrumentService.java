@@ -2,8 +2,9 @@ package com.neueda.leap.service;
 import org.springframework.stereotype.Service;
 
 import com.neueda.leap.dto.response.InstrumentResponse;
-import com.neueda.leap.exception.InstrumentAlreadyExistsException;
-import com.neueda.leap.exception.InstrumentNotFoundException;
+import com.neueda.leap.exception.ObjectAlreadyExistsException;
+import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.InstrumentMapper;
 import com.neueda.leap.model.Instrument;
 
@@ -29,7 +30,7 @@ public class InstrumentService implements IService {
         }
         Instrument instrument = instrumentMapper.findById(instrumentId);
         if(instrument == null){
-            throw new InstrumentNotFoundException("Instrument not found: " + instrumentId);
+            throw new ObjectNotFoundException("Instrument not found: " + instrumentId);
         }
         return instrument;
     }
@@ -40,7 +41,7 @@ public class InstrumentService implements IService {
         }
         Instrument instrument = instrumentMapper.findByTicker(ticker);
         if(instrument == null){
-            throw new InstrumentNotFoundException("Instrument not found ");
+            throw new ObjectNotFoundException("Instrument not found ");
         }
         return instrument;
     }
@@ -51,13 +52,13 @@ public class InstrumentService implements IService {
             throw new IllegalArgumentException("Instrument ID cannot be null");
         }
         if(instrumentMapper.findById(instrument.getInstrumentId()) != null){
-            throw new InstrumentAlreadyExistsException("Creating this instrument would lead to duplicate instruments");
+            throw new ObjectAlreadyExistsException("Creating this instrument would lead to duplicate instruments");
         }
         if(instrument.getTicker() == null){
             throw new IllegalArgumentException("Ticker cannot be empty");
         }
         if(instrumentMapper.findByTicker(instrument.getTicker()) != null){
-            throw new InstrumentAlreadyExistsException("Creating this instrument would lead to duplicate instruments");
+            throw new ObjectAlreadyExistsException("Creating this instrument would lead to duplicate instruments");
         }
         if(instrument.getExchange() == null){
             throw new IllegalArgumentException("Exchange ID cannot be null");
@@ -70,7 +71,10 @@ public class InstrumentService implements IService {
         if(instrument.getUpdatedAt() == null){
             instrument.setUpdatedAt(OffsetDateTime.now());
         }
-        instrumentMapper.addInstrument(instrument);
+        int instrumentAddedFlag = instrumentMapper.addInstrument(instrument);
+        if(instrumentAddedFlag < 1){
+            throw new ObjectNotProcessedException("Could Not add this instrument " + instrument);
+        }
         return instrument;
     }
 
@@ -79,7 +83,10 @@ public class InstrumentService implements IService {
         Instrument instrument = getInstrumentById(instrumentId);
         instrument.setCurrentPrice(price);
         instrument.setUpdatedAt(OffsetDateTime.now());
-        instrumentMapper.updatePrice(instrument);
+        int instrumentUpdateFlag = instrumentMapper.updatePrice(instrument);
+        if(instrumentUpdateFlag < 1){
+            throw new ObjectNotProcessedException("Instrument was unable to be updated " + instrument);
+        }
     }
     
     public List<InstrumentResponse> findAllInstruments(){

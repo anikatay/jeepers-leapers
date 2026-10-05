@@ -30,15 +30,15 @@ public interface HoldingMapper {
     int getHoldingQuantity(UUID accountId, UUID instrumentId);
 
     @Insert("INSERT INTO holdings (account_id, instrument_id, quantity) VALUES (#{accountId}, #{instrumentId}, #{quantity})")
-    Holding insertHolding(UUID accountId, UUID instrumentId, int quantity);
+    int insertHolding(UUID accountId, UUID instrumentId, int quantity);
 
     @Update("UPDATE holdings SET quantity = #{quantity} WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
-    Holding updateHoldingQuantity(UUID accountId, UUID instrumentId, int quantity);
+    int updateHoldingQuantity(UUID accountId, UUID instrumentId, int quantity);
 
     @Delete("DELETE FROM holdings WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
-    void deleteHolding(UUID accountId, UUID instrumentId);
+    int deleteHolding(UUID accountId, UUID instrumentId);
 
     @Delete("DELETE FROM holdings WHERE account_id = #{accountId}")
-    void deleteHoldingsByAccountId(UUID accountId);
+    int deleteHoldingsByAccountId(UUID accountId);
 
 }
