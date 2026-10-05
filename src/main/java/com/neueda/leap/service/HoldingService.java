@@ -2,6 +2,8 @@ package com.neueda.leap.service;
 
 import com.neueda.leap.dto.request.HoldingRequest;
 import com.neueda.leap.dto.response.HoldingResponse;
+import com.neueda.leap.exception.ObjectInvalidException;
+import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.HoldingMapper;
 import com.neueda.leap.model.Holding;
 import org.springframework.stereotype.Service;
@@ -50,41 +52,90 @@ public class HoldingService implements IService {
         );
     }
 
+    public Holding findHolding(UUID accountId, UUID instrumentId){
+        return holdingMapper.getHoldingByAccountIdAndInstrumentId(accountId, instrumentId);
+    }
+
+     
+    public Holding createHoldingInternal(Holding holding) {
+        int createdHolding = holdingMapper.insertHolding(holding.getAccountId(),holding.getInstrumentId(),holding.getQuantity());
+
+        if( createdHolding < 1 ) {
+            throw new ObjectNotProcessedException("Holding could not be created");
+        }
+        return holding;
+    }
+
     public HoldingResponse createHolding(HoldingRequest request) {
-        // TODO: verify trade success first
-        Holding createdHolding = holdingMapper.insertHolding(
+        Holding holding = new Holding(
             request.accountId(),
             request.instrumentId(),
             request.quantity()
         );
 
-        if( createdHolding == null ) {
-            return null;
+        int createdHolding = holdingMapper.insertHolding(holding.getAccountId(),holding.getInstrumentId(),holding.getQuantity());
+        if( createdHolding < 1  ) {
+            throw new ObjectNotProcessedException("Holding could not be created");
         }
         
         return new HoldingResponse(
-                createdHolding.getAccountId(),
-                createdHolding.getInstrumentId(),
-                createdHolding.getQuantity()
+                holding.getAccountId(),
+                holding.getInstrumentId(),
+                holding.getQuantity()
         );
+    }
+   
+    public int incrementHoldingQuantityImternal(Holding holding, int amount){
+        if(holding == null){
+            throw new ObjectInvalidException("Holding cannot be Null");
+        }
+        if(amount <= 0){
+            throw new ObjectInvalidException("amount cannot be less than 1");
+        }
+        int newQuantity = holding.getQuantity() + amount;
+        int updatHolding = holdingMapper.updateHoldingQuantity(holding.getAccountId(),holding.getInstrumentId(), newQuantity);
+        if(updatHolding < 1){
+            throw new ObjectNotProcessedException("Was unable to update holding ");
+        }
+        return 1;
+    }
+
+    public int decrementHoldingQuantityImternal(Holding holding, int amount){
+        if(holding == null){
+            throw new ObjectInvalidException("Holding cannot be Null");
+        }
+        if(amount <= 0){
+            throw new ObjectInvalidException("amount cannot be less than 1");
+        }
+        int newQuantity = holding.getQuantity() - amount;
+        int updatHolding = holdingMapper.updateHoldingQuantity(holding.getAccountId(),holding.getInstrumentId(), newQuantity);
+        if(updatHolding < 1){
+            throw new ObjectNotProcessedException("Was unable to update holding ");
+        }
+        return 1;
     }
 
     public HoldingResponse updateHoldingQuantity(HoldingRequest request) {
         // TODO: verify trade success first
-        Holding updatedHolding = holdingMapper.updateHoldingQuantity(
+        Holding holding = new Holding(
             request.accountId(),
             request.instrumentId(),
             request.quantity()
         );
+        int updatedHolding = holdingMapper.updateHoldingQuantity(
+            holding.getAccountId(),
+            holding.getInstrumentId(),
+            holding.getQuantity()
+        );
 
-        if (updatedHolding == null) {
-            return null;
+        if (updatedHolding < 1) {
+            throw new ObjectNotProcessedException("Was unable to update holding");
         }
 
         return new HoldingResponse(
-                updatedHolding.getAccountId(),
-                updatedHolding.getInstrumentId(),
-                updatedHolding.getQuantity()
+            holding.getAccountId(),
+            holding.getInstrumentId(),
+            holding.getQuantity()
         );
     }
 
