@@ -15,10 +15,15 @@ Usage:
 """
 
 import sys
+import os
 import argparse
 import logging
 from datetime import datetime
 from typing import Dict, Any
+
+# Add parent directory to path so we can import etl module
+# This allows running as: python3 etl/run_pipeline.py
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Configure logging
 logging.basicConfig(
