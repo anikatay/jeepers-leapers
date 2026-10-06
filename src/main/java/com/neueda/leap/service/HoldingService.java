@@ -3,9 +3,12 @@ package com.neueda.leap.service;
 import com.neueda.leap.dto.request.HoldingRequest;
 import com.neueda.leap.dto.response.HoldingResponse;
 import com.neueda.leap.exception.ObjectInvalidException;
+import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.HoldingMapper;
 import com.neueda.leap.model.Holding;
+import com.neueda.leap.model.Instrument;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,24 +18,30 @@ import java.util.UUID;
 public class HoldingService implements IService {
 
     private final HoldingMapper holdingMapper;
+    private final InstrumentService instrumentService;
 
-    public HoldingService(HoldingMapper holdingMapper) {
+    public HoldingService(HoldingMapper holdingMapper, InstrumentService instrumentService) {
         this.holdingMapper = holdingMapper;
+        this.instrumentService = instrumentService;
     }
 
     public List<HoldingResponse> getHoldingsByAccountId(UUID accountID) {
         List<Holding> response = holdingMapper.getHoldingsByAccountId(accountID);
 
         if (response.isEmpty()) {
-            return null;
+            throw new ObjectNotFoundException("No holdings found for account");
         }
 
         List<HoldingResponse> holdingDtos = response.stream()
-                .map(h -> new HoldingResponse(
-                    h.getAccountId(),
-                    h.getInstrumentId(),
-                    h.getQuantity()
-                ))
+                .map(h ->{
+                    Instrument instrument = instrumentService.getInstrumentById(h.getInstrumentId());
+                    return new HoldingResponse(
+                        h.getAccountId(),
+                        h.getInstrumentId(),
+                        instrument.getTicker(),
+                        h.getQuantity()
+                    );
+                })
                 .toList();
 
         return holdingDtos;
@@ -40,14 +49,15 @@ public class HoldingService implements IService {
 
     public HoldingResponse getHoldingByAccountIdAndInstrumentId(UUID accountId, UUID instrumentId) {
         Holding holding = holdingMapper.getHoldingByAccountIdAndInstrumentId(accountId, instrumentId);
-
         if (holding == null) {
-            return null;
+            throw new ObjectNotFoundException("Respomse cannot be healthy");
         }
-
+        
+        Instrument instrument = instrumentService.getInstrumentById(holding.getInstrumentId());
         return new HoldingResponse(
                 holding.getAccountId(),
                 holding.getInstrumentId(),
+                instrument.getTicker(),
                 holding.getQuantity()
         );
     }
@@ -77,10 +87,11 @@ public class HoldingService implements IService {
         if( createdHolding < 1  ) {
             throw new ObjectNotProcessedException("Holding could not be created");
         }
-        
+        Instrument instrument = instrumentService.getInstrumentById(holding.getInstrumentId());
         return new HoldingResponse(
                 holding.getAccountId(),
                 holding.getInstrumentId(),
+                instrument.getTicker(),
                 holding.getQuantity()
         );
     }
@@ -131,10 +142,12 @@ public class HoldingService implements IService {
         if (updatedHolding < 1) {
             throw new ObjectNotProcessedException("Was unable to update holding");
         }
+        Instrument instrument = instrumentService.getInstrumentById(holding.getInstrumentId());
 
         return new HoldingResponse(
             holding.getAccountId(),
             holding.getInstrumentId(),
+            instrument.getTicker(),
             holding.getQuantity()
         );
     }
