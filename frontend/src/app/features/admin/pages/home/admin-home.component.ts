@@ -1,9 +1,7 @@
-import { Component, OnInit, ChangeDetectorRef, effect, Signal } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TradesService } from '../../../../core/services/trades.service';
 import { Router, RouterOutlet } from '@angular/router';
 import { NavbarComponent, NavItem } from '../../../../shared/components/navbar.component';
-import { Trade } from '../../../../core/models/trade.model';
 
 
 
@@ -15,24 +13,11 @@ import { Trade } from '../../../../core/models/trade.model';
   styleUrl: './admin-home.component.css'
 })
 export class AdminHomeComponent implements OnInit{
-  trades: Signal<Trade[] | null>;
-  loading: Signal<boolean>;
-  error: Signal<string | null>;
-
-  constructor(private tradesService: TradesService, private router: Router ) {
-    this.trades = this.tradesService.trades;
-    this.loading = this.tradesService.loading;
-    this.error = this.tradesService.error;
-    effect(() => {
-      const data = this.trades();
-      if (data) {
-        console.log('Portfolio updated:', data);
-      }
-    });
-  }
+  constructor(private router: Router ) {}
 
   ngOnInit() {
-    this.tradesService.getTrades(); 
+    // Note: All trades endpoint (GET /api/trades) not available from backend
+    // Feature disabled until endpoint is implemented
   }
 
   navItems: NavItem[] = [
