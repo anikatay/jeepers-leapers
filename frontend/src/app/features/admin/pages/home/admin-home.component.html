@@ -2,37 +2,9 @@
   <app-navbar [navItems]="navItems" [userName]="userName"></app-navbar>
 
   <div class="trades-container">
-    <div *ngIf="loading()" class="loading">
-      <p>Loading trades...</p>
-    </div>
-
-    <div *ngIf="error()" class="error">
-      <p>Error: {{ error() }}</p>
-    </div>
-
-    <div *ngIf="!loading() && trades() as data" class="trades-content">
-      <h2>All Trades</h2>
-      <table class="trades-table" *ngIf="data.length > 0">
-        <thead>
-          <tr>
-            <th>Client Email</th>
-            <th>Instrument</th>
-            <th>Trade Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let trade of data">
-            <td>{{ trade.clientEmail }}</td>
-            <td>{{ trade.instrumentName }}</td>
-            <td>{{ trade.tradeValue }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p *ngIf="data.length === 0" class="no-data">No trades available</p>
-    </div>
-
-    <div *ngIf="!loading() && !trades()" class="no-data">
-      <p>No trades data available</p>
+    <div class="placeholder">
+      <p>All trades endpoint not available from backend.</p>
+      <p>To view all trades, implement GET /api/trades on the backend.</p>
     </div>
   </div>
 
