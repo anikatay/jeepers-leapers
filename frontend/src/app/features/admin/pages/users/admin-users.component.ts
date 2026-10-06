@@ -5,6 +5,7 @@ import { AccountService } from '../../../../core/services/accounts.service';
 import { Trade } from '../../../../core/models/trade.model';
 import { Account } from '../../../../core/models/account.model';
 import { TradesService } from '../../../../core/services/trades.service';
+import { ClientPortfolioComponent } from '../../../client/pages/portfolio/client-portfolio.component';
 
 @Component({
   selector: 'app-admin-users',
@@ -16,6 +17,8 @@ import { TradesService } from '../../../../core/services/trades.service';
 export class AdminUsersComponent{
     accounts = signal<Account[]>([]);
     tradesByAccountId = signal<Map<string, Trade[]>>(new Map());
+    portfolioValueByAccountId = signal<Map<string, number>>(new Map());
+    allTimePortfolioValueByAccountId = signal<Map<string, number>>(new Map());
     selectedUser = signal<any>(null);
     searchTerm = ''; 
     pendingUserIds = new Set<string>(); 
@@ -24,7 +27,9 @@ export class AdminUsersComponent{
         { header: 'Balance' },
         { header: 'Trades' },
         { header: 'Created At' },
-        { header: 'Status' }
+        { header: 'Status' },
+        { header: 'Current Portfolio Value' },
+        { header: 'All Time Portfolio Value' }
       ];
 
     userData = computed(() => {
@@ -36,7 +41,9 @@ export class AdminUsersComponent{
         balance: account.balance,
         tradeCount: this.tradesByAccountId().get(account.accountId)?.length || 0,
         createdAt: account.createdAt,
-        status: account.status
+        status: account.status,
+        portfolioValue: this.portfolioValueByAccountId().get(account.accountId) || 0,
+        allTimePortfolioValue: this.allTimePortfolioValueByAccountId().get(account.accountId) || 0,
       }));
 
     });
@@ -75,17 +82,28 @@ export class AdminUsersComponent{
         const accountId = accounts[i].accountId;
         console.log('accountId:', accountId, 'userId:', accounts[i].userId);
         this.tradeService.getTrades(accountId); // Fetch trades
+        this.tradeService.calculatePortfolioMetrics(accountId);
 
         // Poll for data to arrive
         let attempts = 0;
         const checkInterval = setInterval(() => {
           const tradesData = this.tradeService.trades();
+          const metricsData = this.tradeService.portfolioMetrics();
           
-          if (tradesData && tradesData.length > 0) {
-            // Data arrived! Store it
-            const updatedMap = new Map(this.tradesByAccountId());
-            updatedMap.set(accountId, tradesData);
-            this.tradesByAccountId.set(updatedMap);
+          if (tradesData && tradesData.length > 0 && metricsData) {
+            // Both data arrived! Store it
+            const updatedTradesMap = new Map(this.tradesByAccountId());
+            updatedTradesMap.set(accountId, tradesData);
+            this.tradesByAccountId.set(updatedTradesMap);
+
+            const updatedPortfolioMap = new Map(this.portfolioValueByAccountId());
+            updatedPortfolioMap.set(accountId, metricsData.currentValue);
+            this.portfolioValueByAccountId.set(updatedPortfolioMap);
+
+            const updatedAllTimePortfolioMap = new Map(this.allTimePortfolioValueByAccountId());
+            updatedAllTimePortfolioMap.set(accountId, metricsData.allTimeValue);
+            this.allTimePortfolioValueByAccountId.set(updatedAllTimePortfolioMap);
+            
             clearInterval(checkInterval);
             
             i++;  // Move to next user
@@ -124,6 +142,10 @@ export class AdminUsersComponent{
               return user.createdAt;
             case 'Status':
               return user.status;
+            case 'Portfolio Value':
+              return user.portfolioValue;
+            case 'All Time Portfolio Value':
+              return user.allTimePortfolioValue;
             default:
               return '';
           }
