@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { tap } from 'rxjs/operators';
 import { Instrument } from '../models/instrument.model';
 
 @Injectable({
@@ -13,19 +14,22 @@ export class InstrumentService {
 
   constructor(private http: HttpClient) {}
 
-  getInstruments(accountId: string): void {
+  getInstruments() {
     this.loading.set(true);
     this.error.set(null);
-    this.http.get<Instrument[]>(`/api/instruments`)
-      .subscribe({
-        next: (data) => {
-          this.instruments.set(data);
-          this.loading.set(false);
-        },
-        error: (err) => {
-          this.error.set(err.message);
-          this.loading.set(false);
-        }
-      });
+    return this.http.get<Instrument[]>(`/api/instruments`)
+      .pipe(
+        // Update signals on success
+        tap({
+          next: (data) => {
+            this.instruments.set(data);
+            this.loading.set(false);
+          },
+          error: (err) => {
+            this.error.set(err.message);
+            this.loading.set(false);
+          }
+        })
+      );
   }
 }
