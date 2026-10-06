@@ -55,18 +55,16 @@ public class InstrumentController {
 
     @GetMapping("/{ticker}")
     public ResponseEntity<InstrumentResponse> getInstrumentByTicker(@PathVariable String ticker) {
-        try {
-            Instrument instrument = instrumentService.getInstrumentByTicker(ticker);
-            InstrumentResponse response = new InstrumentResponse(
-                    instrument.getInstrumentId(),
-                    instrument.getTicker(),
-                    instrument.getName(),
-                    instrument.getCurrentPrice(),
-                    instrument.getExchange());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
+        
+        Instrument instrument = instrumentService.getInstrumentByTicker(ticker);
+        InstrumentResponse response = new InstrumentResponse(
+                instrument.getInstrumentId(),
+                instrument.getTicker(),
+                instrument.getName(),
+                instrument.getCurrentPrice(),
+                instrument.getExchange());
+        return ResponseEntity.ok(response);
+        
     }
 
     @PatchMapping("/{instrumentId}/price")
