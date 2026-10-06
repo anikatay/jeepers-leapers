@@ -5,5 +5,6 @@ import java.util.UUID;
 public record HoldingResponse(
     UUID accountId,
     UUID instrumentId,
+    String ticker,
     int quantity
 ) {}
