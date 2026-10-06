@@ -25,6 +25,15 @@ public class UserService {
         return userMapper.getUserById(userId);
     }
 
+    public String getUserRole(UUID userId) {
+        User user = userMapper.getUserById(userId);
+        if (user == null) {
+            // TODO: make new exception with response body
+            throw new IllegalArgumentException("User not found");
+        }
+        return user.getRole();
+    }
+
     public List<User> getAllUsers() {
         return userMapper.getAllUsers();
     }

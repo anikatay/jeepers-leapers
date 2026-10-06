@@ -17,12 +17,12 @@ public class JwtUtil {
     private static final long EXPIRATION_TIME = 3600000; // 1 hour in milliseconds
 
     /**
-     * Generate a JWT token for a user with roles
+     * Generate a JWT token for a user with a role
      */
-    public String generateToken(String username, List<String> roles) {
+    public String generateToken(String username, String role) {
         return Jwts.builder()
                 .subject(username)
-                .claim("roles", roles)
+                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(SignatureAlgorithm.HS256, secret)
