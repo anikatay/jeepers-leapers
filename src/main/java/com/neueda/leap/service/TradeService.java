@@ -37,14 +37,14 @@ public class TradeService implements IService {
     @Transactional 
     public Trade createTrade(Trade trade){
         if(trade == null){
-            throw new IllegalArgumentException("Trade cannot be null");
+            throw new ObjectNotFoundException("Trade cannot be null");
         }
         if(trade.getAccountId() == null){
-            throw new IllegalArgumentException("Account ID cannot be null");
+            throw new ObjectNotFoundException("Account ID cannot be null");
         }
 
         if(trade.getInstrumentId() == null){
-            throw new IllegalArgumentException("Instrument ID cannot be null");
+            throw new ObjectNotFoundException("Instrument ID cannot be null");
         }
         final Instrument instrument = instrumentService.getInstrumentById(trade.getInstrumentId());
         if(instrument == null){
@@ -52,15 +52,15 @@ public class TradeService implements IService {
         }
 
         if(trade.getSide() == null){
-            throw new IllegalArgumentException("Side cannot be null");
+            throw new ObjectNotFoundException("Side cannot be null");
         }
 
         if(trade.getQuantity() <= 0){
-            throw new IllegalArgumentException("Quantity must be non 0");
+            throw new ObjectNotFoundException("Quantity must be non 0");
         }
 
         if(trade.getExecutionPrice() == null){
-            throw new IllegalArgumentException("Execution price cannot be null");
+            throw new ObjectNotFoundException("Execution price cannot be null");
         }
 
         if(trade.getExecutedAt() == null){
@@ -111,10 +111,10 @@ public class TradeService implements IService {
 
     public List<TradeResponse> getTradesByAccountAndInstrument(UUID accountId, UUID instrumentId) {
         if(accountId == null){
-            throw new IllegalArgumentException("Account ID cannot be null");
+            throw new ObjectNotFoundException("Account ID cannot be null");
         }
         if(instrumentId == null){
-            throw new IllegalArgumentException("Instrument ID cannot be null");
+            throw new ObjectNotFoundException("Instrument ID cannot be null");
         }
         return tradeMapper.findTradesByAccountAndInstrument(accountId, instrumentId);
     }
@@ -122,7 +122,7 @@ public class TradeService implements IService {
 
     public List<TradeResponse> getAllTradesByAccountWithInstrument(UUID accountId){
         if(accountId == null){
-            throw new IllegalArgumentException("Account ID cannot be null");
+            throw new ObjectNotFoundException("Account ID cannot be null");
         }
         return tradeMapper.findAllTradesForAccountWithInstrument(accountId);
     }
