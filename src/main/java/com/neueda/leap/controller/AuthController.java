@@ -32,8 +32,8 @@ public class AuthController {
             String role = authService.login(request.getEmail(), request.getPassword());
             UUID userId = authService.getUserIdByEmail(request.getEmail());
 
-            // Generate JWT token with user info and role
-            String token = jwtUtil.generateToken(request.getEmail(), role);
+            // Generate JWT token with user info, role, and userId
+            String token = jwtUtil.generateToken(request.getEmail(), role, userId);
 
             return ResponseEntity.ok(new LoginResponse(token, userId, role));
         } catch (Exception e) {

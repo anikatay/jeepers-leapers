@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -17,12 +18,13 @@ public class JwtUtil {
     private static final long EXPIRATION_TIME = 3600000; // 1 hour in milliseconds
 
     /**
-     * Generate a JWT token for a user with a role
+     * Generate a JWT token for a user with a role and userId
      */
-    public String generateToken(String username, String role) {
+    public String generateToken(String username, String role, UUID userId) {
         return Jwts.builder()
                 .subject(username)
                 .claim("role", role)
+                .claim("userId", userId.toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(SignatureAlgorithm.HS256, secret)
