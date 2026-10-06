@@ -28,6 +28,9 @@ public interface UserPiiMapper {
     @Select("SELECT email FROM user_pii WHERE user_id = #{userId}")
     String getUserEmailById(UUID userId);
 
+    @Select("SELECT user_id FROM user_pii WHERE email = #{email}")
+    UUID getUserIdByEmail(String email);
+
     @Insert("INSERT INTO user_pii (user_id, first_name, last_name, date_of_birth, ssn, \"address\", phone_number, email) VALUES (#{userId}, #{firstName}, #{lastName}, #{dateOfBirth}, #{ssn}, #{address}, #{phoneNumber}, #{email})")
     int insertUserPii(UserPii userPii);
 

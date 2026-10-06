@@ -28,6 +28,10 @@ public class UserPiiService {
         return userPiiMapper.getUserEmailById(id);
     }
 
+    public UUID getUserIdByEmail(String email) {
+        return userPiiMapper.getUserIdByEmail(email);
+    }
+
     public String getUserPhoneNumberById(UUID id) {
         String phoneNumber = userPiiMapper.getUserPhoneNumberById(id);
         // TODO: regex check
