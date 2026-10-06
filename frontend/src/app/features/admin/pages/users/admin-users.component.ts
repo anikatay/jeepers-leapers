@@ -17,8 +17,9 @@ import { ClientPortfolioComponent } from '../../../client/pages/portfolio/client
 export class AdminUsersComponent{
     accounts = signal<Account[]>([]);
     tradesByAccountId = signal<Map<string, Trade[]>>(new Map());
-    portfolioValueByAccountId = signal<Map<string, number>>(new Map());
     allTimePortfolioValueByAccountId = signal<Map<string, number>>(new Map());
+    allTimeProfitByAccountId = signal<Map<string, number>>(new Map());
+    portfolioValueByAccountId = signal<Map<string, number>>(new Map());
     selectedUser = signal<any>(null);
     searchTerm = ''; 
     pendingUserIds = new Set<string>(); 
@@ -28,8 +29,9 @@ export class AdminUsersComponent{
         { header: 'Trades' },
         { header: 'Created At' },
         { header: 'Status' },
-        { header: 'Current Portfolio Value' },
-        { header: 'All Time Portfolio Value' }
+        { header: 'Portfolio Value' },
+        { header: 'AllTim portfolio' },
+        { header: 'Profit' }
       ];
 
     userData = computed(() => {
@@ -44,6 +46,7 @@ export class AdminUsersComponent{
         status: account.status,
         portfolioValue: this.portfolioValueByAccountId().get(account.accountId) || 0,
         allTimePortfolioValue: this.allTimePortfolioValueByAccountId().get(account.accountId) || 0,
+        allTimeProfit: this.allTimeProfitByAccountId().get(account.accountId) || 0,
       }));
 
     });
@@ -103,6 +106,10 @@ export class AdminUsersComponent{
             const updatedAllTimePortfolioMap = new Map(this.allTimePortfolioValueByAccountId());
             updatedAllTimePortfolioMap.set(accountId, metricsData.allTimeValue);
             this.allTimePortfolioValueByAccountId.set(updatedAllTimePortfolioMap);
+
+            const updatedAllTimeProfitMap = new Map(this.allTimeProfitByAccountId());
+            updatedAllTimeProfitMap.set(accountId, metricsData.allTimeProfit);
+            this.allTimeProfitByAccountId.set(updatedAllTimeProfitMap);
             
             clearInterval(checkInterval);
             
@@ -146,6 +153,8 @@ export class AdminUsersComponent{
               return user.portfolioValue;
             case 'All Time Portfolio Value':
               return user.allTimePortfolioValue;
+            case 'All Time Profit':
+              return user.allTimeProfit;
             default:
               return '';
           }
