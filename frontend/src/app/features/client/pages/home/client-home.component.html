@@ -9,7 +9,7 @@
         <button class="profile-card" (click)="goToProfile()">
           <div class="profile-avatar">{{ userInitial }}</div>
           <div class="profile-info">
-            <p class="profile-label">Your Profile</p>
+            <p class="profile-label">{{ 'home.your_profile' | translate }}</p>
             <p class="profile-name font-display">{{ userName }}</p>
           </div>
           <svg class="profile-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,8 +28,8 @@
               </svg>
             </div>
             <div class="stat-content">
-              <p class="stat-label">Portfolio Value</p>
-              <p class="stat-value font-mono-data">{{ portfolioValue }}</p>
+              <p class="stat-label">{{ 'home.portfolio_value' | translate }}</p>
+              <p class="stat-value font-mono-data">{{ portfolioValue() }}</p>
             </div>
           </div>
 
@@ -42,8 +42,8 @@
               </svg>
             </div>
             <div class="stat-content">
-              <p class="stat-label">Today's Gain</p>
-              <p class="stat-value font-mono-data positive">{{ todaysGain }}</p>
+              <p class="stat-label">{{ 'home.todays_gain' | translate }}</p>
+              <p class="stat-value font-mono-data positive">{{ todaysGain() }}</p>
             </div>
           </div>
 
@@ -57,8 +57,8 @@
               </svg>
             </div>
             <div class="stat-content">
-              <p class="stat-label">Overall Gain</p>
-              <p class="stat-value font-mono-data positive">{{ overallGain }}</p>
+              <p class="stat-label">{{ 'home.overall_gain' | translate }}</p>
+              <p class="stat-value font-mono-data positive">{{ overallGain() }}</p>
             </div>
           </div>
 
@@ -71,8 +71,8 @@
               </svg>
             </div>
             <div class="stat-content">
-              <p class="stat-label">Cash Remaining</p>
-              <p class="stat-value font-mono-data">{{ cashRemaining }}</p>
+              <p class="stat-label">{{ 'home.cash_remaining' | translate }}</p>
+              <p class="stat-value font-mono-data">{{ cashRemaining() }}</p>
             </div>
           </div>
         </div>
@@ -85,48 +85,14 @@
           <!-- Pie Chart (SVG) -->
           <div class="pie-chart-wrapper">
             <svg class="pie-chart" viewBox="0 0 200 200" aria-label="Portfolio allocation pie chart">
-              <!-- AAPL: 40% (0 to 144 degrees) -->
-              <path d="M 100 100 L 100 10 A 90 90 0 0 1 170.23 37.07 Z"
-                    fill="#0ea5e9"
-                    [attr.opacity]="activePieIndex() === undefined || activePieIndex() === 0 ? '1' : '0.55'"
-                    (mouseenter)="setPieActive(0)"
+              <!-- Dynamic pie slices based on real holdings -->
+              <path *ngFor="let slice of pieSlices(); let i = index"
+                    [attr.d]="slice.d"
+                    [attr.fill]="slice.color"
+                    [attr.opacity]="activePieIndex() === undefined || activePieIndex() === i ? '1' : '0.55'"
+                    (mouseenter)="setPieActive(i)"
                     (mouseleave)="clearPieActive()"
-                    (click)="onStockClick(holdings[0])"
-                    class="pie-slice" />
-
-              <!-- TSLA: 25% (144 to 234 degrees) -->
-              <path d="M 100 100 L 170.23 37.07 A 90 90 0 0 1 155.27 172.93 Z"
-                    fill="#ec4899"
-                    [attr.opacity]="activePieIndex() === undefined || activePieIndex() === 1 ? '1' : '0.55'"
-                    (mouseenter)="setPieActive(1)"
-                    (mouseleave)="clearPieActive()"
-                    (click)="onStockClick(holdings[1])"
-                    class="pie-slice" />
-
-              <!-- MSFT: 15% (234 to 288 degrees) -->
-              <path d="M 100 100 L 155.27 172.93 A 90 90 0 0 1 29.77 172.93 Z"
-                    fill="#f59e0b"
-                    [attr.opacity]="activePieIndex() === undefined || activePieIndex() === 2 ? '1' : '0.55'"
-                    (mouseenter)="setPieActive(2)"
-                    (mouseleave)="clearPieActive()"
-                    (click)="onStockClick(holdings[2])"
-                    class="pie-slice" />
-
-              <!-- NVDA: 10% (288 to 324 degrees) -->
-              <path d="M 100 100 L 29.77 172.93 A 90 90 0 0 1 11.80 65.41 Z"
-                    fill="#8b5cf6"
-                    [attr.opacity]="activePieIndex() === undefined || activePieIndex() === 3 ? '1' : '0.55'"
-                    (mouseenter)="setPieActive(3)"
-                    (mouseleave)="clearPieActive()"
-                    (click)="onStockClick(holdings[3])"
-                    class="pie-slice" />
-
-              <!-- Others: 10% (324 to 360 degrees) -->
-              <path d="M 100 100 L 11.80 65.41 A 90 90 0 0 1 100 10 Z"
-                    fill="#6366f1"
-                    [attr.opacity]="activePieIndex() === undefined || activePieIndex() === 4 ? '1' : '0.55'"
-                    (mouseenter)="setPieActive(4)"
-                    (mouseleave)="clearPieActive()"
+                    (click)="holdings()[i] && onStockClick(holdings()[i])"
                     class="pie-slice" />
 
               <!-- Center circle overlay (donut) -->
@@ -135,14 +101,14 @@
 
             <!-- Center text -->
             <div class="pie-center-text">
-              <p class="pie-value font-mono-data">{{ portfolioValue }}</p>
-              <p class="pie-label">Total Value</p>
+              <p class="pie-value font-mono-data">{{ portfolioValue() }}</p>
+              <p class="pie-label">{{ 'home.total_value' | translate }}</p>
             </div>
           </div>
 
           <!-- Holdings legend -->
           <div class="holdings-list">
-            <div class="holding-item" *ngFor="let holding of holdings">
+            <div class="holding-item" *ngFor="let holding of holdings()">
               <div class="holding-left">
                 <div class="stock-icon" [style.background]="getStockIcon(holding.symbol).background"
                      [style.color]="getStockIcon(holding.symbol).color">
@@ -165,12 +131,12 @@
       <!-- Performance Chart -->
       <div class="performance-section">
         <button class="section-link" (click)="goToPortfolio()">
-          View Investments
+          {{ 'home.view_investments' | translate }}
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
           </svg>
         </button>
-        <h2 class="section-title font-display">Portfolio Performance</h2>
+        <h2 class="section-title font-display">{{ 'home.portfolio_performance' | translate }}</h2>
 
         <!-- Period Buttons -->
         <div class="period-buttons">
@@ -219,21 +185,21 @@
 
       <!-- Trading History -->
       <div class="trades-section">
-        <h2 class="section-title font-display">Trading History</h2>
+        <h2 class="section-title font-display">{{ 'home.trading_history' | translate }}</h2>
         <div class="trades-table-wrapper">
           <table class="trades-table">
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Symbol</th>
-                <th>Type</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Total</th>
+                <th>{{ 'home.time' | translate }}</th>
+                <th>{{ 'home.symbol' | translate }}</th>
+                <th>{{ 'home.type' | translate }}</th>
+                <th>{{ 'home.quantity' | translate }}</th>
+                <th>{{ 'home.price' | translate }}</th>
+                <th>{{ 'home.total' | translate }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let trade of completedTrades">
+              <tr *ngFor="let trade of completedTrades()">
                 <td class="time-cell">{{ trade.time }}</td>
                 <td class="symbol-cell">
                   <div class="symbol-with-icon">
@@ -255,7 +221,7 @@
           </table>
         </div>
         <button class="section-link" (click)="goToTrades()">
-          View All Trades
+          {{ 'home.view_all_trades' | translate }}
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
           </svg>
