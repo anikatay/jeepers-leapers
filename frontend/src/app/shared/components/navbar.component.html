@@ -22,7 +22,7 @@
       </a>
     </nav>
 
-    <!-- Right controls: Appearance + Profile -->
+    <!-- Right controls: Appearance + Language + Profile -->
     <div class="navbar-controls">
       <!-- Appearance Dropdown -->
       <div class="appearance-container" (click)="$event.stopPropagation()">
@@ -75,6 +75,39 @@
                   {{ theme | slice:0:2 | uppercase }}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language Dropdown -->
+      <div class="language-container" (click)="$event.stopPropagation()">
+        <button class="language-button" (click)="toggleLanguageDropdown()" title="Select Language">
+          <!-- Globe icon -->
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <!-- Language label (optional, shows selected) -->
+          <span class="language-label">{{ selectedLanguage() | slice:0:2 | uppercase }}</span>
+          <!-- Dropdown arrow -->
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        <!-- Language Dropdown Menu -->
+        <div class="language-menu" *ngIf="languageOpen()" (click)="$event.stopPropagation()">
+          <div class="language-panel">
+            <p class="panel-title">Language</p>
+            <div class="language-list">
+              <button *ngFor="let lang of languages()"
+                      class="language-item"
+                      [class.active]="selectedLanguage() === lang.code"
+                      (click)="selectLanguage(lang.code)">
+                <span class="lang-english">{{ lang.englishName }}</span>
+                <span class="lang-native">{{ lang.nativeName }}</span>
+              </button>
             </div>
           </div>
         </div>

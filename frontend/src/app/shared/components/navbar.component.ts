@@ -1,7 +1,10 @@
-import { Component, Input, Output, EventEmitter, signal, HostListener, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, HostListener, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { InstrumentService } from '../../core/services/instrument.service';
+import { TranslationService, LANGUAGES, type Language, type LanguageOption } from '../../core/services/translation.service';
+import { InstrumentResponse } from '../../core/models/instrument.model';
 
 export interface NavItem {
   label: string;
@@ -21,7 +24,7 @@ export interface StockSymbol {
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css'
 })
-export class NavbarComponent {
+export class NavbarComponent implements OnInit {
   @Input() navItems: NavItem[] = [
     { label: 'Home', path: '' },
     { label: 'Portfolio', path: 'portfolio' },
@@ -36,41 +39,61 @@ export class NavbarComponent {
   searchOpen = signal(false);
   profileOpen = signal(false);
   appearanceOpen = signal(false);
+  languageOpen = signal(false);
   
   // Search state
   searchQuery = signal('');
   searchResults = signal<StockSymbol[]>([]);
   
-  // Mock stock symbols from Figma
-  private symbols: StockSymbol[] = [
-    { symbol: 'AAPL', name: 'Apple Inc.', price: 175.20 },
-    { symbol: 'TSLA', name: 'Tesla Inc.', price: 242.15 },
-    { symbol: 'MSFT', name: 'Microsoft Corp.', price: 415.30 },
-    { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 894.60 },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 178.50 },
-    { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 201.30 },
-    { symbol: 'META', name: 'Meta Platforms', price: 553.10 },
-    { symbol: 'BRK.B', name: 'Berkshire Hathaway', price: 415.00 },
-  ];
+  // Language options
+  languages = signal<LanguageOption[]>(LANGUAGES);
+  selectedLanguage = signal<Language>('en');
+  
+  // Real instruments from backend
+  private instruments = signal<InstrumentResponse[]>([]);
 
   // Get first letter of username for avatar
   get avatarLetter(): string {
     return this.userName.charAt(0).toUpperCase();
   }
 
-  constructor() {
+  constructor(private instrumentService: InstrumentService, private translationService: TranslationService) {
+    // Sync selected language with translation service
+    this.selectedLanguage.set(this.translationService.currentLanguage());
+    
     // Filter search results when search query changes
     effect(() => {
       const query = this.searchQuery().toLowerCase();
       if (query.length > 0) {
-        this.searchResults.set(
-          this.symbols.filter(s =>
-            s.symbol.toLowerCase().includes(query) ||
-            s.name.toLowerCase().includes(query)
+        const results = this.instruments()
+          .filter(inst =>
+            inst.ticker.toLowerCase().includes(query) ||
+            inst.name.toLowerCase().includes(query)
           )
-        );
+          .map(inst => ({
+            symbol: inst.ticker,
+            name: inst.name,
+            price: inst.currentPrice
+          }));
+        this.searchResults.set(results);
       } else {
         this.searchResults.set([]);
+      }
+    });
+  }
+
+  ngOnInit() {
+    this.loadInstruments();
+  }
+
+  private loadInstruments() {
+    this.instrumentService.getAllInstruments().subscribe({
+      next: (data) => {
+        this.instruments.set(data);
+      },
+      error: (err) => {
+        console.error('Failed to load instruments:', err);
+        this.instruments.set([]);
       }
     });
   }
@@ -85,9 +108,27 @@ export class NavbarComponent {
     if (!target.closest('.profile-container') && !target.closest('.profile-menu')) {
       this.profileOpen.set(false);
     }
+    if (!target.closest('.language-container') && !target.closest('.language-menu')) {
+      this.languageOpen.set(false);
+    }
     if (!target.closest('.appearance-container') && !target.closest('.appearance-menu')) {
       this.appearanceOpen.set(false);
     }
+  }
+
+  toggleLanguageDropdown() {
+    this.languageOpen.set(!this.languageOpen());
+  }
+
+  selectLanguage(lang: Language) {
+    this.selectedLanguage.set(lang);
+    this.translationService.setLanguage(lang);
+    this.languageOpen.set(false);
+  }
+
+  getLanguageName(): string {
+    const lang = LANGUAGES.find(l => l.code === this.selectedLanguage());
+    return lang ? `${lang.englishName} / ${lang.nativeName}` : 'English';
   }
 
   // Search handlers
