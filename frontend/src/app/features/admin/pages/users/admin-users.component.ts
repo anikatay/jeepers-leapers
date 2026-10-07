@@ -5,7 +5,6 @@ import { AccountService } from '../../../../core/services/accounts.service';
 import { Trade } from '../../../../core/models/trade.model';
 import { Account } from '../../../../core/models/account.model';
 import { TradesService } from '../../../../core/services/trades.service';
-import { ClientPortfolioComponent } from '../../../client/pages/portfolio/client-portfolio.component';
 
 @Component({
   selector: 'app-admin-users',
