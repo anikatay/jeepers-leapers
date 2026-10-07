@@ -20,6 +20,8 @@ export class AdminUsersComponent{
     allTimeProfitByAccountId = signal<Map<string, number>>(new Map());
     portfolioValueByAccountId = signal<Map<string, number>>(new Map());
     selectedUser = signal<any>(null);
+    holdingsTableCollapsed = signal<boolean>(false);
+    tradesTableCollapsed = signal<boolean>(false);
     searchTerm = ''; 
     pendingUserIds = new Set<string>(); 
     columns: { header: string }[] = [
@@ -168,6 +170,14 @@ export class AdminUsersComponent{
 
     clearSelection() {
       this.selectedUser.set(null);
+    }
+
+    toggleHoldingsTable() {
+      this.holdingsTableCollapsed.set(!this.holdingsTableCollapsed());
+    }
+
+    toggleTradesTable() {
+      this.tradesTableCollapsed.set(!this.tradesTableCollapsed());
     }
 
 }

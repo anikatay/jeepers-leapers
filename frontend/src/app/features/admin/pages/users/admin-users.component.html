@@ -1,11 +1,50 @@
+<!-- User List View -->
+<div>
+  <div class="table-header">
+    <h3>Accounts</h3>
+    <button (click)="toggleHoldingsTable()" class="collapse-btn" [class.collapsed]="holdingsTableCollapsed()">
+      {{ holdingsTableCollapsed() ? '▶' : '▼' }}
+    </button>
+  </div>
+  <table class="holdings-table" *ngIf="accounts()" [class.collapsed]="holdingsTableCollapsed()">
+    <thead>
+      <tr>
+        <th *ngFor="let col of columns">
+          {{ col.header }}
+        </th>
+      </tr>
+    </thead>
+
+    <tbody *ngIf="!holdingsTableCollapsed()">
+      <tr *ngFor="let user of userData()" 
+          (click)="selectUser(user)" 
+          [class.selected]="selectedUser()?.accountId === user.accountId"
+          style="cursor: pointer;">
+        <td *ngFor="let col of columns">
+          {{ getCellValue(user, col.header) }}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
 <!-- Selected User Detail View -->
 <div class="user-detail-layout" *ngIf="selectedUser()">
-  <button (click)="clearSelection()">&larr; Back to list</button>
-  <h2>{{ selectedUser().name }}'s Trades</h2>
-  <p>Account ID: {{ selectedUser().accountId }}</p>
-  <p>Balance: {{ selectedUser().balance }}</p>
+  <div class="detail-header">
+    <h2>{{ selectedUser().name }}'s Trades</h2>
+    <div class="header-actions">
+      <button (click)="toggleTradesTable()" class="collapse-btn" [class.collapsed]="tradesTableCollapsed()">
+        {{ tradesTableCollapsed() ? '▶' : '▼' }}
+      </button>
+      <button (click)="clearSelection()" class="clear-btn">✕ Clear</button>
+    </div>
+  </div>
+  <div class="detail-info">
+    <p><strong>Account ID:</strong> {{ selectedUser().accountId }}</p>
+    <p><strong>Balance:</strong> {{ selectedUser().balance }}</p>
+  </div>
 
-  <table class="trades-table" *ngIf="selectedUserTrades().length > 0">
+  <table class="trades-table" *ngIf="selectedUserTrades().length > 0" [class.collapsed]="tradesTableCollapsed()">
     <thead>
       <tr>
         <th>Trade ID</th>
@@ -16,7 +55,7 @@
         <th>Date</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody *ngIf="!tradesTableCollapsed()">
       <tr *ngFor="let trade of selectedUserTrades()">
         <td>{{ trade.tradeId }}</td>
         <td>{{ trade.ticker }}</td>
@@ -28,26 +67,5 @@
     </tbody>
   </table>
 
-  <p *ngIf="selectedUserTrades().length === 0">No trades found for this user.</p>
-</div>
-
-<!-- User List View -->
-<div *ngIf="!selectedUser()">
-  <table class="holdings-table" *ngIf="accounts()">
-    <thead>
-      <tr>
-        <th *ngFor="let col of columns">
-          {{ col.header }}
-        </th>
-      </tr>
-    </thead>
-
-    <tbody>
-      <tr *ngFor="let user of userData()" (click)="selectUser(user)" style="cursor: pointer;">
-        <td *ngFor="let col of columns">
-          {{ getCellValue(user, col.header) }}
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <p *ngIf="selectedUserTrades().length === 0" class="no-trades">No trades found for this user.</p>
 </div>
