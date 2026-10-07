@@ -1,4 +1,16 @@
 services:
+  kafka:
+    image: apache/kafka:latest
+    ports: 
+      - "8092:8092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:8092,CONTROLLER://:8093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:8092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:8093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
   app:
     build: .
     ports:
