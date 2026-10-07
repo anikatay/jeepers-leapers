@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, effect, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, formatDate } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AccountService } from '../../../../core/services/accounts.service';
 import { Trade } from '../../../../core/models/trade.model';
@@ -17,7 +17,7 @@ import { ClientPortfolioComponent } from '../../../client/pages/portfolio/client
 export class AdminUsersComponent{
     accounts = signal<Account[]>([]);
     tradesByAccountId = signal<Map<string, Trade[]>>(new Map());
-    allTimePortfolioValueByAccountId = signal<Map<string, number>>(new Map());
+    accountValue = signal<Map<string, number>>(new Map());
     allTimeProfitByAccountId = signal<Map<string, number>>(new Map());
     portfolioValueByAccountId = signal<Map<string, number>>(new Map());
     selectedUser = signal<any>(null);
@@ -25,13 +25,13 @@ export class AdminUsersComponent{
     pendingUserIds = new Set<string>(); 
     columns: { header: string }[] = [
         { header: 'Name' },
+        { header: 'Account Value' },
         { header: 'Balance' },
+        { header: 'Portfolio Value' },
+        { header: 'Profit' },
         { header: 'Trades' },
         { header: 'Created At' },
-        { header: 'Status' },
-        { header: 'Portfolio Value' },
-        { header: 'AllTim portfolio' },
-        { header: 'Profit' }
+        { header: 'Status' }
       ];
 
     userData = computed(() => {
@@ -45,8 +45,8 @@ export class AdminUsersComponent{
         createdAt: account.createdAt,
         status: account.status,
         portfolioValue: this.portfolioValueByAccountId().get(account.accountId) || 0,
-        allTimePortfolioValue: this.allTimePortfolioValueByAccountId().get(account.accountId) || 0,
-        allTimeProfit: this.allTimeProfitByAccountId().get(account.accountId) || 0,
+        accountValue: (this.portfolioValueByAccountId().get(account.accountId) || 0) + account.balance,
+        allTimeProfit: this.allTimeProfitByAccountId().get(account.accountId) || 0
       }));
 
     });
@@ -103,10 +103,6 @@ export class AdminUsersComponent{
             updatedPortfolioMap.set(accountId, metricsData.currentValue);
             this.portfolioValueByAccountId.set(updatedPortfolioMap);
 
-            const updatedAllTimePortfolioMap = new Map(this.allTimePortfolioValueByAccountId());
-            updatedAllTimePortfolioMap.set(accountId, metricsData.allTimeValue);
-            this.allTimePortfolioValueByAccountId.set(updatedAllTimePortfolioMap);
-
             const updatedAllTimeProfitMap = new Map(this.allTimeProfitByAccountId());
             updatedAllTimeProfitMap.set(accountId, metricsData.allTimeProfit);
             this.allTimeProfitByAccountId.set(updatedAllTimeProfitMap);
@@ -146,14 +142,14 @@ export class AdminUsersComponent{
             case 'Trades':
               return user.tradeCount;
             case 'Created At':
-              return user.createdAt;
+              return formatDate(user.createdAt, 'MM/dd/yyyy', 'en-US');
             case 'Status':
               return user.status;
             case 'Portfolio Value':
               return user.portfolioValue;
-            case 'All Time Portfolio Value':
-              return user.allTimePortfolioValue;
-            case 'All Time Profit':
+            case 'Account Value':
+              return user.accountValue;
+            case 'Profit':
               return user.allTimeProfit;
             default:
               return '';
