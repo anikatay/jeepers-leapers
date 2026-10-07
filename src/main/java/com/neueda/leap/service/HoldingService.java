@@ -104,8 +104,8 @@ public class HoldingService implements IService {
             throw new ObjectInvalidException("amount cannot be less than 1");
         }
         int newQuantity = holding.getQuantity() + amount;
-        int updatHolding = holdingMapper.updateHoldingQuantity(holding.getAccountId(),holding.getInstrumentId(), newQuantity);
-        if(updatHolding < 1){
+        int updateHolding = holdingMapper.updateHoldingQuantity(holding.getAccountId(),holding.getInstrumentId(), newQuantity);
+        if(updateHolding < 1){
             throw new ObjectNotProcessedException("Was unable to update holding ");
         }
         return 1;
@@ -118,9 +118,18 @@ public class HoldingService implements IService {
         if(amount <= 0){
             throw new ObjectInvalidException("amount cannot be less than 1");
         }
-        int newQuantity = holding.getQuantity() - amount;
-        int updatHolding = holdingMapper.updateHoldingQuantity(holding.getAccountId(),holding.getInstrumentId(), newQuantity);
-        if(updatHolding < 1){
+        if(amount > holding.getQuantity()){
+            throw new ObjectInvalidException("amount cannot be more than quantity");
+        }
+        final int newQuantity = holding.getQuantity() - amount;
+        int updateHolding;
+        if(newQuantity != 0){
+            updateHolding = holdingMapper.updateHoldingQuantity(holding.getAccountId(),holding.getInstrumentId(), newQuantity);
+        }else{
+            updateHolding = holdingMapper.deleteHolding(holding.getAccountId(),holding.getInstrumentId());
+        }
+
+        if(updateHolding < 1){
             throw new ObjectNotProcessedException("Was unable to update holding ");
         }
         return 1;
