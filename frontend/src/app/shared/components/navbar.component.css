@@ -640,3 +640,112 @@ button {
 .profile-menu button.logout {
   color: #dc2626;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LANGUAGE DROPDOWN
+   ────────────────────────────────────────────────────────────────────────── */
+
+.language-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.language-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.language-button:hover {
+  background: var(--secondary);
+  border-color: var(--primary);
+}
+
+.language-button svg {
+  flex-shrink: 0;
+}
+
+.language-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.language-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  width: 16rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.language-panel {
+  padding: 1rem;
+}
+
+.language-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
+.language-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.75rem;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.language-item:hover {
+  background: var(--secondary);
+  border-color: var(--border);
+}
+
+.language-item.active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  border-color: var(--primary);
+}
+
+.lang-english {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.lang-native {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
