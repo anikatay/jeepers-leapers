@@ -1,6 +1,17 @@
-<!-- Figma-compliant Portfolio page matching Portfolio.tsx exactly -->
+<!-- Figma-compliant Portfolio page with real backend data -->
 <div class="portfolio-shell">
-  <div class="portfolio-content">
+  <!-- Loading State -->
+  <div *ngIf="loading()" class="portfolio-content" style="opacity: 0.6;">
+    <p style="text-align: center; color: var(--muted-foreground);">Loading portfolio data...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error() && !loading()" class="portfolio-content">
+    <p style="text-align: center; color: var(--destructive); margin: 2rem 0;">{{ error() }}</p>
+  </div>
+
+  <!-- Main Content -->
+  <div class="portfolio-content" *ngIf="!loading()">
     <!-- Summary Cards Grid - 2 col (mobile) → 4 col (desktop) -->
     <div class="summary-cards-grid">
       <div *ngFor="let card of summaryCards()" class="summary-card">
@@ -22,7 +33,7 @@
           <input
             type="text"
             class="search-input"
-            placeholder="Search holdings"
+            placeholder="{{ 'portfolio.search_stocks' | translate }}"
             [(ngModel)]="searchQuery"
             (ngModelChange)="searchQuery.set($event)" />
         </div>
@@ -34,7 +45,7 @@
             class="filter-button"
             [class.active]="filterType() === f"
             (click)="setFilter(f)">
-            {{ f === 'all' ? 'All' : f === 'gain' ? 'Gains' : 'Losses' }}
+            {{ f === 'all' ? ('portfolio.all' | translate) : f === 'gain' ? ('portfolio.gains' | translate) : ('portfolio.losses' | translate) }}
           </button>
         </div>
       </div>
@@ -44,27 +55,19 @@
         <table class="holdings-table">
           <thead>
             <tr>
-              <th class="col-symbol">Symbol</th>
-              <th class="col-company">Company</th>
+              <th class="col-symbol">{{ 'home.symbol' | translate }}</th>
+              <th class="col-company">{{ 'portfolio.company' | translate }}</th>
               <th class="col-sortable" (click)="toggleSort('shares')">
                 <button class="sort-header">
-                  Shares
+                  {{ 'portfolio.shares' | translate }}
                   <span *ngIf="sortBy() === 'shares'" class="sort-indicator">
-                    {{ sortDir() === 'desc' ? '↓' : '↑' }}
-                  </span>
-                </button>
-              </th>
-              <th class="col-sortable" (click)="toggleSort('buyingPrice')">
-                <button class="sort-header">
-                  Buying Price
-                  <span *ngIf="sortBy() === 'buyingPrice'" class="sort-indicator">
                     {{ sortDir() === 'desc' ? '↓' : '↑' }}
                   </span>
                 </button>
               </th>
               <th class="col-sortable" (click)="toggleSort('currentPrice')">
                 <button class="sort-header">
-                  Current Price
+                  {{ 'portfolio.current_price' | translate }}
                   <span *ngIf="sortBy() === 'currentPrice'" class="sort-indicator">
                     {{ sortDir() === 'desc' ? '↓' : '↑' }}
                   </span>
@@ -109,9 +112,6 @@
               <!-- Shares -->
               <td class="col-numeric font-mono-data">{{ holding.shares }}</td>
 
-              <!-- Buying Price -->
-              <td class="col-numeric font-mono-data">${{ holding.buyingPrice.toFixed(2) }}</td>
-
               <!-- Current Price -->
               <td class="col-numeric font-mono-data">${{ holding.currentPrice.toFixed(2) }}</td>
 
@@ -119,29 +119,25 @@
               <td class="col-numeric font-mono-data">{{ '$' + holding.currentValue.toLocaleString() }}</td>
 
               <!-- Gain/Loss with % and $ -->
-              <td class="col-gain" [class.gain-positive]="holding.gain >= 0" [class.gain-negative]="holding.gain < 0">
+              <td class="col-gain">
                 <div class="gain-content">
-                  <p class="gain-pct font-mono-data">
-                    {{ holding.gainPct >= 0 ? '↑ ' : '↓ ' }}{{ holding.gainPct.toFixed(2) }}%
-                  </p>
-                  <p class="gain-dollar font-mono-data">
-                    {{ holding.gain >= 0 ? '+' : '-' }}${{ Math.abs(holding.gain).toLocaleString() }}
-                  </p>
+                  <p class="gain-pct font-mono-data">N/A</p>
+                  <p class="gain-dollar font-mono-data">N/A</p>
                 </div>
               </td>
 
               <!-- Buy More / Sell Buttons -->
               <td class="col-actions">
                 <div class="action-buttons">
-                  <button class="btn-buy" (click)="openTradeModal(holding, 'BUY')">Buy More</button>
-                  <button class="btn-sell" (click)="openTradeModal(holding, 'SELL')">Sell</button>
+                  <button class="btn-buy" (click)="openTradeModal(holding, 'BUY')">{{ 'portfolio.buy_more' | translate }}</button>
+                  <button class="btn-sell" (click)="openTradeModal(holding, 'SELL')">{{ 'portfolio.sell' | translate }}</button>
                 </div>
               </td>
             </tr>
 
             <!-- Empty State -->
             <tr *ngIf="filteredAndSorted().length === 0" class="empty-row">
-              <td [attr.colspan]="8" class="empty-cell">No holdings found</td>
+              <td [attr.colspan]="8" class="empty-cell">{{ 'portfolio.no_holdings' | translate }}</td>
             </tr>
           </tbody>
         </table>
@@ -185,12 +181,12 @@
           <button class="toggle-btn"
                   [class.active]="modalMode() === 'BUY'"
                   (click)="modalMode.set('BUY')">
-            Buy Shares
+            {{ 'portfolio.buy_shares' | translate }}
           </button>
           <button class="toggle-btn sell-mode"
                   [class.active]="modalMode() === 'SELL'"
                   (click)="modalMode.set('SELL')">
-            Sell Shares
+            {{ 'portfolio.sell_shares' | translate }}
           </button>
         </div>
 
@@ -205,7 +201,7 @@
 
         <!-- Shares Input -->
         <div class="input-section">
-          <p class="section-label">Shares</p>
+          <p class="section-label">{{ 'portfolio.shares_input' | translate }}</p>
           <input
             type="number"
             min="0"
@@ -217,10 +213,15 @@
 
         <!-- Estimated Total -->
         <div class="estimated-total">
-          <span class="total-label">Estimated Total</span>
+          <span class="total-label">{{ 'portfolio.estimated_total' | translate }}</span>
           <span class="total-value font-mono-data">
             ${{ ((parseFloat(modalQuantity()) || 0) * (selectedHolding()?.currentPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
           </span>
+        </div>
+
+        <!-- Error Message -->
+        <div *ngIf="tradeError()" class="error-message" style="color: var(--destructive); text-align: center; font-size: 0.875rem; margin: 1rem 0; padding: 0.75rem; background: rgba(220, 38, 38, 0.1); border-radius: 0.5rem; border-left: 3px solid var(--destructive);">
+          {{ tradeError() }}
         </div>
 
         <!-- Confirm Button -->
@@ -230,11 +231,11 @@
                 [disabled]="(parseFloat(modalQuantity()) || 0) <= 0 || isSubmitting()"
                 (click)="confirmTrade()">
           <span *ngIf="isSubmitting()" class="spinner"></span>
-          {{ isSubmitting() ? 'Processing...' : (modalMode() === 'BUY' ? 'Confirm Buy' : 'Confirm Sell') }}
+          {{ isSubmitting() ? ('common.processing' | translate) : (modalMode() === 'BUY' ? ('portfolio.confirm_buy' | translate) : ('portfolio.confirm_sell' | translate)) }}
         </button>
 
         <!-- Cancel Button -->
-        <button class="cancel-button" (click)="closeModal()">Cancel</button>
+        <button class="cancel-button" (click)="closeModal()">{{ 'common.cancel' | translate }}</button>
       </div>
     </div>
   </div>
