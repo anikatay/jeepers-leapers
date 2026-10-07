@@ -23,7 +23,7 @@
         <td>{{ trade.side }}</td>
         <td>{{ trade.quantity }}</td>
         <td>{{ trade.executionPrice }}</td>
-        <td>{{ trade.executedAt }}</td>
+        <td>{{ trade.executedAt | date: 'MM/dd/yyyy' }}</td>
       </tr>
     </tbody>
   </table>
