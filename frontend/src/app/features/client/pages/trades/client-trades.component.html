@@ -3,13 +3,13 @@
   <div class="grid grid-cols-3 gap-3">
     <!-- Total Trades Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
-      <p class="text-xs font-medium" style="color: var(--muted-foreground);">Total Trades</p>
+      <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.total_trades' | translate }}</p>
       <p class="font-bold text-2xl mt-1 font-mono" style="color: var(--foreground);">{{ totalTrades }}</p>
     </div>
 
     <!-- Total Bought Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
-      <p class="text-xs font-medium" style="color: var(--muted-foreground);">Total Bought</p>
+      <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.total_bought' | translate }}</p>
       <p class="font-bold text-2xl mt-1 font-mono text-green-600 dark:text-green-400">
         ${{ (totalBought).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
       </p>
@@ -17,7 +17,7 @@
 
     <!-- Total Sold Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
-      <p class="text-xs font-medium" style="color: var(--muted-foreground);">Total Sold</p>
+      <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.total_sold' | translate }}</p>
       <p class="font-bold text-2xl mt-1 font-mono text-red-500">
         ${{ (totalSold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
       </p>
@@ -28,11 +28,11 @@
   <div class="border rounded-2xl p-5" style="background: var(--card); border-color: var(--border);">
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-      <h2 class="font-bold text-lg" style="color: var(--foreground);">Trading History</h2>
+      <h2 class="font-bold text-lg" style="color: var(--foreground);">{{ 'trades.title' | translate }}</h2>
       <button (click)="openNewTrade()" 
         class="px-4 py-2 text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
         style="background: var(--primary); color: var(--primary-foreground);">
-        New Trade
+        {{ 'trades.new_trade' | translate }}
       </button>
     </div>
 
@@ -46,7 +46,7 @@
           <path stroke-linecap="round" d="M21 21l-4.35-4.35"></path>
         </svg>
         <input [value]="search()" (input)="onSearchChange($event.target.value)" 
-          placeholder="Search symbol..."
+          placeholder="{{ 'trades.search' | translate }}"
           class="w-full pl-8 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           style="background: var(--secondary); border-color: var(--border); color: var(--foreground);" />
       </div>
@@ -56,9 +56,9 @@
         aria-label="Type"
         class="px-3 py-2 rounded-lg border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
         style="background: var(--secondary); border-color: var(--border); color: var(--foreground);">
-        <option value="all">All Trades</option>
-        <option value="Buy">Buy</option>
-        <option value="Sell">Sell</option>
+        <option value="all">{{ 'trades.all_types' | translate }}</option>
+        <option value="Buy">{{ 'trades.buy' | translate }}</option>
+        <option value="Sell">{{ 'trades.sell' | translate }}</option>
       </select>
 
       <!-- Date Filter Toggle -->
@@ -72,7 +72,7 @@
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4"></path>
         </svg>
-        Filter
+        {{ 'trades.filter_by_date' | translate }}
       </button>
 
       <!-- Sort -->
