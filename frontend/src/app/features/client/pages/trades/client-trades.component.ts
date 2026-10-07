@@ -1,6 +1,11 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TradesService } from '../../../../core/services/trades.service';
+import { InstrumentService } from '../../../../core/services/instrument.service';
+import { TranslationService } from '../../../../core/services/translation.service';
+import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
+import { TradeResponse } from '../../../../core/models/trade.model';
 
 interface Trade {
   id?: string;
@@ -20,26 +25,17 @@ type TypeFilter = 'all' | 'Buy' | 'Sell';
 @Component({
   selector: 'app-client-trades',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './client-trades.component.html',
   styleUrl: './client-trades.component.css'
 })
 export class ClientTradesComponent implements OnInit {
-  // Placeholder trade data
-  allTrades: Trade[] = [
-    { date: 'Sep 24, 2026', time: '10:24 AM', symbol: 'AAPL', name: 'Apple Inc.', type: 'Buy', qty: 10, price: 175.20, total: 1752.00 },
-    { date: 'Sep 24, 2026', time: '11:08 AM', symbol: 'TSLA', name: 'Tesla Inc.', type: 'Sell', qty: 5, price: 242.15, total: 1210.75 },
-    { date: 'Sep 24, 2026', time: '1:32 PM', symbol: 'MSFT', name: 'Microsoft Corp.', type: 'Buy', qty: 8, price: 415.30, total: 3322.40 },
-    { date: 'Sep 24, 2026', time: '3:10 PM', symbol: 'NVDA', name: 'NVIDIA Corp.', type: 'Sell', qty: 3, price: 894.60, total: 2683.80 },
-    { date: 'Sep 23, 2026', time: '9:35 AM', symbol: 'GOOGL', name: 'Alphabet Inc.', type: 'Buy', qty: 6, price: 178.50, total: 1071.00 },
-    { date: 'Sep 23, 2026', time: '2:15 PM', symbol: 'META', name: 'Meta Platforms', type: 'Buy', qty: 3, price: 553.10, total: 1659.30 },
-    { date: 'Sep 22, 2026', time: '10:00 AM', symbol: 'AMZN', name: 'Amazon.com', type: 'Buy', qty: 8, price: 201.30, total: 1610.40 },
-    { date: 'Sep 22, 2026', time: '3:45 PM', symbol: 'AAPL', name: 'Apple Inc.', type: 'Buy', qty: 5, price: 173.80, total: 869.00 },
-    { date: 'Sep 21, 2026', time: '11:20 AM', symbol: 'TSLA', name: 'Tesla Inc.', type: 'Sell', qty: 2, price: 240.00, total: 480.00 },
-    { date: 'Sep 20, 2026', time: '9:45 AM', symbol: 'NVDA', name: 'NVIDIA Corp.', type: 'Buy', qty: 2, price: 885.00, total: 1770.00 },
-    { date: 'Sep 19, 2026', time: '1:00 PM', symbol: 'MSFT', name: 'Microsoft Corp.', type: 'Buy', qty: 4, price: 410.20, total: 1640.80 },
-    { date: 'Sep 18, 2026', time: '10:30 AM', symbol: 'BRK.B', name: 'Berkshire Hathaway', type: 'Buy', qty: 10, price: 390.00, total: 3900.00 },
-  ];
+  private readonly ACCOUNT_ID = 'd4000000-0000-0000-0000-000000000001';
+
+  // Real trade data from backend
+  allTrades = signal<Trade[]>([]);
+  loading = signal(false);
+  error = signal<string | null>(null);
 
   // Filter controls
   search = signal('');
@@ -61,8 +57,43 @@ export class ClientTradesComponent implements OnInit {
     'BRK.B': { label: 'B', background: '#1e3a8a', color: '#ffffff' },
   };
 
+  constructor(private tradesService: TradesService, private instrumentService: InstrumentService, public translationService: TranslationService) {}
+
   ngOnInit() {
-    // UI initialization only
+    this.loadTrades();
+  }
+
+  private loadTrades() {
+    this.loading.set(true);
+    this.error.set(null);
+    this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
+      next: (tradeResponses) => {
+        const trades = tradeResponses.map((tr: TradeResponse) => this.mapToTrade(tr));
+        this.allTrades.set(trades);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load trades:', err);
+        this.error.set('Failed to load trades');
+        this.allTrades.set([]);
+        this.loading.set(false);
+      }
+    });
+  }
+
+  private mapToTrade(response: TradeResponse): Trade {
+    const dateTime = new Date(response.executedAt);
+    return {
+      id: response.tradeId,
+      date: dateTime.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      time: dateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+      symbol: response.ticker,
+      name: response.name,
+      type: response.side === 'BUY' ? 'Buy' : 'Sell',
+      qty: response.quantity,
+      price: response.executionPrice,
+      total: response.tradeValue
+    };
   }
 
   getStockIcon(symbol: string) {
@@ -74,13 +105,14 @@ export class ClientTradesComponent implements OnInit {
   }
 
   get filteredTrades(): Trade[] {
+    const trades = this.allTrades();
     const searchLower = this.search().toLowerCase().trim();
     const type = this.typeFilter();
     const from = this.fromDate();
     const to = this.toDate();
     const order = this.sortOrder();
 
-    let filtered = this.allTrades.filter(trade => {
+    let filtered = trades.filter(trade => {
       // Search filter
       if (searchLower && !trade.symbol.toLowerCase().includes(searchLower) && !trade.name.toLowerCase().includes(searchLower)) {
         return false;
@@ -125,17 +157,17 @@ export class ClientTradesComponent implements OnInit {
   }
 
   get totalTrades(): number {
-    return this.allTrades.length;
+    return this.allTrades().length;
   }
 
   get totalBought(): number {
-    return this.allTrades
+    return this.allTrades()
       .filter(tr => tr.type === 'Buy')
       .reduce((sum, tr) => sum + tr.total, 0);
   }
 
   get totalSold(): number {
-    return this.allTrades
+    return this.allTrades()
       .filter(tr => tr.type === 'Sell')
       .reduce((sum, tr) => sum + tr.total, 0);
   }
@@ -178,7 +210,8 @@ export class ClientTradesComponent implements OnInit {
   }
 
   openNewTrade() {
-    // Placeholder for opening trade modal
-    console.log('Open new trade modal');
+    // Redirect to Portfolio to use its trade modal
+    window.location.href = '/client/portfolio';
   }
+
 }
