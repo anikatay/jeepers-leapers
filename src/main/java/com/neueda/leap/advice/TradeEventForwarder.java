@@ -1,10 +1,11 @@
-package com.neueda.leap.producer;
+package com.neueda.leap.advice;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.neueda.leap.event.TradeExecutedEvent;
+import com.neueda.leap.producer.TradeEventProducer;
 
 @Component
 public class TradeEventForwarder {
