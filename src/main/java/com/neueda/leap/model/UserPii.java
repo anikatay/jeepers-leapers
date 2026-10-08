@@ -1,5 +1,5 @@
 package com.neueda.leap.model;
-
+import com.neueda.leap.exception.ObjectInvalidException;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.util.UUID;
@@ -7,8 +7,6 @@ import java.util.UUID;
 public class UserPii {
 
     private UUID userId;
-
-    private User user;
 
     private String firstName;
 
@@ -29,7 +27,6 @@ public class UserPii {
 
     public UserPii(
         UUID userId, 
-        User user, 
         String firstName, 
         String lastName, 
         OffsetDateTime dateOfBirth, 
@@ -39,7 +36,6 @@ public class UserPii {
         String email
     ) {
         this.userId = userId;
-        this.user = user;
         this.firstName = firstName;
         this.lastName = lastName;
         this.dateOfBirth = dateOfBirth;
@@ -51,9 +47,6 @@ public class UserPii {
 
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) { this.userId = userId; }
-
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -79,7 +72,7 @@ public class UserPii {
     public int getAge() {
         if (dateOfBirth == null) {
             // TODO: Change exception to proper response body
-            throw new IllegalStateException("Date of birth is not set");
+            throw new ObjectInvalidException("Date of birth is not set");
         }
         return Period.between(dateOfBirth.toLocalDate(), OffsetDateTime.now().toLocalDate()).getYears();
     }

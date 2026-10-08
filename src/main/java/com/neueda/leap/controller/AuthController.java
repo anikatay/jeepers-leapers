@@ -28,23 +28,32 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        try {
-            String role = authService.login(request.getEmail(), request.getPassword());
-            UUID userId = authService.getUserIdByEmail(request.getEmail());
-
-            // Generate JWT token with user info, role, and userId
-            String token = jwtUtil.generateToken(request.getEmail(), role, userId);
-
-            return ResponseEntity.ok(new LoginResponse(token, userId, role));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        String role = authService.login(request.getEmail(), request.getPassword());
+        if (role == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        UUID userId = authService.getUserIdByEmail(request.getEmail());
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        // Generate JWT token with user info, role, and userId
+        String token = jwtUtil.generateToken(request.getEmail(), role, userId);
+
+        return ResponseEntity.ok(new LoginResponse(token, userId, role));
     }
 
     // DTOs for request/response
     public static class LoginRequest {
         private String email;
         private String password;
+
+        public LoginRequest() {}
+
+        public LoginRequest(String email, String password) {
+            this.email = email;
+            this.password = password;
+        }
 
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }

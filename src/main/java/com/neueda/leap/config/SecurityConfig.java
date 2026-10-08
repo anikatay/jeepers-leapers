@@ -40,9 +40,11 @@ public class SecurityConfig {
                         // Analyst endpoints - ANALYST or ADMIN
                         .requestMatchers("/analyst/**").hasAnyRole("ANALYST", "ADMIN")
                         
+                        // API endpoints - all authenticated users
+                        .requestMatchers("/api/**").permitAll()
                         
                         // Portfolio endpoints - authenticated users (CLIENT, ANALYST, ADMIN)
-                        .requestMatchers("/portfolio/**").authenticated()
+                        .requestMatchers("/holdings/**").authenticated()
                         .requestMatchers("/trades/**").authenticated()
                         
                         // Everything else requires authentication

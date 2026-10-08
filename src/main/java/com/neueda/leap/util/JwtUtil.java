@@ -2,11 +2,13 @@ package com.neueda.leap.util;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
+import java.util.Base64;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -18,6 +20,14 @@ public class JwtUtil {
     private static final long EXPIRATION_TIME = 3600000; // 1 hour in milliseconds
 
     /**
+     * Decode the Base64-encoded secret and return a SecretKey
+     */
+    private SecretKey getSigningKey() {
+        byte[] decodedKey = Base64.getDecoder().decode(secret);
+        return Keys.hmacShaKeyFor(decodedKey);
+    }
+
+    /**
      * Generate a JWT token for a user with a role and userId
      */
     public String generateToken(String username, String role, UUID userId) {
@@ -27,7 +37,7 @@ public class JwtUtil {
                 .claim("userId", userId.toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(SignatureAlgorithm.HS256, secret)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -36,10 +46,10 @@ public class JwtUtil {
      */
     public String extractUsername(String token) {
         return Jwts.parser()
-                .setSigningKey(secret)
+                .verifyWith(getSigningKey())
                 .build()
-                .parseClaimsJws(token)
-                .getBody()
+                .parseSignedClaims(token)
+                .getPayload()
                 .getSubject();
     }
 
@@ -49,9 +59,9 @@ public class JwtUtil {
     public boolean isTokenValid(String token) {
         try {
             Jwts.parser()
-                    .setSigningKey(secret)
+                    .verifyWith(getSigningKey())
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
             return true;
         } catch (Exception e) {
             return false;
