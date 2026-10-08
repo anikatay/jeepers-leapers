@@ -3,12 +3,14 @@
   <!-- Loading State -->
   <div *ngIf="loading()" class="portfolio-content" style="opacity: 0.6;">
     <p style="text-align: center; color: var(--muted-foreground);">Loading portfolio data...</p>
+
   </div>
 
   <!-- Error State -->
   <div *ngIf="error() && !loading()" class="portfolio-content">
     <p style="text-align: center; color: var(--destructive); margin: 2rem 0;">{{ error() }}</p>
   </div>
+
 
   <!-- Main Content -->
   <div class="portfolio-content" *ngIf="!loading()">
@@ -145,6 +147,7 @@
     </div>
   </div>
 
+<<<<<<< HEAD
   <!-- Buy/Sell Modal (Figma-compliant) -->
   <div *ngIf="isModalOpen()" class="modal-overlay" (click)="closeModal()">
     <div class="modal-content" (click)="$event.stopPropagation()">

@@ -1,5 +1,5 @@
 import { Component, signal, computed, OnInit, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms';
 import { PortfolioService } from '../../../../core/services/portfolio.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
@@ -42,6 +42,7 @@ interface StockIconStyle {
   color: string;
 }
 
+
 @Component({
   selector: 'app-client-portfolio',
   standalone: true,
@@ -50,6 +51,7 @@ interface StockIconStyle {
   styleUrl: './client-portfolio.component.css'
 })
 export class ClientPortfolioComponent implements OnInit {
+
   private readonly ACCOUNT_ID = 'd4000000-0000-0000-0000-000000000001';
 
   // Real data from backend
@@ -122,6 +124,7 @@ export class ClientPortfolioComponent implements OnInit {
 
   ngOnInit() {
     this.loadData();
+
   }
 
   private loadData() {

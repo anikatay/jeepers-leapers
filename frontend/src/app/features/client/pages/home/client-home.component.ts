@@ -11,6 +11,7 @@ import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
 
+
 export interface StockHolding {
   symbol: string;
   name: string;
@@ -46,12 +47,14 @@ export interface PieSlice {
   templateUrl: './client-home.component.html',
   styleUrl: './client-home.component.css'
 })
+
 export class ClientHomeComponent implements OnInit {
   userInitial = 'A';
   userName = 'd4000000-0000-0000-0000-000000000001';
 
   // Hardcoded development account ID
   private readonly ACCOUNT_ID = 'd4000000-0000-0000-0000-000000000001';
+
 
   holdings = signal<StockHolding[]>([]);
   completedTrades = signal<Trade[]>([]);
