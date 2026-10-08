@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -49,13 +48,6 @@ public class AccountController {
     public ResponseEntity<AccountResponse> getAccount(@PathVariable UUID accountId){
         Account account = accountService.getAccount(accountId);
         return ResponseEntity.ok(AccountResponse.mapToResponse(account));
-    }
-
-    // get all active accounts
-    @GetMapping("/active")
-    public ResponseEntity<List<AccountResponse>> getAllActiveAccounts(){
-        List<AccountResponse> accounts = accountService.getAllActiveAccounts();
-        return ResponseEntity.ok(accounts);
     }
 
     // close account
