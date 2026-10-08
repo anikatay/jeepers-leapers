@@ -157,4 +157,18 @@ public class AccountService implements IService {
                         a.getCreatedAt()))
                 .toList();
     }
+
+    public List<AccountResponse> getAllActiveAccounts() {
+        List<Account> accounts = accountMapper.findAllActiveAccounts();
+
+        return accounts.stream()
+                .map(a -> new AccountResponse(
+                        a.getAccountId(),
+                        a.getUserId(),
+                        a.getCurrency(),
+                        a.getBalance(),
+                        a.getStatus(),
+                        a.getCreatedAt()))
+                .toList();
+    }
 }

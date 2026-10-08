@@ -1,39 +1,190 @@
-<!-- navbar.component.html -->
-<header class="topbar">
-<!-- index.html, inside <head> -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <div class="brand">
-      <div class="brand-mark">JL</div>
-      <span class="brand-name">{{ brandName }}</span>
+<!-- Figma-compliant navbar with search, navigation, theme, and profile controls -->
+<header class="navbar-header">
+  <!-- Top row: Logo, Nav, Appearance, Profile -->
+  <div class="navbar-top">
+    <!-- Logo and Brand (left) -->
+    <div class="navbar-logo">
+      <button class="logo-button" [routerLink]="['']">
+        <img src="/assets/symbol.png" alt="Bull Exchange Logo" class="logo-image" />
+        <span class="brand-text font-display">{{ brandName }}</span>
+      </button>
     </div>
-  
-    <nav class="main-nav" aria-label="Navigation">
+
+    <!-- Center Navigation -->
+    <nav class="navbar-nav" aria-label="Main Navigation">
       <a *ngFor="let item of navItems"
-         class="nav-item"
-         [routerLink]="item.path"
+         [routerLink]="[item.path]"
          routerLinkActive="active"
-         [routerLinkActiveOptions]="{ exact: item.path === '' }">
+         [routerLinkActiveOptions]="{ exact: item.path === '' }"
+         class="nav-link">
         {{ item.label }}
+        <span class="nav-underline" *ngIf="false"></span>
       </a>
     </nav>
-  
-    <div class="profile-wrap" (click)="$event.stopPropagation()">
-      <button type="button" class="profile-button" (click)="toggleProfile($event)">
-        <span class="profile-name">{{ userName }}</span>
-        <span class="avatar" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="8" r="4"></circle>
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path>
+
+    <!-- Right controls: Appearance + Language + Profile -->
+    <div class="navbar-controls">
+      <!-- Appearance Dropdown -->
+      <div class="appearance-container" (click)="$event.stopPropagation()">
+        <button class="appearance-button" (click)="toggleAppearance()" title="Appearance & Language">
+          <!-- Sun/Moon icon -->
+          <svg *ngIf="true" class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
           </svg>
-        </span>
-      </button>
-  
-      <div class="profile-menu" *ngIf="profileOpen">
-        <button type="button" (click)="selectProfileOption('Profile')">Profile</button>
-        <button type="button" (click)="selectProfileOption('Settings')">Settings</button>
-        <button type="button" class="logout" (click)="selectProfileOption('Logout')">Logout</button>
+          <!-- Color swatches -->
+          <span class="theme-swatches">
+            <span class="swatch" style="background-color: var(--primary);"></span>
+            <span class="swatch" style="background-color: var(--accent);"></span>
+          </span>
+          <!-- Dropdown arrow -->
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        <!-- Appearance Dropdown Menu -->
+        <div class="appearance-menu" *ngIf="appearanceOpen()" (click)="$event.stopPropagation()">
+          <div class="appearance-panel">
+            <p class="panel-title">Appearance</p>
+            
+            <!-- Light/Dark Mode -->
+            <div class="mode-section">
+              <p class="section-label">Mode</p>
+              <div class="mode-buttons">
+                <button class="mode-btn light-btn" (click)="toggleDarkMode()" title="Light Mode">☀️</button>
+                <button class="mode-btn dark-btn" (click)="toggleDarkMode()" title="Dark Mode">🌙</button>
+              </div>
+            </div>
+
+            <!-- Color Themes -->
+            <div class="theme-section">
+              <p class="section-label">Theme</p>
+              <div class="theme-grid">
+                <button *ngFor="let theme of ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']"
+                        class="theme-btn"
+                        (click)="changeTheme(theme)"
+                        [title]="theme | titlecase">
+                  {{ theme | slice:0:2 | uppercase }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language Dropdown -->
+      <div class="language-container" (click)="$event.stopPropagation()">
+        <button class="language-button" (click)="toggleLanguageDropdown()" title="Select Language">
+          <!-- Globe icon -->
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <!-- Language label (optional, shows selected) -->
+          <span class="language-label">{{ selectedLanguage() | slice:0:2 | uppercase }}</span>
+          <!-- Dropdown arrow -->
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        <!-- Language Dropdown Menu -->
+        <div class="language-menu" *ngIf="languageOpen()" (click)="$event.stopPropagation()">
+          <div class="language-panel">
+            <p class="panel-title">Language</p>
+            <div class="language-list">
+              <button *ngFor="let lang of languages()"
+                      class="language-item"
+                      [class.active]="selectedLanguage() === lang.code"
+                      (click)="selectLanguage(lang.code)">
+                <span class="lang-english">{{ lang.englishName }}</span>
+                <span class="lang-native">{{ lang.nativeName }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Dropdown -->
+      <div class="profile-container" (click)="$event.stopPropagation()">
+        <button class="profile-button" (click)="toggleProfile()">
+          <div class="avatar">{{ avatarLetter }}</div>
+          <span class="username">Hi, {{ userName.split(' ')[0] }}</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        <!-- Profile Menu -->
+        <div class="profile-menu" *ngIf="profileOpen()" (click)="$event.stopPropagation()">
+          <button class="menu-item" (click)="selectProfileOption('profile')">
+            <span>Profile</span>
+          </button>
+          <button class="menu-item" (click)="selectProfileOption('settings')">
+            <span>Settings</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button class="menu-item logout" (click)="selectProfileOption('logout')">
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
     </div>
-  </header>
+  </div>
+
+  <!-- Search row (below top row) -->
+  <div class="navbar-search-row">
+    <div class="search-container" (click)="$event.stopPropagation()">
+      <div class="search-input-wrapper">
+        <!-- Search icon -->
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path stroke-linecap="round" d="M21 21l-4.35-4.35"></path>
+        </svg>
+
+        <!-- Search input -->
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Enter company or symbol"
+          [(ngModel)]="searchQuery"
+          (input)="onSearchInput($event)"
+          (focus)="onSearchFocus()"
+          (keydown)="onSearchKeyDown($event)"
+          autocomplete="off" />
+
+        <!-- Trade button -->
+        <button class="trade-button" (click)="tradeClick()">
+          Trade
+        </button>
+      </div>
+
+      <!-- Search hint -->
+      <p class="search-hint">e.g. AAPL, TSLA, NVDA</p>
+
+      <!-- Search dropdown results -->
+      <div class="search-dropdown" *ngIf="searchOpen() && searchQuery().length > 0" (click)="$event.stopPropagation()">
+        <div *ngIf="searchResults().length === 0" class="no-results">
+          <p>No results found</p>
+        </div>
+        <button *ngFor="let result of searchResults()"
+                class="search-result-item"
+                (click)="selectStock(result)">
+          <div class="result-left">
+            <span class="result-symbol font-mono-data">{{ result.symbol }}</span>
+            <span class="result-name">{{ result.name }}</span>
+          </div>
+          <span class="result-price font-mono-data">${{ result.price }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
