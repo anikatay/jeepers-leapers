@@ -31,12 +31,12 @@ public class UserController {
         User user = new User(
             createUserRequest.userId(),
             createUserRequest.role(),
-            createUserRequest.status(),
-            createUserRequest.firstName(),
-            createUserRequest.lastName()
+            createUserRequest.status()
         );
         UserPii userPii = new UserPii(
             createUserRequest.userId(),
+            createUserRequest.firstName(),
+            createUserRequest.lastName(),
             createUserRequest.dateOfBirth(),
             createUserRequest.ssn(),
             createUserRequest.address(),

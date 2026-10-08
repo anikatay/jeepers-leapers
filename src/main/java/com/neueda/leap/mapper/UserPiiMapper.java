@@ -19,6 +19,9 @@ public interface UserPiiMapper {
     @Select("SELECT first_name FROM user_pii WHERE user_id = #{userId}")
     String getUserFirstNameById(UUID userId);
 
+    @Select("SELECT last_name FROM user_pii WHERE user_id = #{userId}")
+    String getUserLastNameById(UUID userId);
+
     @Select("SELECT date_of_birth FROM user_pii WHERE user_id = #{userId}")
     OffsetDateTime getUserDateOfBirthById(UUID userId);
 

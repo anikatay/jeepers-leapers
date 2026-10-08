@@ -2,6 +2,10 @@ package com.neueda.leap.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.neueda.leap.exception.ObjectAlreadyExistsException;
+import com.neueda.leap.exception.ObjectNotProcessedException;
+import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.mapper.UserMapper;
 import com.neueda.leap.service.UserPiiService;
 import com.neueda.leap.model.UserPii;
@@ -28,8 +32,7 @@ public class UserService {
     public String getUserRole(UUID userId) {
         User user = userMapper.getUserById(userId);
         if (user == null) {
-            // TODO: make new exception with response body
-            throw new IllegalArgumentException("User not found");
+            throw new ObjectNotFoundException("User not found");
         }
         return user.getRole();
     }
@@ -44,27 +47,23 @@ public class UserService {
 
         // Check if user is an adult
         if (userPii.getAge() < 18) {
-            // TODO: make new exception with response body
-            throw new IllegalArgumentException("User must be an adult");
+            throw new ObjectInvalidException("User must be an adult");
         }
 
         // Check if user already exists
         User existingUser = userMapper.getUserById(user.getUserId());
         if (existingUser != null) {
-            // TODO: make new exception with response body
-            throw new IllegalArgumentException("User already exists");
+            throw new ObjectAlreadyExistsException("User already exists");
         }
 
         int insertUserFlag = userMapper.insertUser(user);
         if (insertUserFlag == 0) {
-            // TODO: make new exception with response body
-            throw new IllegalStateException("Failed to insert user");
+            throw new ObjectNotProcessedException("Failed to insert user");
         }
 
         int insertPiiFlag = userPiiService.insertUserPii(userPii) != null ? 1 : 0;
         if (insertPiiFlag == 0) {
-            // TODO: make new exception with response body
-            throw new IllegalStateException("Failed to insert user PII");
+            throw new ObjectNotProcessedException("Failed to insert user PII");
         }
         return user;
     }
@@ -78,7 +77,7 @@ public class UserService {
 
         int rowsUpdated = userMapper.updateUserStatus(user.getUserId(), newStatus);
         if (rowsUpdated == 0) {
-            throw new IllegalStateException("Failed to update user status");
+            throw new ObjectNotProcessedException("Failed to update user status");
         }
         return userMapper.getUserById(user.getUserId());
     }
@@ -89,10 +88,10 @@ public class UserService {
 
         User user = userMapper.getUserById(userId);
         if (user == null) {
-            throw new IllegalArgumentException("User not found");
+            throw new ObjectNotFoundException("User not found");
         }
         if (!"INACTIVE".equals(user.getStatus())) {
-            throw new IllegalStateException("User must be inactive before deletion");
+            throw new ObjectInvalidException("User must be inactive before deletion");
         }
         userMapper.deleteUserById(userId);
     }

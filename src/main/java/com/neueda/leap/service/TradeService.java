@@ -10,8 +10,7 @@ import com.neueda.leap.model.Holding;
 import com.neueda.leap.model.Instrument;
 import com.neueda.leap.model.Trade;
 
-import jakarta.transaction.Transactional;
-
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
