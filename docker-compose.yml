@@ -1,4 +1,8 @@
 services:
+  market:
+    build: ./market
+    ports:
+      - "8093:8093"  
   app:
     build: .
     ports:
