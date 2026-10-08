@@ -22,7 +22,9 @@ export interface TradeResponse {
 
 // Legacy Trade interface - kept for compatibility
 export interface Trade {
+
   clientEmail: string;
   instrumentName: string;
   tradeValue: number;
+
 }

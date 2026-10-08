@@ -4,6 +4,9 @@ import { Observable } from 'rxjs';
 
 @Injectable()
 export class ApiInterceptor implements HttpInterceptor {
+
+  private apiUrl = 'http://localhost:8090';
+
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     // Add Content-Type header to API requests
     if (req.url.startsWith('/api')) {

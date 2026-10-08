@@ -9,4 +9,5 @@ export interface AccountResponse {
   balance: number;         // BigDecimal as number
   status: string;
   createdAt: string;       // OffsetDateTime as ISO string
+
 }
