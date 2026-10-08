@@ -31,10 +31,10 @@ public class AccountService implements IService {
     @Transactional 
     public Account createAccount(Account account){
         if(account == null){
-            throw new IllegalArgumentException("Account cannot be null");
+            throw new ObjectNotFoundException("Account cannot be null");
         }
         if(account.getUserId() == null){
-            throw new IllegalArgumentException("User ID cannot be null");
+            throw new ObjectNotFoundException("User ID cannot be null");
         }
         if(account.getAccountId() == null){
             account.setAccountId(UUID.randomUUID());
@@ -60,7 +60,7 @@ public class AccountService implements IService {
 
     public Account getAccount(UUID accountId){
         if(accountId == null){
-            throw new IllegalArgumentException("Account ID cannot be null");
+            throw new ObjectNotFoundException("Account ID cannot be null");
         }
 
         Account account = accountMapper.findByAccountId(accountId);
@@ -73,13 +73,13 @@ public class AccountService implements IService {
     @Transactional 
     public void updateBalance(UUID accountId, BigDecimal amount){
         if(accountId == null){
-            throw new IllegalArgumentException("Account ID cannot be null");
+            throw new ObjectNotFoundException("Account ID cannot be null");
         }
         if(amount == null){
-            throw new IllegalArgumentException("Amount cannot be null");
+            throw new ObjectNotFoundException("Amount cannot be null");
         }
         if(amount.compareTo(BigDecimal.ZERO) < 0){
-            throw new IllegalArgumentException("Amount cannot be negative!");
+            throw new ObjectNotFoundException("Amount cannot be negative!");
         }
         Account account = getAccount(accountId);
         if(!"ACTIVE".equals(account.getStatus())){
@@ -99,7 +99,7 @@ public class AccountService implements IService {
     @Transactional 
     public void closeAccount(UUID accountId){
         if(accountId == null){
-            throw new IllegalArgumentException("Account ID cannot be null ");
+            throw new ObjectNotFoundException("Account ID cannot be null ");
         }
         int updateStatusFlag = accountMapper.updateStatus(accountId, "CLOSED");
         if(updateStatusFlag < 1){
@@ -114,7 +114,7 @@ public class AccountService implements IService {
     @Transactional 
     public void incrementBalance(UUID accountId, BigDecimal amount){
         if(accountId == null){
-            throw new IllegalArgumentException("Account ID cannot be null");
+            throw new ObjectNotFoundException("Account ID cannot be null");
         }
         int balanceUpdateFlag = accountMapper.incrementBalance(accountId, amount);
         if(balanceUpdateFlag < 1){
@@ -129,7 +129,7 @@ public class AccountService implements IService {
     @Transactional 
     public void decrementBalance(UUID accountId, BigDecimal amount){
         if(accountId == null){
-            throw new IllegalArgumentException("Account ID cannot be null");
+            throw new ObjectNotFoundException("Account ID cannot be null");
         }
         int balanceUpdateFlag = accountMapper.decrementBalance(accountId, amount);
         if(balanceUpdateFlag < 1){
@@ -143,23 +143,9 @@ public class AccountService implements IService {
 
     public List<AccountResponse> getUserAccounts(UUID userId) {
         if(userId == null){
-            throw new IllegalArgumentException("User ID can not be null");
+            throw new ObjectNotFoundException("User ID can not be null");
         }
         List<Account> accounts = accountMapper.findAllByUserId(userId);
-
-        return accounts.stream()
-                .map(a -> new AccountResponse(
-                        a.getAccountId(),
-                        a.getUserId(),
-                        a.getCurrency(),
-                        a.getBalance(),
-                        a.getStatus(),
-                        a.getCreatedAt()))
-                .toList();
-    }
-
-    public List<AccountResponse> getAllActiveAccounts() {
-        List<Account> accounts = accountMapper.findAllActiveAccounts();
 
         return accounts.stream()
                 .map(a -> new AccountResponse(

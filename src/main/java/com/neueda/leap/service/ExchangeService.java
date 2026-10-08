@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import com.neueda.leap.dto.request.ExchangeRequest;
 import com.neueda.leap.dto.response.ExchangeResponse;
+import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.mapper.ExchangeMapper;
 import com.neueda.leap.model.Exchange;
 
@@ -27,7 +28,7 @@ public class ExchangeService implements IService {
     public ExchangeResponse getExchangeById(String exchangeId) {
         return exchangeMapper.findById(exchangeId)
                 .map(this::toResponse)
-                .orElseThrow(() -> new RuntimeException("Exchange not found: " + exchangeId));
+                .orElseThrow(() -> new ObjectNotFoundException("Exchange not found: " + exchangeId));
     }
 
     public ExchangeResponse createExchange(ExchangeRequest request) {
@@ -45,7 +46,7 @@ public class ExchangeService implements IService {
     public ExchangeResponse updateExchange(String exchangeId, ExchangeRequest request) {
         // Verify exchange exists
         exchangeMapper.findById(exchangeId)
-                .orElseThrow(() -> new RuntimeException("Exchange not found: " + exchangeId));
+                .orElseThrow(() -> new ObjectNotFoundException("Exchange not found: " + exchangeId));
 
         Exchange exchange = new Exchange(
                 exchangeId,
@@ -61,7 +62,7 @@ public class ExchangeService implements IService {
     public void deleteExchange(String exchangeId) {
         // Verify exchange exists
         exchangeMapper.findById(exchangeId)
-                .orElseThrow(() -> new RuntimeException("Exchange not found: " + exchangeId));
+                .orElseThrow(() -> new ObjectNotFoundException("Exchange not found: " + exchangeId));
 
         exchangeMapper.deleteById(exchangeId);
     }

@@ -26,7 +26,7 @@ public class InstrumentService implements IService {
 
     public Instrument getInstrumentById(UUID instrumentId){
         if(instrumentId == null){
-            throw new IllegalArgumentException("Instrument ID cannot be null");
+            throw new ObjectNotFoundException("Instrument ID cannot be null");
         }
         Instrument instrument = instrumentMapper.findById(instrumentId);
         if(instrument == null){
@@ -37,7 +37,7 @@ public class InstrumentService implements IService {
 
     public Instrument getInstrumentByTicker(String ticker) {
         if(ticker == null || ticker.isEmpty()) {
-            throw new IllegalArgumentException("Ticker cannot be empty");
+            throw new ObjectNotFoundException("Ticker cannot be empty");
         }
         Instrument instrument = instrumentMapper.findByTicker(ticker);
         if(instrument == null){
@@ -49,22 +49,22 @@ public class InstrumentService implements IService {
     @Transactional
     public Instrument addInstrument(Instrument instrument) {
         if(instrument.getInstrumentId() == null){
-            throw new IllegalArgumentException("Instrument ID cannot be null");
+            throw new ObjectNotFoundException("Instrument ID cannot be null");
         }
         if(instrumentMapper.findById(instrument.getInstrumentId()) != null){
             throw new ObjectAlreadyExistsException("Creating this instrument would lead to duplicate instruments");
         }
         if(instrument.getTicker() == null){
-            throw new IllegalArgumentException("Ticker cannot be empty");
+            throw new ObjectNotFoundException("Ticker cannot be empty");
         }
         if(instrumentMapper.findByTicker(instrument.getTicker()) != null){
             throw new ObjectAlreadyExistsException("Creating this instrument would lead to duplicate instruments");
         }
         if(instrument.getExchange() == null){
-            throw new IllegalArgumentException("Exchange ID cannot be null");
+            throw new ObjectNotFoundException("Exchange ID cannot be null");
         }
         if(instrument.getCurrentPrice().compareTo(BigDecimal.ZERO) <= 0){
-            throw new IllegalArgumentException("Current price cannot be negeative");
+            throw new ObjectNotFoundException("Current price cannot be negeative");
         }
         
         
