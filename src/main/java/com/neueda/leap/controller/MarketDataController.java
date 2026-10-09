@@ -1,6 +1,6 @@
 package com.neueda.leap.controller;
 
-import com.neueda.leap.client.MarketDataClient;
+import com.neueda.leap.service.MarketDataService;
 import com.neueda.leap.dto.response.HistoryResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,15 +12,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/market")
 public class MarketDataController {
 
-	private final MarketDataClient client;
+	private final MarketDataService marketDataService;
 
-	public MarketDataController(MarketDataClient client) {
-		this.client = client;
+	public MarketDataController(MarketDataService marketDataService) {
+		this.marketDataService = marketDataService;
 	}
 
 	@GetMapping("/{ticker}/history")
 	public HistoryResponse history(@PathVariable String ticker,
 									@RequestParam(defaultValue = "1y") String period) {
-		return client.fetchHistory(ticker, period);
+		return marketDataService.getHistory(ticker, period);
 	}
 }
