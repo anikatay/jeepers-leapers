@@ -1,4 +1,6 @@
 services:
+  redis:
+    image: redis:7-alpine
   market:
     build: ./market
     ports:
@@ -10,6 +12,7 @@ services:
     depends_on:
       - db
       - market
+      - redis
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/paysprint
       SPRING_DATASOURCE_USERNAME: paysprint
