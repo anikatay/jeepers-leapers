@@ -9,6 +9,7 @@ services:
       - "8095:8080"
     depends_on:
       - db
+      - market
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/paysprint
       SPRING_DATASOURCE_USERNAME: paysprint

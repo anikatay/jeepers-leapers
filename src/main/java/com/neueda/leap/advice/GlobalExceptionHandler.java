@@ -5,6 +5,10 @@ import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ApplicationException;
+import com.neueda.leap.exception.MarketDataUnavailableException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -19,6 +23,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice 
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     @ExceptionHandler(ObjectAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleAlreadyExists(ObjectAlreadyExistsException e, HttpServletRequest request){
         ErrorResponse response = new ErrorResponse(
@@ -132,6 +138,23 @@ public class GlobalExceptionHandler {
         }
         return "Database constraint violation: " + message;
     }
+
+    @ExceptionHandler(MarketDataUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleMarketDataUnavailable(
+            MarketDataUnavailableException e,
+            HttpServletRequest request) {
+        log.warn("Market data unavailable: {}", e.getMessage(), e.getCause());
+
+        ErrorResponse response = new ErrorResponse(
+            "MARKET_DATA_UNAVAILABLE",
+            "Market data is temporarily unavailable",
+            "Please try again shortly",
+            503
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
