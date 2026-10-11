@@ -30,19 +30,24 @@ public class MarketDataClient {
 
 	public HistoryResponse fetchHistory(String ticker, String period){
 		try{
-			return restClient.get()
+			HistoryResponse response = restClient.get()
 					.uri(uri -> uri.path("/history")
 							.queryParam("ticker", ticker)
 							.queryParam("period", period)
 							.build())
 					.retrieve()
 					.body(HistoryResponse.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException("Market data service returned empty response for " + ticker);
+			}
+			return response;
 		}catch (HttpClientErrorException.NotFound e) {
-            throw new ObjectNotFoundException("No market data for " + ticker);
+			throw new ObjectNotFoundException("No market data for " + ticker);
 		} catch (HttpClientErrorException.BadRequest e) {
 			throw new ObjectInvalidException("Invalid market data request for " + ticker);
-        } catch (RestClientException e) {
-            throw new MarketDataUnavailableException("Market data service failed for " + ticker, e);
-        }
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException("Market data service failed for " + ticker, e);
+		}
 	}
 }

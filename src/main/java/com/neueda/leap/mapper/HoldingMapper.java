@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Delete;
 
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 import com.neueda.leap.model.Holding;
 
@@ -27,13 +28,13 @@ public interface HoldingMapper {
     Holding getHoldingByAccountIdAndInstrumentId(UUID accountId, UUID instrumentId);
 
     @Select("SELECT quantity FROM holdings WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
-    int getHoldingQuantity(UUID accountId, UUID instrumentId);
+    BigDecimal getHoldingQuantity(UUID accountId, UUID instrumentId);
 
     @Insert("INSERT INTO holdings (account_id, instrument_id, quantity) VALUES (#{accountId}, #{instrumentId}, #{quantity})")
-    int insertHolding(UUID accountId, UUID instrumentId, int quantity);
+    int insertHolding(UUID accountId, UUID instrumentId, BigDecimal quantity);
 
     @Update("UPDATE holdings SET quantity = #{quantity} WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
-    int updateHoldingQuantity(UUID accountId, UUID instrumentId, int quantity);
+    int updateHoldingQuantity(UUID accountId, UUID instrumentId, BigDecimal quantity);
 
     @Delete("DELETE FROM holdings WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
     int deleteHolding(UUID accountId, UUID instrumentId);

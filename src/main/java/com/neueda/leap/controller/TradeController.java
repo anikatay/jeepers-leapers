@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -56,9 +57,11 @@ public class TradeController {
     
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<TradeResponse>> getTradesByAccount(
-            @PathVariable UUID accountId) {
+            @PathVariable UUID accountId,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam (required = false) Integer offset) {
         
-        List<TradeResponse> trades = tradeService.getAllTradesByAccountWithInstrument(accountId);
+        List<TradeResponse> trades = tradeService.getAllTradesByAccountWithInstrument(accountId, limit, offset);
         
         if (trades.isEmpty()) {
             return ResponseEntity.noContent().build();
