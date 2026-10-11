@@ -11,7 +11,8 @@ Usage:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from typing import Optional
 import pandas as pd
 from sqlalchemy import text
 from etl.config import get_staging_engine
@@ -19,15 +20,22 @@ from etl.config import get_staging_engine
 logger = logging.getLogger(__name__)
 
 
-def generate_date_dimension(num_days: int = 60) -> None:
+def generate_date_dimension(num_days: int = 60, start_date: Optional[date] = None,
+                            end_date: Optional[date] = None) -> None:
     """
     Generate date dimension table for analytics schema.
     
-    Creates one row per date for a specified number of days.
+    Creates one row per date, either for an explicit range or for a window
+    of num_days centered on today.
     Includes columns for year, month, quarter, week, day_of_week, and is_trading_day flag.
     
+    Note: truncates analytics.dim_dates with CASCADE, which also empties the
+    fact tables that reference it. Run before the fact loads, not after.
+    
     Args:
-        num_days: Number of days to generate (default: 60 for testing)
+        num_days: Number of days to generate when no range is given (default: 60 for testing)
+        start_date: First date to generate (default: today - num_days // 2)
+        end_date: Last date to generate (default: today + num_days // 2)
     
     Returns:
         None (inserts directly into database)
@@ -36,14 +44,16 @@ def generate_date_dimension(num_days: int = 60) -> None:
         Exception: If database connection fails
     """
     try:
-        logger.info(f"Generating date dimension for {num_days} days")
-        
-        # Generate date range: last 30 days + next 30 days (centered on today)
+        # Default range: last 30 days + next 30 days (centered on today)
         # This gives a good window for testing without huge tables
-        from datetime import timedelta
         today = datetime.now().date()
-        start_date = today - timedelta(days=num_days // 2)
-        end_date = today + timedelta(days=num_days // 2)
+        if start_date is None:
+            start_date = today - timedelta(days=num_days // 2)
+        if end_date is None:
+            end_date = today + timedelta(days=num_days // 2)
+        
+        logger.info(f"Generating date dimension from {start_date} to {end_date}")
+        
         date_range = pd.date_range(start=start_date, end=end_date, freq='D')
         
         logger.info(f"Generated {len(date_range)} dates from {start_date} to {end_date}")
