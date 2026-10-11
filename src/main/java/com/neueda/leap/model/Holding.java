@@ -1,6 +1,8 @@
 package com.neueda.leap.model;
 
 import java.util.UUID;
+import java.math.BigDecimal;
+
 
 public class Holding {
 
@@ -8,9 +10,9 @@ public class Holding {
 
     private UUID instrumentId;
 
-    private int quantity;
+    private BigDecimal quantity;
 
-    public Holding(UUID accountId, UUID instrumentId, int quantity) {
+    public Holding(UUID accountId, UUID instrumentId, BigDecimal quantity) {
         this.accountId = accountId;
         this.instrumentId = instrumentId;
         this.quantity = quantity;
@@ -28,6 +30,6 @@ public class Holding {
 
     public UUID getInstrumentId() { return instrumentId; }
 
-    public int getQuantity() { return quantity; }
-    public void setQuantity(int quantity) { this.quantity = quantity; }
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
 }

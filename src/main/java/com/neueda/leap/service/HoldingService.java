@@ -25,6 +25,10 @@ public class HoldingService implements IService {
         this.instrumentService = instrumentService;
     }
 
+    public List<Holding> getActiveHoldings(UUID accountId){
+        return holdingMapper.getHoldingsByAccountId(accountId);
+    }
+
     public List<HoldingResponse> getHoldingsByAccountId(UUID accountID) {
         List<Holding> response = holdingMapper.getHoldingsByAccountId(accountID);
 
