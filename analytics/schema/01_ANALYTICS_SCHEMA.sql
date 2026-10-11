@@ -148,10 +148,10 @@ CREATE INDEX IF NOT EXISTS idx_fact_trades_executed_date
     ON analytics.fact_trades(executed_date);
 
 COMMENT ON TABLE analytics.fact_trades IS 'Individual trade transactions. Populated by Phase 3 with P&L calculations (FIFO matching).';
-COMMENT ON COLUMN analytics.fact_trades.entry_price IS 'Entry price (from matched BUY trade in FIFO queue)';
-COMMENT ON COLUMN analytics.fact_trades.exit_price IS 'Exit price (from matched SELL trade or current price if unmatched)';
-COMMENT ON COLUMN analytics.fact_trades.realized_pnl IS '(entry_price - exit_price) * quantity for closed positions';
-COMMENT ON COLUMN analytics.fact_trades.unrealized_pnl IS '(entry_price - current_price) * quantity for open positions';
+COMMENT ON COLUMN analytics.fact_trades.entry_price IS 'BUY: own execution price. SELL: weighted average price of the BUYs it consumed (FIFO), NULL if none';
+COMMENT ON COLUMN analytics.fact_trades.exit_price IS 'SELL: own execution price. BUY: NULL';
+COMMENT ON COLUMN analytics.fact_trades.realized_pnl IS 'SELL: sum of (exit_price - BUY price) * matched quantity. BUY: 0';
+COMMENT ON COLUMN analytics.fact_trades.unrealized_pnl IS 'BUY: (current_price - entry_price) * quantity not yet sold, NULL if no current price. SELL: 0';
 COMMENT ON COLUMN analytics.fact_trades.pnl_status IS 'MATCHED (fully paired), UNMATCHED (orphan), PARTIAL (partially paired)';
 
 

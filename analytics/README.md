@@ -110,7 +110,7 @@ python3 -c "from etl.extract_etl import run_etl; result = run_etl(); print(resul
 **What happens in Phase 1:**
 1. Connects to OLTP database (`paysprint.public`)
 2. Queries all exchanges, accounts, instruments, holdings
-3. Queries trades from last 90 days
+3. Queries all trades (set `ETL_LOOKBACK_DAYS` to limit to the last N days)
 4. Adds metadata columns: `etl_run_id`, `etl_timestamp`, `source_table`
 5. Loads to `paysprint_analytics.staging.*_raw` tables
 6. Returns row counts for verification
@@ -230,7 +230,7 @@ EOF
 | accounts | public.accounts | 5 | All |
 | instruments | public.instruments | 7 | All |
 | holdings | public.holdings | 8 | All |
-| trades | public.trades | 50+ | Last 90 days |
+| trades | public.trades | 50+ | Full history (FIFO needs every BUY) |
 
 ### Phase 3: P&L Transformation (`transform_pnl.py`)
 
