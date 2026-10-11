@@ -4,6 +4,7 @@ Complete ETL Pipeline Orchestrator
 Runs all phases in correct order:
   Phase 0: Schema initialization
   Phase 1: Data extraction
+  Phase 2: Analytics schema + dimensions
   Phase 3: P&L transformation
 
 Usage:
@@ -11,14 +12,14 @@ Usage:
   python3 run_pipeline.py --trades 100             # Custom number of trades
   python3 run_pipeline.py --skip-seed              # Skip trade seeding (use existing OLTP data)
   python3 run_pipeline.py --phase 1                # Run only Phase 1
-  python3 run_pipeline.py --phase 3 --skip-seed    # Run only Phase 3 (assumes Phase 0+1 complete)
+  python3 run_pipeline.py --phase 3 --skip-seed    # Run only Phase 3 (assumes Phase 0+1+2 complete)
 """
 
 import sys
 import os
 import argparse
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any
 
 # Add parent directory to path so we can import etl module
@@ -108,7 +109,7 @@ def run_phase_1() -> Dict[str, Any]:
       - accounts (5 rows)
       - instruments (7 rows)
       - holdings (8 rows)
-      - trades (from last 90 days)
+      - trades (full history, unless ETL_LOOKBACK_DAYS is set)
     """
     logger.info("="*80)
     logger.info("PHASE 1: DATA EXTRACTION")
@@ -141,6 +142,65 @@ def run_phase_1() -> Dict[str, Any]:
         return {
             'status': 'failed',
             'phase': 1,
+            'error': str(e)
+        }
+
+
+def run_phase_2() -> Dict[str, Any]:
+    """
+    Phase 2: Create analytics star schema and load dimensions.
+    
+    Creates:
+      - analytics schema and tables (dimensions, facts, audit)
+      - dimension rows from staging (exchanges, instruments, accounts)
+      - date dimension covering every extracted trade date
+    """
+    logger.info("="*80)
+    logger.info("PHASE 2: ANALYTICS SCHEMA + DIMENSIONS")
+    logger.info("="*80)
+    
+    try:
+        from sqlalchemy import text
+        from etl.config import get_analytics_engine
+        from etl.generate_dates import generate_date_dimension
+        
+        schema_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'schema', '01_ANALYTICS_SCHEMA.sql'
+        )
+        with open(schema_path, 'r') as f:
+            schema_sql = f.read()
+        
+        logger.info("Creating analytics schema and loading dimensions from staging...")
+        engine = get_analytics_engine()
+        with engine.begin() as conn:
+            conn.execute(text(schema_sql))
+            first_trade, last_trade = conn.execute(text(
+                "SELECT MIN(executed_at), MAX(executed_at) FROM staging.trades_raw"
+            )).fetchone()
+        
+        # fact_trades.executed_date references dim_dates, so cover every trade date
+        # (padded a day each side for timezone differences) as well as the default window
+        today = datetime.now().date()
+        start_date = today - timedelta(days=30)
+        end_date = today + timedelta(days=30)
+        if first_trade is not None:
+            start_date = min(start_date, first_trade.date() - timedelta(days=1))
+            end_date = max(end_date, last_trade.date() + timedelta(days=1))
+        
+        generate_date_dimension(start_date=start_date, end_date=end_date)
+        logger.info(f"✅ Phase 2 complete: analytics schema ready, dates {start_date} to {end_date}")
+        
+        return {
+            'status': 'success',
+            'phase': 2,
+            'message': 'Analytics schema and dimensions loaded'
+        }
+    except Exception as e:
+        logger.error(f"❌ Phase 2 failed: {str(e)}")
+        return {
+            'status': 'failed',
+            'phase': 2,
             'error': str(e)
         }
 
@@ -200,16 +260,16 @@ Examples:
   python3 run_pipeline.py --trades 100       # Use 100 test trades
   python3 run_pipeline.py --skip-seed        # Use existing OLTP data (no seeding)
   python3 run_pipeline.py --phase 1          # Run only Phase 1
-  python3 run_pipeline.py --phase 3          # Run only Phase 3 (assumes Phase 0+1 done)
+  python3 run_pipeline.py --phase 3          # Run only Phase 3 (assumes Phase 0+1+2 done)
         """
     )
     
     parser.add_argument(
         '--phase',
         type=int,
-        choices=[0, 1, 3],
+        choices=[0, 1, 2, 3],
         default=None,
-        help='Run only a specific phase (0, 1, or 3). Default: run all phases'
+        help='Run only a specific phase (0, 1, 2, or 3). Default: run all phases'
     )
     
     parser.add_argument(
@@ -261,7 +321,17 @@ Examples:
             all_results.append(result)
             if result['status'] != 'success':
                 pipeline_status = 'failed'
-                logger.error("Phase 1 failed. Cannot proceed to Phase 3.")
+                logger.error("Phase 1 failed. Cannot proceed to Phase 2.")
+                if args.phase is None:  # Only exit if running all phases
+                    sys.exit(1)
+        
+        # Phase 2
+        if args.phase is None or args.phase == 2:
+            result = run_phase_2()
+            all_results.append(result)
+            if result['status'] != 'success':
+                pipeline_status = 'failed'
+                logger.error("Phase 2 failed. Cannot proceed to Phase 3.")
                 if args.phase is None:  # Only exit if running all phases
                     sys.exit(1)
         
