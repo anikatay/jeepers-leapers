@@ -55,8 +55,8 @@ public class TradeService implements IService {
             throw new ObjectNotFoundException("Side cannot be null");
         }
 
-        if(trade.getQuantity() <= 0){
-            throw new ObjectNotFoundException("Quantity must be non 0");
+        if(trade.getQuantity() == null || trade.getQuantity().compareTo(BigDecimal.ZERO) <= 0){
+            throw new ObjectInvalidException("Quantity must be greater than 0");
         }
 
         if(trade.getExecutionPrice() == null){
@@ -79,8 +79,10 @@ public class TradeService implements IService {
             Account account = accountService.getAccount(trade.getAccountId());
             Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
             
-            if(account.getBalance().compareTo(trade.getTradeValue()) < 0){
-                throw new ObjectInvalidException("Insufficient balance for trade");
+            try{
+                accountService.decrementBalance(trade.getAccountId(), trade.getTradeValue());
+            }catch(Exception e){
+                throw new ObjectInvalidException("Insufficient balance for trade",e)
             }
             if(holding == null){
                 holding = new Holding(
@@ -89,16 +91,15 @@ public class TradeService implements IService {
                     trade.getQuantity()
                 );
                 holdingService.createHoldingInternal(holding);
-            }else if(holding != null){
-               holdingService.incrementHoldingQuantityImternal(holding, trade.getQuantity());
+            }else{
+                holdingService.incrementHoldingQuantityImternal(holding, trade.getQuantity());
             }
-            accountService.decrementBalance(trade.getAccountId(), trade.getTradeValue());
         }else if(trade.getSide().equals("SELL")){
             Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
             if(holding == null){
                 throw new ObjectInvalidException("No holding exits for this instrument");
             }
-            if(holding.getQuantity() < trade.getQuantity()){
+            if(holding.getQuantity().compareTo(trade.getQuantity()) < 0){
                 throw new ObjectInvalidException("INsufficient quantity to sell");
             }
             holdingService.decrementHoldingQuantityImternal(holding, trade.getQuantity());
