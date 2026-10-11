@@ -7,10 +7,17 @@ Algorithm:
 2. Group by account_id + instrument_id
 3. For each group, sort trades chronologically (by executed_at)
 4. Maintain FIFO queue of BUY positions
-5. For each SELL: pop matching BUY trades from queue, calculate realized_pnl
-6. For unmatched BUY: calculate unrealized_pnl using current_price
-7. Validate: sum(realized_pnl) ≈ account balance changes
-8. Load to analytics.fact_trades
+5. For each SELL: consume BUY quantity from the front of the queue, calculate realized_pnl
+6. For each BUY with quantity still open: calculate unrealized_pnl using current_price
+7. Validate: one row per trade, unique trade_id, required columns filled
+8. Replace the contents of analytics.fact_trades
+
+Output is one row per trade:
+- BUY:  entry_price = own price, realized_pnl = 0,
+        unrealized_pnl = (current_price - own price) * quantity not yet sold
+- SELL: exit_price = own price, entry_price = weighted average of the BUYs consumed,
+        realized_pnl = sum of (own price - BUY price) * matched quantity, unrealized_pnl = 0
+- pnl_status: MATCHED (fully paired), PARTIAL (partly paired), UNMATCHED (not paired)
 
 Usage:
     from etl.transform_pnl import run_pnl_transformation
@@ -31,10 +38,27 @@ from etl.config import get_staging_engine, get_analytics_engine
 
 logger = logging.getLogger(__name__)
 
+# P&L columns the matcher adds to each trade
+PNL_COLUMNS = ['entry_price', 'exit_price', 'realized_pnl', 'unrealized_pnl', 'pnl_status']
+
+# Columns that must be filled on every row before loading to fact_trades
+REQUIRED_COLUMNS = [
+    'trade_id', 'account_id', 'instrument_id', 'side', 'quantity',
+    'execution_price', 'executed_at', 'executed_date', 'realized_pnl', 'pnl_status'
+]
+
+# fact_trades stores prices and P&L as NUMERIC(18, 4)
+MONEY_PLACES = Decimal('0.0001')
+
 
 class FIFOTradeMatcherException(Exception):
     """Custom exception for FIFO matching errors."""
     pass
+
+
+def _round_money(value: Decimal) -> Decimal:
+    """Round to the 4 decimal places fact_trades stores."""
+    return value.quantize(MONEY_PLACES, rounding=ROUND_HALF_UP)
 
 
 class TradePosition:
@@ -57,13 +81,13 @@ class TradePosition:
 class FIFOMatcher:
     """Implements FIFO (First-In-First-Out) matching for trades."""
     
-    def __init__(self, account_id: str, instrument_id: str, current_price: Decimal):
+    def __init__(self, account_id: str, instrument_id: str, current_price: Optional[Decimal]):
         self.account_id = account_id
         self.instrument_id = instrument_id
-        self.current_price = current_price
-        self.buy_queue: deque = deque()  # FIFO queue of unmatched BUY positions
-        self.matched_trades: List[Dict] = []  # Trades with P&L calculated
-        self.orphan_trades: List[Dict] = []  # Trades that couldn't be matched
+        self.current_price = current_price  # None if the instrument has no known price
+        self.buy_queue: deque = deque()  # FIFO queue of BUY positions with quantity still open
+        self.buy_positions: List[TradePosition] = []  # Every BUY seen, for finalize()
+        self.results: Dict[str, Dict] = {}  # One P&L record per trade, keyed by trade_id
     
     def process_trade(self, trade: pd.Series) -> None:
         """
@@ -73,7 +97,7 @@ class FIFOMatcher:
             trade: pandas Series with trade data (trade_id, side, quantity, execution_price, executed_at)
         
         Raises:
-            FIFOTradeMatcherException: If matching logic fails
+            FIFOTradeMatcherException: If the trade has an unknown side
         """
         trade_id = str(trade['trade_id'])
         side = trade['side']
@@ -85,12 +109,25 @@ class FIFOMatcher:
             # Add BUY to queue for future matching
             position = TradePosition(trade_id, side, quantity, execution_price, executed_at)
             self.buy_queue.append(position)
+            self.buy_positions.append(position)
             logger.debug(f"Queued BUY: {position}, queue size now: {len(self.buy_queue)}")
+            
+            # unrealized_pnl and pnl_status depend on later SELLs, so finalize() sets them
+            self.results[trade_id] = {
+                'trade_id': trade_id,
+                'entry_price': _round_money(execution_price),
+                'exit_price': None,
+                'realized_pnl': Decimal('0'),
+                'unrealized_pnl': None,
+                'pnl_status': None,
+            }
         
         elif side == 'SELL':
             # Match SELL against BUY queue (FIFO)
             remaining_sell = quantity
-            matched_entries = []
+            matched_quantity = Decimal('0')
+            matched_cost = Decimal('0')
+            realized_pnl = Decimal('0')
             
             while remaining_sell > 0 and self.buy_queue:
                 buy_position = self.buy_queue[0]  # Peek at front of queue
@@ -98,76 +135,103 @@ class FIFOMatcher:
                 # Determine how many units to match
                 match_quantity = min(remaining_sell, buy_position.remaining_quantity)
                 
-                # Calculate P&L for this matched pair
-                realized_pnl = (execution_price - buy_position.execution_price) * match_quantity
-                
-                # Create matched trade record
-                matched_entry = {
-                    'sell_trade_id': trade_id,
-                    'buy_trade_id': buy_position.trade_id,
-                    'account_id': self.account_id,
-                    'instrument_id': self.instrument_id,
-                    'quantity': match_quantity,
-                    'entry_price': buy_position.execution_price,
-                    'exit_price': execution_price,
-                    'realized_pnl': realized_pnl,
-                    'pnl_status': 'MATCHED',
-                }
-                matched_entries.append(matched_entry)
+                # Calculate P&L for this matched lot
+                lot_pnl = (execution_price - buy_position.execution_price) * match_quantity
+                realized_pnl += lot_pnl
+                matched_quantity += match_quantity
+                matched_cost += buy_position.execution_price * match_quantity
                 
                 # Update remaining quantities
                 buy_position.remaining_quantity -= match_quantity
                 remaining_sell -= match_quantity
                 
                 logger.debug(f"Matched SELL: {match_quantity} @ {execution_price} with BUY @ {buy_position.execution_price}, "
-                           f"P&L: {realized_pnl}")
+                           f"P&L: {lot_pnl}")
                 
                 # Remove BUY from queue if fully matched
                 if buy_position.remaining_quantity == 0:
                     self.buy_queue.popleft()
                     logger.debug(f"Removed fully-matched BUY from queue")
             
-            # Record matched pairs
-            for entry in matched_entries:
-                self.matched_trades.append(entry)
+            if remaining_sell == 0:
+                pnl_status = 'MATCHED'
+            elif matched_quantity > 0:
+                pnl_status = 'PARTIAL'
+            else:
+                pnl_status = 'UNMATCHED'
             
-            # If SELL couldn't be fully matched, record as orphan
             if remaining_sell > 0:
                 logger.warning(f"Unmatched SELL: {remaining_sell} units of trade {trade_id}")
-                self.orphan_trades.append({
-                    'trade_id': trade_id,
-                    'side': side,
-                    'quantity': remaining_sell,
-                    'execution_price': execution_price,
-                    'pnl_status': 'UNMATCHED',
-                    'realized_pnl': 0,
-                    'unrealized_pnl': 0,
-                })
+            
+            self.results[trade_id] = {
+                'trade_id': trade_id,
+                # Quantity-weighted average price of the BUYs this SELL consumed
+                'entry_price': _round_money(matched_cost / matched_quantity) if matched_quantity > 0 else None,
+                'exit_price': _round_money(execution_price),
+                'realized_pnl': _round_money(realized_pnl),
+                'unrealized_pnl': Decimal('0'),
+                'pnl_status': pnl_status,
+            }
+        
+        else:
+            raise FIFOTradeMatcherException(f"Trade {trade_id} has unknown side: {side!r}")
     
     def finalize(self) -> None:
         """
-        Finalize matching: calculate unrealized P&L for remaining open BUY positions.
-        These are positions that were never matched with a SELL.
+        Finalize matching: set unrealized P&L and status for every BUY,
+        based on the quantity no SELL has consumed.
         """
-        while self.buy_queue:
-            buy_position = self.buy_queue.popleft()
+        for buy_position in self.buy_positions:
+            remaining = buy_position.remaining_quantity
             
-            if buy_position.remaining_quantity > 0:
-                # Calculate unrealized P&L using current market price
-                unrealized_pnl = (self.current_price - buy_position.execution_price) * buy_position.remaining_quantity
+            if remaining == 0:
+                pnl_status = 'MATCHED'
+                unrealized_pnl = Decimal('0')
+            else:
+                pnl_status = 'UNMATCHED' if remaining == buy_position.quantity else 'PARTIAL'
                 
-                logger.debug(f"Unmatched BUY: {buy_position.remaining_quantity} @ {buy_position.execution_price}, "
+                if self.current_price is None:
+                    # No market price to value the open quantity against
+                    unrealized_pnl = None
+                else:
+                    unrealized_pnl = _round_money(
+                        (self.current_price - buy_position.execution_price) * remaining
+                    )
+                
+                logger.debug(f"Open BUY: {remaining} @ {buy_position.execution_price}, "
                            f"unrealized P&L (at current {self.current_price}): {unrealized_pnl}")
-                
-                self.orphan_trades.append({
-                    'trade_id': buy_position.trade_id,
-                    'side': 'BUY',
-                    'quantity': buy_position.remaining_quantity,
-                    'execution_price': buy_position.execution_price,
-                    'pnl_status': 'UNMATCHED',
-                    'realized_pnl': 0,
-                    'unrealized_pnl': unrealized_pnl,
-                })
+            
+            record = self.results[buy_position.trade_id]
+            record['unrealized_pnl'] = unrealized_pnl
+            record['pnl_status'] = pnl_status
+        
+        self.buy_queue.clear()
+
+
+def _validate_pnl_output(pnl_df: pd.DataFrame, expected_rows: int) -> None:
+    """
+    Check the P&L DataFrame is loadable into analytics.fact_trades.
+    
+    Raises:
+        FIFOTradeMatcherException: If the row count, trade_id uniqueness or
+                                   a required column is wrong
+    """
+    problems = []
+    
+    if len(pnl_df) != expected_rows:
+        problems.append(f"expected {expected_rows} rows (one per trade), got {len(pnl_df)}")
+    
+    duplicate_ids = int(pnl_df['trade_id'].duplicated().sum())
+    if duplicate_ids:
+        problems.append(f"{duplicate_ids} duplicate trade_id values")
+    
+    for column in REQUIRED_COLUMNS:
+        null_count = int(pnl_df[column].isna().sum())
+        if null_count:
+            problems.append(f"{null_count} null values in {column}")
+    
+    if problems:
+        raise FIFOTradeMatcherException("P&L output failed validation: " + "; ".join(problems))
 
 
 def calculate_pnl_fifo(staging_engine, analytics_engine) -> pd.DataFrame:
@@ -175,7 +239,7 @@ def calculate_pnl_fifo(staging_engine, analytics_engine) -> pd.DataFrame:
     Calculate P&L for all trades using FIFO matching.
     
     Loads trades from staging, groups by account/instrument, applies FIFO matching,
-    and returns DataFrame ready to load to fact_trades.
+    and returns DataFrame ready to load to fact_trades (one row per trade).
     
     Args:
         staging_engine: SQLAlchemy engine for paysprint_analytics (staging schema)
@@ -214,19 +278,26 @@ def calculate_pnl_fifo(staging_engine, analytics_engine) -> pd.DataFrame:
     
     logger.info(f"Loaded {len(instruments_df)} instruments")
     
-    # Convert trades to proper types
+    # IDs can arrive as uuid.UUID or str depending on column type; compare as str
     trades_df['trade_id'] = trades_df['trade_id'].astype(str)
     trades_df['account_id'] = trades_df['account_id'].astype(str)
     trades_df['instrument_id'] = trades_df['instrument_id'].astype(str)
-    trades_df['quantity'] = trades_df['quantity'].astype('float64')
-    trades_df['execution_price'] = trades_df['execution_price'].astype('float64')
     trades_df['executed_at'] = pd.to_datetime(trades_df['executed_at'])
     
-    # Sort by executed_at to maintain chronological order
-    trades_df = trades_df.sort_values('executed_at').reset_index(drop=True)
+    if trades_df['trade_id'].duplicated().any():
+        raise FIFOTradeMatcherException("staging.trades_raw contains duplicate trade_id values")
+    
+    current_prices = {
+        str(instrument_id): Decimal(str(price))
+        for instrument_id, price in zip(instruments_df['instrument_id'], instruments_df['current_price'])
+        if pd.notna(price)
+    }
+    
+    # Sort chronologically; trade_id breaks ties so runs are deterministic
+    trades_df = trades_df.sort_values(['executed_at', 'trade_id']).reset_index(drop=True)
     
     # Group by account + instrument and apply FIFO matching
-    result_trades = []
+    pnl_records = []
     
     logger.info("Starting FIFO matching by account/instrument...")
     
@@ -234,10 +305,10 @@ def calculate_pnl_fifo(staging_engine, analytics_engine) -> pd.DataFrame:
         logger.debug(f"Processing account={account_id}, instrument={instrument_id}, trades={len(group_df)}")
         
         # Get current price for this instrument
-        instrument_price = instruments_df[
-            instruments_df['instrument_id'] == instrument_id
-        ]['current_price'].values
-        current_price = Decimal(str(instrument_price[0])) if len(instrument_price) > 0 else Decimal('0.00')
+        current_price = current_prices.get(instrument_id)
+        if current_price is None:
+            logger.warning(f"No current price for instrument {instrument_id}; "
+                         f"unrealized P&L will be NULL for its open positions")
         
         # Create matcher and process all trades in this group
         matcher = FIFOMatcher(account_id, instrument_id, current_price)
@@ -249,50 +320,23 @@ def calculate_pnl_fifo(staging_engine, analytics_engine) -> pd.DataFrame:
         matcher.finalize()
         
         # Collect results
-        result_trades.extend(matcher.matched_trades)
-        result_trades.extend(matcher.orphan_trades)
-        
-        logger.debug(f"Matched: {len(matcher.matched_trades)}, Orphan: {len(matcher.orphan_trades)}")
+        pnl_records.extend(matcher.results.values())
     
-    logger.info(f"FIFO matching complete. Total records: {len(result_trades)}")
+    logger.info(f"FIFO matching complete. Total records: {len(pnl_records)}")
     
-    # Convert results to DataFrame
-    if not result_trades:
-        logger.warning("No trades produced after FIFO matching")
-        return pd.DataFrame()
-    
-    result_df = pd.DataFrame(result_trades)
-    
-    # For matched trades, need to add original SELL trade data
-    # For orphan trades, need to add original trade data
-    
-    # Join back to original trades to get full information
-    result_df = result_df.merge(
-        trades_df[['trade_id', 'executed_at']].rename(columns={'trade_id': 'sell_trade_id', 'executed_at': 'sell_executed_at'}),
-        on='sell_trade_id',
+    # Attach P&L to the source trades, so every trade keeps its own columns
+    pnl_df = trades_df[[
+        'trade_id', 'account_id', 'instrument_id', 'side',
+        'quantity', 'execution_price', 'executed_at'
+    ]].copy()
+    pnl_df['executed_date'] = pnl_df['executed_at'].dt.date
+    pnl_df = pnl_df.merge(
+        pd.DataFrame(pnl_records, columns=['trade_id'] + PNL_COLUMNS),
+        on='trade_id',
         how='left'
     )
     
-    # Use original trade_id if sell_trade_id is missing (orphan trades)
-    result_df['trade_id'] = result_df['sell_trade_id'].fillna(result_df.get('trade_id', None))
-    result_df['executed_at'] = result_df['sell_executed_at'].fillna(result_df.get('executed_at', None))
-    
-    # Extract just the columns needed for fact_trades
-    pnl_df = pd.DataFrame({
-        'trade_id': result_df.get('trade_id', result_df.get('sell_trade_id', '')),
-        'account_id': result_df['account_id'],
-        'instrument_id': result_df['instrument_id'],
-        'side': result_df.get('side', 'SELL'),  # Orphan trades have this
-        'quantity': result_df['quantity'],
-        'execution_price': result_df.get('execution_price', result_df.get('exit_price', 0)),
-        'executed_at': result_df['executed_at'],
-        'executed_date': pd.to_datetime(result_df['executed_at']).dt.date,
-        'entry_price': result_df.get('entry_price', None),
-        'exit_price': result_df.get('exit_price', None),
-        'realized_pnl': result_df['realized_pnl'],
-        'unrealized_pnl': result_df.get('unrealized_pnl', 0),
-        'pnl_status': result_df['pnl_status'],
-    })
+    _validate_pnl_output(pnl_df, expected_rows=len(trades_df))
     
     logger.info(f"P&L DataFrame prepared: {len(pnl_df)} rows")
     
@@ -411,10 +455,10 @@ def run_pnl_transformation(etl_run_id: str = None) -> Dict:
         logger.info("Step 3: Loading to analytics.fact_trades...")
         
         with analytics_engine.begin() as conn:
-            # First, clear existing data (for idempotency)
-            conn.execute(text("DELETE FROM analytics.fact_trades WHERE etl_run_id = :run_id"),
-                        {'run_id': etl_run_id})
-            
+            # Every run recalculates all trades, so replace the table contents
+            # (same transaction as the insert, for idempotency)
+            conn.execute(text("DELETE FROM analytics.fact_trades"))
+
             # Load new data
             pnl_df.to_sql(
                 'fact_trades',
@@ -427,22 +471,25 @@ def run_pnl_transformation(etl_run_id: str = None) -> Dict:
             )
         
         # Count results
-        orphan_count = (pnl_df['pnl_status'] == 'UNMATCHED').sum()
-        matched_count = (pnl_df['pnl_status'] == 'MATCHED').sum()
-        
+        orphan_count = int((pnl_df['pnl_status'] == 'UNMATCHED').sum())
+        partial_count = int((pnl_df['pnl_status'] == 'PARTIAL').sum())
+        matched_count = int((pnl_df['pnl_status'] == 'MATCHED').sum())
+
         logger.info(f"✅ P&L transformation complete!")
         logger.info(f"  Trades processed: {len(pnl_df)}")
-        logger.info(f"  Matched pairs: {matched_count}")
+        logger.info(f"  Matched trades: {matched_count}")
+        logger.info(f"  Partial trades: {partial_count}")
         logger.info(f"  Orphan trades: {orphan_count}")
-        
+
         return {
             'status': 'success',
             'trades_processed': len(pnl_df),
             'trades_loaded': len(pnl_df),
             'matched_trades': matched_count,
+            'partial_trades': partial_count,
             'orphan_trades': orphan_count,
-            'realized_pnl_total': pnl_df['realized_pnl'].sum(),
-            'unrealized_pnl_total': pnl_df['unrealized_pnl'].sum(),
+            'realized_pnl_total': sum(pnl_df['realized_pnl'].dropna(), Decimal('0')),
+            'unrealized_pnl_total': sum(pnl_df['unrealized_pnl'].dropna(), Decimal('0')),
         }
     
     except Exception as e:
