@@ -5,7 +5,7 @@ Extracts data from OLTP database (paysprint.public) and loads into staging schem
 Runs once per hour at :00 - all downstream ETLs reuse this data.
 
 This module provides a DataExtractor class that:
-- Extracts tables: exchanges, accounts, instruments, holdings, trades
+- Extracts tables: exchanges, accounts, instruments, holdings, trades (full history by default)
 - Adds metadata columns: etl_run_id, etl_timestamp, source_table
 - Loads to paysprint_analytics.staging schema
 - Tracks extraction/load statistics per table
@@ -279,10 +279,11 @@ class DataExtractor:
     
     def _extract_trades(self, days: int = None) -> Tuple[int, int]:
         """
-        Extract trades from OLTP (last N days).
+        Extract trades from OLTP (full history, or last N days if a lookback is set).
         
         Args:
-            days: Number of days to look back (default: ETL_LOOKBACK_DAYS from config)
+            days: Number of days to look back (default: ETL_LOOKBACK_DAYS from config;
+                  None extracts all trades)
         
         Returns:
             (rows_extracted, rows_loaded) tuple
@@ -290,9 +291,7 @@ class DataExtractor:
         if days is None:
             days = ETL_LOOKBACK_DAYS
         
-        logger.info(f"Extracting trades from last {days} days")
-        
-        query = f"""
+        query = """
         SELECT
             trade_id,
             account_id,
@@ -302,8 +301,13 @@ class DataExtractor:
             execution_price,
             executed_at
         FROM public.trades
-        WHERE executed_at >= NOW() - INTERVAL '{days} days'
         """
+        
+        if days is None:
+            logger.info("Extracting all trades")
+        else:
+            logger.info(f"Extracting trades from last {int(days)} days")
+            query += f"WHERE executed_at >= NOW() - INTERVAL '{int(days)} days'"
         
         try:
             df = pd.read_sql(text(query), self.oltp_engine)
