@@ -26,6 +26,9 @@ public class TradeService implements IService {
     private final AccountService accountService;
     private final InstrumentService instrumentService;
     private final HoldingService holdingService;
+    private static final int DEFAULT_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 200;
+
     
     public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService) {
         this.tradeMapper = tradeMapper;
@@ -37,14 +40,14 @@ public class TradeService implements IService {
     @Transactional 
     public Trade createTrade(Trade trade){
         if(trade == null){
-            throw new ObjectNotFoundException("Trade cannot be null");
+            throw new ObjectInvalidException("Trade cannot be null");
         }
         if(trade.getAccountId() == null){
-            throw new ObjectNotFoundException("Account ID cannot be null");
+            throw new ObjectInvalidException("Account ID cannot be null");
         }
 
         if(trade.getInstrumentId() == null){
-            throw new ObjectNotFoundException("Instrument ID cannot be null");
+            throw new ObjectInvalidException("Instrument ID cannot be null");
         }
         final Instrument instrument = instrumentService.getInstrumentById(trade.getInstrumentId());
         if(instrument == null){
@@ -52,7 +55,7 @@ public class TradeService implements IService {
         }
 
         if(trade.getSide() == null){
-            throw new ObjectNotFoundException("Side cannot be null");
+            throw new ObjectInvalidException("Side cannot be null");
         }
 
         if(trade.getQuantity() == null || trade.getQuantity().compareTo(BigDecimal.ZERO) <= 0){
@@ -67,7 +70,7 @@ public class TradeService implements IService {
             trade.setExecutedAt(OffsetDateTime.now());
         }
         if(trade.getTradeValue() == null){
-            BigDecimal tradeValue = trade.getExecutionPrice().multiply(BigDecimal.valueOf(trade.getQuantity()));
+            BigDecimal tradeValue = trade.getExecutionPrice().multiply(trade.getQuantity());
             trade.setTradeValue(tradeValue);
         }
         int tradeCreatedFlag = tradeMapper.createTrade(trade);
@@ -82,7 +85,7 @@ public class TradeService implements IService {
             try{
                 accountService.decrementBalance(trade.getAccountId(), trade.getTradeValue());
             }catch(Exception e){
-                throw new ObjectInvalidException("Insufficient balance for trade",e)
+                throw new ObjectInvalidException("Insufficient balance for trade",e);
             }
             if(holding == null){
                 holding = new Holding(
@@ -121,11 +124,14 @@ public class TradeService implements IService {
     }
 
 
-    public List<TradeResponse> getAllTradesByAccountWithInstrument(UUID accountId){
+    public List<TradeResponse> getAllTradesByAccountWithInstrument(UUID accountId, Integer limit, Integer offset){
         if(accountId == null){
             throw new ObjectNotFoundException("Account ID cannot be null");
         }
-        return tradeMapper.findAllTradesForAccountWithInstrument(accountId);
+        int safeLimit = (limit == null) ? DEFAULT_PAGE_SIZE : Math.min(limit, MAX_PAGE_SIZE);
+        int safeOffset = (offset == null) ? 0 : Math.max(offset, 0);
+
+        return tradeMapper.findAllTradesForAccountWithInstrument(accountId, safeLimit, safeOffset);
     }
 
 }

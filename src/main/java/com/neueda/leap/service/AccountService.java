@@ -4,6 +4,8 @@ import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.mapper.AccountMapper;
 import com.neueda.leap.model.Account;
 import com.neueda.leap.service.HoldingService;
+import com.neueda.leap.model.Holding;
+
 
 
 import com.neueda.leap.exception.ObjectInvalidException;
@@ -25,9 +27,11 @@ import java.util.UUID;
 public class AccountService implements IService {
 
     private final AccountMapper accountMapper;
+    private final HoldingService holdingService;
 
-    public AccountService(AccountMapper accountMapper) {
+    public AccountService(AccountMapper accountMapper, HoldingService holdingService) {
         this.accountMapper = accountMapper;
+        this.holdingService = holdingService;
     }
 
     @Transactional 

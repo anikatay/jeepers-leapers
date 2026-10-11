@@ -7,6 +7,8 @@ import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.exception.MarketDataUnavailableException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -69,25 +71,37 @@ public class MarketDataService implements IService {
 
         try {
             HistoryResponse fresh = client.fetchHistory(ticker, FETCH_PERIOD);
+            validateHistory(fresh, ticker);
             writeJson(key, fresh);
             return fresh;
         } catch (ObjectNotFoundException e) {
             writeCache(key, NOT_FOUND_MARKER, NOT_FOUND_TTL);   // short-lived, so typos don't hit Yahoo repeatedly
             throw e;
         }
-        // MarketDataUnavailableException propagates uncached, so an outage is never stored
-    }
+    // MarketDataUnavailableException propagates uncached, so an outage is never stored
+}
 
+private void validateHistory(HistoryResponse response, String ticker) {
+    if (response.bars() == null || response.bars().isEmpty()) {
+        throw new MarketDataUnavailableException("Market data service returned no price bars for " + ticker);
+    }
+}
+
+        // MarketDataUnavailableException propagates uncached, so an outage is never stored
     private HistoryResponse slice(HistoryResponse full, String period) {
         List<PriceBar> bars = full.bars();
         if (bars.isEmpty()) {
-            return new HistoryResponse(full.ticker(), period, bars);
+            throw new MarketDataUnavailableException("No price bars available for " + full.ticker());
         }
         LocalDate anchor = bars.get(bars.size() - 1).date();   // latest bar, not today's date
         LocalDate cutoff = cutoffFor(period, anchor);
         List<PriceBar> sliced = cutoff == null
                 ? bars
                 : bars.stream().filter(b -> !b.date().isBefore(cutoff)).toList();
+
+        if (sliced.isEmpty()) {
+            throw new ObjectInvalidException("No price data available for period: " + period);
+        }
         return new HistoryResponse(full.ticker(), period, sliced);
     }
 
