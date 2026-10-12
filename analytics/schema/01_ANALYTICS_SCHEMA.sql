@@ -9,10 +9,30 @@
 --   Dimensions (reference data): dim_exchanges, dim_instruments, dim_accounts, dim_dates
 --   Facts (events/snapshots): fact_trades, fact_daily_holdings, fact_daily_account_summary
 --   Audit: audit_trail (compliance log)
+--   Admin views (aggregates over fact_trades): v_pnl_summary, v_pnl_by_instrument,
+--                                              v_pnl_by_account, v_pnl_by_day
+--
+-- This file is a FULL REFRESH, not an in-place migration: every run drops the
+-- dimension and fact tables and recreates them from the DDL below, so the
+-- database can never drift from this file. Nothing is lost - dimensions are
+-- reloaded from staging here, dim_dates by generate_dates.py, and fact_trades
+-- by Phase 3. Fact tables stay empty until their phase runs.
 -- ============================================================================
 
 -- Ensure analytics schema exists
 CREATE SCHEMA IF NOT EXISTS analytics;
+
+-- Drop derived tables so the definitions below always win
+-- (audit_trail is an append-only log and is kept)
+DROP TABLE IF EXISTS
+    analytics.fact_daily_account_summary,
+    analytics.fact_daily_holdings,
+    analytics.fact_trades,
+    analytics.dim_instruments,
+    analytics.dim_accounts,
+    analytics.dim_exchanges,
+    analytics.dim_dates
+CASCADE;
 
 -- ============================================================================
 -- DIMENSION TABLES (Reference Data)
@@ -293,6 +313,94 @@ ON CONFLICT (account_id) DO UPDATE SET
     created_at = EXCLUDED.created_at,
     etl_run_id = EXCLUDED.etl_run_id,
     etl_timestamp = EXCLUDED.etl_timestamp;
+
+-- ============================================================================
+-- ADMIN P&L VIEWS (aggregated across all accounts)
+-- ============================================================================
+-- Ready-made aggregates over fact_trades for dashboards and APIs, so a caller
+-- only needs SELECT * FROM analytics.v_pnl_... after a pipeline run.
+-- They are snapshots of the last run: unrealized P&L is valued at the
+-- current_price extracted in that run. Dropped with the tables above (CASCADE)
+-- and recreated here on every run.
+
+-- v_pnl_summary: one row of headline numbers for the whole platform
+CREATE OR REPLACE VIEW analytics.v_pnl_summary AS
+SELECT
+    COUNT(*)                                            AS total_trades,
+    COUNT(*) FILTER (WHERE side = 'BUY')                AS buy_trades,
+    COUNT(*) FILTER (WHERE side = 'SELL')               AS sell_trades,
+    COUNT(DISTINCT account_id)                          AS accounts_traded,
+    COUNT(DISTINCT instrument_id)                       AS instruments_traded,
+    COALESCE(ROUND(SUM(quantity * execution_price), 4), 0) AS traded_value,
+    COALESCE(SUM(realized_pnl), 0)                      AS realized_pnl,
+    COALESCE(SUM(unrealized_pnl), 0)                    AS unrealized_pnl,
+    COALESCE(SUM(realized_pnl), 0) + COALESCE(SUM(unrealized_pnl), 0) AS total_pnl,
+    COUNT(*) FILTER (WHERE pnl_status = 'MATCHED')      AS matched_trades,
+    COUNT(*) FILTER (WHERE pnl_status = 'PARTIAL')      AS partial_trades,
+    COUNT(*) FILTER (WHERE pnl_status = 'UNMATCHED')    AS unmatched_trades,
+    MIN(executed_at)                                    AS first_trade_at,
+    MAX(executed_at)                                    AS last_trade_at,
+    MAX(etl_timestamp)                                  AS refreshed_at,
+    MAX(etl_run_id)                                     AS etl_run_id
+FROM analytics.fact_trades;
+
+COMMENT ON VIEW analytics.v_pnl_summary IS 'Admin snapshot: platform-wide trade counts and P&L totals from the last pipeline run. Always one row.';
+
+-- v_pnl_by_instrument: one row per instrument (including ones never traded)
+CREATE OR REPLACE VIEW analytics.v_pnl_by_instrument AS
+SELECT
+    i.instrument_id,
+    i.ticker,
+    i.name,
+    i.exchange_id,
+    i.current_price,
+    COUNT(f.trade_id)                                               AS trades,
+    COALESCE(SUM(f.quantity) FILTER (WHERE f.side = 'BUY'), 0)      AS quantity_bought,
+    COALESCE(SUM(f.quantity) FILTER (WHERE f.side = 'SELL'), 0)     AS quantity_sold,
+    COALESCE(ROUND(SUM(f.quantity * f.execution_price), 4), 0)      AS traded_value,
+    COALESCE(SUM(f.realized_pnl), 0)                                AS realized_pnl,
+    COALESCE(SUM(f.unrealized_pnl), 0)                              AS unrealized_pnl,
+    COALESCE(SUM(f.realized_pnl), 0) + COALESCE(SUM(f.unrealized_pnl), 0) AS total_pnl
+FROM analytics.dim_instruments i
+LEFT JOIN analytics.fact_trades f ON f.instrument_id = i.instrument_id
+GROUP BY i.instrument_id, i.ticker, i.name, i.exchange_id, i.current_price;
+
+COMMENT ON VIEW analytics.v_pnl_by_instrument IS 'Admin snapshot: P&L and volume per instrument across all accounts.';
+
+-- v_pnl_by_account: one row per account (including ones that never traded)
+CREATE OR REPLACE VIEW analytics.v_pnl_by_account AS
+SELECT
+    a.account_id,
+    a.user_id,
+    a.currency,
+    a.status,
+    COUNT(f.trade_id)                                               AS trades,
+    COUNT(DISTINCT f.instrument_id)                                 AS instruments_traded,
+    COALESCE(ROUND(SUM(f.quantity * f.execution_price), 4), 0)      AS traded_value,
+    COALESCE(SUM(f.realized_pnl), 0)                                AS realized_pnl,
+    COALESCE(SUM(f.unrealized_pnl), 0)                              AS unrealized_pnl,
+    COALESCE(SUM(f.realized_pnl), 0) + COALESCE(SUM(f.unrealized_pnl), 0) AS total_pnl
+FROM analytics.dim_accounts a
+LEFT JOIN analytics.fact_trades f ON f.account_id = a.account_id
+GROUP BY a.account_id, a.user_id, a.currency, a.status;
+
+COMMENT ON VIEW analytics.v_pnl_by_account IS 'Admin snapshot: P&L and volume per account across all instruments.';
+
+-- v_pnl_by_day: one row per date that has trades, for time-series charts
+-- Realized P&L only: unrealized P&L has no history (it is valued at the latest price)
+CREATE OR REPLACE VIEW analytics.v_pnl_by_day AS
+SELECT
+    executed_date,
+    COUNT(*)                                            AS trades,
+    COUNT(*) FILTER (WHERE side = 'BUY')                AS buy_trades,
+    COUNT(*) FILTER (WHERE side = 'SELL')               AS sell_trades,
+    ROUND(SUM(quantity * execution_price), 4)           AS traded_value,
+    COALESCE(SUM(realized_pnl), 0)                      AS realized_pnl,
+    SUM(COALESCE(SUM(realized_pnl), 0)) OVER (ORDER BY executed_date) AS cumulative_realized_pnl
+FROM analytics.fact_trades
+GROUP BY executed_date;
+
+COMMENT ON VIEW analytics.v_pnl_by_day IS 'Admin snapshot: daily trade counts and realized P&L across all accounts, with a running total.';
 
 -- ============================================================================
 -- VERIFICATION QUERIES (for manual inspection)
