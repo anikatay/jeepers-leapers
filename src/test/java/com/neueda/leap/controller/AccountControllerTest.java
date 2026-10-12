@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.dto.request.AccountRequest;
 import com.neueda.leap.dto.request.UpdateBalanceRequest;
+import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.model.Account;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @WebMvcTest(AccountController.class)
@@ -77,6 +79,14 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
     }
 
+        // Checks that getting an account with an invalid UUID path returns 500 INTERNAL_SERVER_ERROR.
+        @Test
+        void testGetAccountReturnsInternalServerErrorForInvalidUuid() throws Exception {
+                mockMvc.perform(get("/api/accounts/{accountId}", "not-a-uuid"))
+                                .andExpect(status().isInternalServerError())
+                                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+        }
+
     // Checks that creating an account with valid data returns 201 CREATED.
     @Test
     void testCreateAccountSuccessfully() throws Exception {
@@ -122,6 +132,48 @@ class AccountControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    // Checks that creating an account with null balance and currency still returns 201 CREATED.
+    @Test
+    void testCreateAccountWithNullBalanceAndCurrencyStillSucceeds() throws Exception {
+        UUID userId = UUID.randomUUID();
+        AccountRequest request = new AccountRequest(userId, null, null);
+
+        UUID accountId = UUID.randomUUID();
+        Account createdAccount = new Account();
+        createdAccount.setAccountId(accountId);
+        createdAccount.setUserId(userId);
+        createdAccount.setBalance(BigDecimal.ZERO);
+        createdAccount.setCurrency("USD");
+        createdAccount.setStatus("ACTIVE");
+        createdAccount.setCreatedAt(OffsetDateTime.now());
+
+        when(accountService.createAccount(any(Account.class))).thenReturn(createdAccount);
+
+        mockMvc.perform(post("/api/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accountId").value(accountId.toString()))
+                .andExpect(jsonPath("$.balance").value(0.0))
+                .andExpect(jsonPath("$.currency").value("USD"));
+    }
+
+    // Checks that creating an account returns 500 INTERNAL_SERVER_ERROR for unhandled exceptions.
+    @Test
+    void testCreateAccountReturnsInternalServerErrorForUnhandledException() throws Exception {
+        UUID userId = UUID.randomUUID();
+        AccountRequest request = new AccountRequest(userId, BigDecimal.valueOf(1000), "USD");
+
+        when(accountService.createAccount(any(Account.class)))
+                .thenThrow(new RuntimeException("unexpected"));
+
+        mockMvc.perform(post("/api/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+    }
+
     // Checks that closing an existing account returns 204 NO_CONTENT.
     @Test
     void testCloseAccountSuccessfully() throws Exception {
@@ -145,6 +197,19 @@ class AccountControllerTest {
 
         mockMvc.perform(delete("/api/accounts/{accountId}", accountId))
                 .andExpect(status().isInternalServerError());
+    }
+
+    // Checks that closing a nonexistent account returns 404 NOT_FOUND.
+    @Test
+    void testCloseAccountReturnsNotFoundWhenAccountMissing() throws Exception {
+        UUID accountId = UUID.randomUUID();
+
+        doThrow(new ObjectNotFoundException("Account not found with ID: " + accountId))
+                .when(accountService).closeAccount(accountId);
+
+        mockMvc.perform(delete("/api/accounts/{accountId}", accountId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
     }
 
     // Checks that depositing a valid amount into an account returns 204 NO_CONTENT.
@@ -199,6 +264,18 @@ class AccountControllerTest {
                 .andExpect(status().isInternalServerError());
     }
 
+        // Checks that depositing with an invalid accountId path returns 500 INTERNAL_SERVER_ERROR.
+        @Test
+        void testDepositReturnsInternalServerErrorForInvalidUuid() throws Exception {
+                UpdateBalanceRequest request = new UpdateBalanceRequest(BigDecimal.valueOf(50));
+
+                mockMvc.perform(patch("/api/accounts/{accountId}/deposit", "not-a-uuid")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isInternalServerError())
+                                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+        }
+
     // Checks that withdrawing a valid amount from an account returns 204 NO_CONTENT.
     @Test
     void testWithdrawSuccessfully() throws Exception {
@@ -250,4 +327,46 @@ class AccountControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isInternalServerError());
     }
+
+        // Checks that getAllActiveAccounts returns 200 OK with a list of accounts.
+        @Test
+        void testGetAllActiveAccountsReturnsOk() throws Exception {
+                UUID accountId = UUID.randomUUID();
+                UUID userId = UUID.randomUUID();
+                AccountResponse response = new AccountResponse(
+                                accountId,
+                                userId,
+                                "USD",
+                                BigDecimal.valueOf(1000),
+                                "ACTIVE",
+                                OffsetDateTime.now()
+                );
+
+                when(accountService.getAllActiveAccounts()).thenReturn(List.of(response));
+
+                mockMvc.perform(get("/api/accounts/active"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0].accountId").value(accountId.toString()))
+                                .andExpect(jsonPath("$[0].status").value("ACTIVE"));
+        }
+
+        // Checks that getAllActiveAccounts returns 200 OK with an empty list when no accounts exist.
+        @Test
+        void testGetAllActiveAccountsReturnsOkWithEmptyList() throws Exception {
+                when(accountService.getAllActiveAccounts()).thenReturn(List.of());
+
+                mockMvc.perform(get("/api/accounts/active"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$").isArray());
+        }
+
+        // Checks that getAllActiveAccounts returns 500 INTERNAL_SERVER_ERROR for unhandled exceptions.
+        @Test
+        void testGetAllActiveAccountsReturnsInternalServerError() throws Exception {
+                when(accountService.getAllActiveAccounts()).thenThrow(new RuntimeException("unexpected"));
+
+                mockMvc.perform(get("/api/accounts/active"))
+                                .andExpect(status().isInternalServerError())
+                                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+        }
 }

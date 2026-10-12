@@ -12,6 +12,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,7 +41,7 @@ class HoldingControllerTest {
     void testGetPortfolioReturnsOkWhenHoldingsExist() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        List<HoldingResponse> holdings = List.of(new HoldingResponse(accountId, instrumentId, "AAPL", 10));
+        List<HoldingResponse> holdings = List.of(new HoldingResponse(accountId, instrumentId, "AAPL", BigDecimal.valueOf(10)));
 
         when(holdingService.getHoldingsByAccountId(accountId)).thenReturn(holdings);
 
@@ -52,26 +53,27 @@ class HoldingControllerTest {
                 .andExpect(jsonPath("$[0].quantity").value(10));
     }
 
-    // Verifies portfolio endpoint returns 404 when service returns empty list.
+    // Verifies portfolio endpoint returns 204 when service returns empty list.
     @Test
-    void testGetPortfolioReturnsNotFoundWhenEmpty() throws Exception {
+    void testGetPortfolioReturnsNoContentWhenEmpty() throws Exception {
         UUID accountId = UUID.randomUUID();
 
         when(holdingService.getHoldingsByAccountId(accountId)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/holdings/{accountId}", accountId))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNoContent());
     }
 
-    // Verifies portfolio endpoint returns 404 when service returns null.
+    // Verifies portfolio endpoint returns 500 when service returns null.
     @Test
-    void testGetPortfolioReturnsNotFoundWhenNull() throws Exception {
+    void testGetPortfolioReturnsInternalServerErrorWhenNull() throws Exception {
         UUID accountId = UUID.randomUUID();
 
         when(holdingService.getHoldingsByAccountId(accountId)).thenReturn(null);
 
         mockMvc.perform(get("/api/holdings/{accountId}", accountId))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
     }
 
     // Verifies portfolio endpoint returns 404 for service not found exceptions.
@@ -100,7 +102,7 @@ class HoldingControllerTest {
     void testGetHoldingReturnsOkWhenFound() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingResponse response = new HoldingResponse(accountId, instrumentId, "MSFT", 25);
+        HoldingResponse response = new HoldingResponse(accountId, instrumentId, "MSFT", BigDecimal.valueOf(25));
 
         when(holdingService.getHoldingByAccountIdAndInstrumentId(accountId, instrumentId)).thenReturn(response);
 
@@ -141,8 +143,8 @@ class HoldingControllerTest {
     void testCreateHoldingReturnsOkWhenValid() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingRequest request = new HoldingRequest(accountId, instrumentId, 15);
-        HoldingResponse response = new HoldingResponse(accountId, instrumentId, "GOOG", 15);
+        HoldingRequest request = new HoldingRequest(accountId, instrumentId, BigDecimal.valueOf(15));
+        HoldingResponse response = new HoldingResponse(accountId, instrumentId, "GOOG", BigDecimal.valueOf(15));
 
         when(holdingService.createHolding(any(HoldingRequest.class))).thenReturn(response);
 
@@ -159,7 +161,7 @@ class HoldingControllerTest {
     void testCreateHoldingReturnsBadRequestWhenNull() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingRequest request = new HoldingRequest(accountId, instrumentId, 15);
+        HoldingRequest request = new HoldingRequest(accountId, instrumentId, BigDecimal.valueOf(15));
 
         when(holdingService.createHolding(any(HoldingRequest.class))).thenReturn(null);
 
@@ -186,8 +188,8 @@ class HoldingControllerTest {
     void testUpdateHoldingReturnsOkWhenValid() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingRequest request = new HoldingRequest(accountId, instrumentId, 30);
-        HoldingResponse response = new HoldingResponse(accountId, instrumentId, "TSLA", 30);
+        HoldingRequest request = new HoldingRequest(accountId, instrumentId, BigDecimal.valueOf(30));
+        HoldingResponse response = new HoldingResponse(accountId, instrumentId, "TSLA", BigDecimal.valueOf(30));
 
         when(holdingService.updateHoldingQuantity(any(HoldingRequest.class))).thenReturn(response);
 
@@ -204,7 +206,7 @@ class HoldingControllerTest {
     void testUpdateHoldingReturnsBadRequestWhenNull() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingRequest request = new HoldingRequest(accountId, instrumentId, 30);
+        HoldingRequest request = new HoldingRequest(accountId, instrumentId, BigDecimal.valueOf(30));
 
         when(holdingService.updateHoldingQuantity(any(HoldingRequest.class))).thenReturn(null);
 

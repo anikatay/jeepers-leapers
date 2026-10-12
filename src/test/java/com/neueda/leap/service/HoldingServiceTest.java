@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,7 +44,7 @@ class HoldingServiceTest {
     void testGetHoldingsByAccountIdReturnsMappedResponses() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 20);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(20));
 
         Instrument instrument = new Instrument();
         instrument.setInstrumentId(instrumentId);
@@ -59,19 +60,22 @@ class HoldingServiceTest {
         assertEquals(accountId, responses.get(0).accountId());
         assertEquals(instrumentId, responses.get(0).instrumentId());
         assertEquals("AAPL", responses.get(0).ticker());
-        assertEquals(20, responses.get(0).quantity());
+        assertEquals(BigDecimal.valueOf(20), responses.get(0).quantity());
         verify(holdingMapper, times(1)).getHoldingsByAccountId(accountId);
         verify(instrumentService, times(1)).getInstrumentById(instrumentId);
     }
 
-    // Verifies getHoldingsByAccountId throws when no holdings exist.
+    // Verifies getHoldingsByAccountId returns empty list when no holdings exist.
     @Test
-    void testGetHoldingsByAccountIdThrowsWhenEmpty() {
+    void testGetHoldingsByAccountIdReturnsEmptyWhenNoRows() {
         UUID accountId = UUID.randomUUID();
 
         when(holdingMapper.getHoldingsByAccountId(accountId)).thenReturn(List.of());
 
-        assertThrows(ObjectNotFoundException.class, () -> holdingService.getHoldingsByAccountId(accountId));
+        List<HoldingResponse> responses = holdingService.getHoldingsByAccountId(accountId);
+
+        assertNotNull(responses);
+        assertEquals(0, responses.size());
 
         verify(holdingMapper, times(1)).getHoldingsByAccountId(accountId);
     }
@@ -81,7 +85,7 @@ class HoldingServiceTest {
     void testGetHoldingByAccountIdAndInstrumentIdReturnsResponse() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 8);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(8));
 
         Instrument instrument = new Instrument();
         instrument.setInstrumentId(instrumentId);
@@ -96,7 +100,7 @@ class HoldingServiceTest {
         assertEquals(accountId, response.accountId());
         assertEquals(instrumentId, response.instrumentId());
         assertEquals("MSFT", response.ticker());
-        assertEquals(8, response.quantity());
+        assertEquals(BigDecimal.valueOf(8), response.quantity());
         verify(holdingMapper, times(1)).getHoldingByAccountIdAndInstrumentId(accountId, instrumentId);
         verify(instrumentService, times(1)).getInstrumentById(instrumentId);
     }
@@ -120,7 +124,7 @@ class HoldingServiceTest {
     void testFindHoldingReturnsMapperResult() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 5);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(5));
 
         when(holdingMapper.getHoldingByAccountIdAndInstrumentId(accountId, instrumentId)).thenReturn(holding);
 
@@ -149,14 +153,14 @@ class HoldingServiceTest {
     void testCreateHoldingInternalReturnsHoldingWhenCreated() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 11);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(11));
 
-        when(holdingMapper.insertHolding(accountId, instrumentId, 11)).thenReturn(1);
+        when(holdingMapper.insertHolding(accountId, instrumentId, BigDecimal.valueOf(11))).thenReturn(1);
 
         Holding result = holdingService.createHoldingInternal(holding);
 
         assertEquals(holding, result);
-        verify(holdingMapper, times(1)).insertHolding(accountId, instrumentId, 11);
+        verify(holdingMapper, times(1)).insertHolding(accountId, instrumentId, BigDecimal.valueOf(11));
     }
 
     // Verifies createHoldingInternal throws when insert fails.
@@ -164,13 +168,13 @@ class HoldingServiceTest {
     void testCreateHoldingInternalThrowsWhenInsertFails() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 11);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(11));
 
-        when(holdingMapper.insertHolding(accountId, instrumentId, 11)).thenReturn(0);
+        when(holdingMapper.insertHolding(accountId, instrumentId, BigDecimal.valueOf(11))).thenReturn(0);
 
         assertThrows(ObjectNotProcessedException.class, () -> holdingService.createHoldingInternal(holding));
 
-        verify(holdingMapper, times(1)).insertHolding(accountId, instrumentId, 11);
+        verify(holdingMapper, times(1)).insertHolding(accountId, instrumentId, BigDecimal.valueOf(11));
     }
 
     // Verifies createHolding returns a response when insert succeeds.
@@ -178,13 +182,13 @@ class HoldingServiceTest {
     void testCreateHoldingReturnsResponseWhenCreated() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingRequest request = new HoldingRequest(accountId, instrumentId, 14);
+        HoldingRequest request = new HoldingRequest(accountId, instrumentId, BigDecimal.valueOf(14));
 
         Instrument instrument = new Instrument();
         instrument.setInstrumentId(instrumentId);
         instrument.setTicker("GOOG");
 
-        when(holdingMapper.insertHolding(accountId, instrumentId, 14)).thenReturn(1);
+        when(holdingMapper.insertHolding(accountId, instrumentId, BigDecimal.valueOf(14))).thenReturn(1);
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
 
         HoldingResponse response = holdingService.createHolding(request);
@@ -193,8 +197,8 @@ class HoldingServiceTest {
         assertEquals(accountId, response.accountId());
         assertEquals(instrumentId, response.instrumentId());
         assertEquals("GOOG", response.ticker());
-        assertEquals(14, response.quantity());
-        verify(holdingMapper, times(1)).insertHolding(accountId, instrumentId, 14);
+        assertEquals(BigDecimal.valueOf(14), response.quantity());
+        verify(holdingMapper, times(1)).insertHolding(accountId, instrumentId, BigDecimal.valueOf(14));
         verify(instrumentService, times(1)).getInstrumentById(instrumentId);
     }
 
@@ -203,13 +207,13 @@ class HoldingServiceTest {
     void testCreateHoldingThrowsWhenInsertFails() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingRequest request = new HoldingRequest(accountId, instrumentId, 14);
+        HoldingRequest request = new HoldingRequest(accountId, instrumentId, BigDecimal.valueOf(14));
 
-        when(holdingMapper.insertHolding(accountId, instrumentId, 14)).thenReturn(0);
+        when(holdingMapper.insertHolding(accountId, instrumentId, BigDecimal.valueOf(14))).thenReturn(0);
 
         assertThrows(ObjectNotProcessedException.class, () -> holdingService.createHolding(request));
 
-        verify(holdingMapper, times(1)).insertHolding(accountId, instrumentId, 14);
+        verify(holdingMapper, times(1)).insertHolding(accountId, instrumentId, BigDecimal.valueOf(14));
     }
 
     // Verifies incrementHoldingQuantityImternal updates quantity when valid.
@@ -217,28 +221,28 @@ class HoldingServiceTest {
     void testIncrementHoldingQuantityImternalReturnsOneWhenSuccessful() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 10);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(10));
 
-        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, 15)).thenReturn(1);
+        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(15))).thenReturn(1);
 
-        int result = holdingService.incrementHoldingQuantityImternal(holding, 5);
+        int result = holdingService.incrementHoldingQuantityImternal(holding, BigDecimal.valueOf(5));
 
         assertEquals(1, result);
-        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, 15);
+        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(15));
     }
 
     // Verifies incrementHoldingQuantityImternal rejects null holding.
     @Test
     void testIncrementHoldingQuantityImternalThrowsForNullHolding() {
-        assertThrows(ObjectInvalidException.class, () -> holdingService.incrementHoldingQuantityImternal(null, 5));
+        assertThrows(ObjectInvalidException.class, () -> holdingService.incrementHoldingQuantityImternal(null, BigDecimal.valueOf(5)));
     }
 
     // Verifies incrementHoldingQuantityImternal rejects nonpositive amount.
     @Test
     void testIncrementHoldingQuantityImternalThrowsForInvalidAmount() {
-        Holding holding = new Holding(UUID.randomUUID(), UUID.randomUUID(), 10);
+        Holding holding = new Holding(UUID.randomUUID(), UUID.randomUUID(), BigDecimal.valueOf(10));
 
-        assertThrows(ObjectInvalidException.class, () -> holdingService.incrementHoldingQuantityImternal(holding, 0));
+        assertThrows(ObjectInvalidException.class, () -> holdingService.incrementHoldingQuantityImternal(holding, BigDecimal.ZERO));
     }
 
     // Verifies incrementHoldingQuantityImternal throws when update fails.
@@ -246,14 +250,14 @@ class HoldingServiceTest {
     void testIncrementHoldingQuantityImternalThrowsWhenUpdateFails() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 10);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(10));
 
-        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, 15)).thenReturn(0);
+        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(15))).thenReturn(0);
 
         assertThrows(ObjectNotProcessedException.class,
-                () -> holdingService.incrementHoldingQuantityImternal(holding, 5));
+                () -> holdingService.incrementHoldingQuantityImternal(holding, BigDecimal.valueOf(5)));
 
-        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, 15);
+            verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(15));
     }
 
     // Verifies decrementHoldingQuantityImternal updates quantity when remainder is positive.
@@ -261,14 +265,14 @@ class HoldingServiceTest {
     void testDecrementHoldingQuantityImternalUpdatesWhenRemainderPositive() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 10);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(10));
 
-        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, 7)).thenReturn(1);
+        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(7))).thenReturn(1);
 
-        int result = holdingService.decrementHoldingQuantityImternal(holding, 3);
+        int result = holdingService.decrementHoldingQuantityImternal(holding, BigDecimal.valueOf(3));
 
         assertEquals(1, result);
-        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, 7);
+        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(7));
     }
 
     // Verifies decrementHoldingQuantityImternal deletes row when new quantity is zero.
@@ -276,11 +280,11 @@ class HoldingServiceTest {
     void testDecrementHoldingQuantityImternalDeletesWhenQuantityBecomesZero() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 10);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(10));
 
         when(holdingMapper.deleteHolding(accountId, instrumentId)).thenReturn(1);
 
-        int result = holdingService.decrementHoldingQuantityImternal(holding, 10);
+        int result = holdingService.decrementHoldingQuantityImternal(holding, BigDecimal.valueOf(10));
 
         assertEquals(1, result);
         verify(holdingMapper, times(1)).deleteHolding(accountId, instrumentId);
@@ -289,23 +293,23 @@ class HoldingServiceTest {
     // Verifies decrementHoldingQuantityImternal rejects null holding.
     @Test
     void testDecrementHoldingQuantityImternalThrowsForNullHolding() {
-        assertThrows(ObjectInvalidException.class, () -> holdingService.decrementHoldingQuantityImternal(null, 1));
+        assertThrows(ObjectInvalidException.class, () -> holdingService.decrementHoldingQuantityImternal(null, BigDecimal.ONE));
     }
 
     // Verifies decrementHoldingQuantityImternal rejects nonpositive amount.
     @Test
     void testDecrementHoldingQuantityImternalThrowsForInvalidAmount() {
-        Holding holding = new Holding(UUID.randomUUID(), UUID.randomUUID(), 10);
+        Holding holding = new Holding(UUID.randomUUID(), UUID.randomUUID(), BigDecimal.valueOf(10));
 
-        assertThrows(ObjectInvalidException.class, () -> holdingService.decrementHoldingQuantityImternal(holding, 0));
+        assertThrows(ObjectInvalidException.class, () -> holdingService.decrementHoldingQuantityImternal(holding, BigDecimal.ZERO));
     }
 
     // Verifies decrementHoldingQuantityImternal rejects amount greater than quantity.
     @Test
     void testDecrementHoldingQuantityImternalThrowsWhenAmountExceedsQuantity() {
-        Holding holding = new Holding(UUID.randomUUID(), UUID.randomUUID(), 10);
+        Holding holding = new Holding(UUID.randomUUID(), UUID.randomUUID(), BigDecimal.valueOf(10));
 
-        assertThrows(ObjectInvalidException.class, () -> holdingService.decrementHoldingQuantityImternal(holding, 11));
+        assertThrows(ObjectInvalidException.class, () -> holdingService.decrementHoldingQuantityImternal(holding, BigDecimal.valueOf(11)));
     }
 
     // Verifies decrementHoldingQuantityImternal throws when mapper change fails.
@@ -313,14 +317,14 @@ class HoldingServiceTest {
     void testDecrementHoldingQuantityImternalThrowsWhenMapperFails() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        Holding holding = new Holding(accountId, instrumentId, 10);
+        Holding holding = new Holding(accountId, instrumentId, BigDecimal.valueOf(10));
 
-        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, 7)).thenReturn(0);
+        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(7))).thenReturn(0);
 
         assertThrows(ObjectNotProcessedException.class,
-                () -> holdingService.decrementHoldingQuantityImternal(holding, 3));
+                () -> holdingService.decrementHoldingQuantityImternal(holding, BigDecimal.valueOf(3)));
 
-        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, 7);
+            verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(7));
     }
 
     // Verifies updateHoldingQuantity returns updated response when mapper succeeds.
@@ -328,13 +332,13 @@ class HoldingServiceTest {
     void testUpdateHoldingQuantityReturnsResponseWhenUpdated() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingRequest request = new HoldingRequest(accountId, instrumentId, 50);
+        HoldingRequest request = new HoldingRequest(accountId, instrumentId, BigDecimal.valueOf(50));
 
         Instrument instrument = new Instrument();
         instrument.setInstrumentId(instrumentId);
         instrument.setTicker("TSLA");
 
-        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, 50)).thenReturn(1);
+        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(50))).thenReturn(1);
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
 
         HoldingResponse response = holdingService.updateHoldingQuantity(request);
@@ -343,8 +347,8 @@ class HoldingServiceTest {
         assertEquals(accountId, response.accountId());
         assertEquals(instrumentId, response.instrumentId());
         assertEquals("TSLA", response.ticker());
-        assertEquals(50, response.quantity());
-        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, 50);
+        assertEquals(BigDecimal.valueOf(50), response.quantity());
+        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(50));
         verify(instrumentService, times(1)).getInstrumentById(instrumentId);
     }
 
@@ -353,13 +357,13 @@ class HoldingServiceTest {
     void testUpdateHoldingQuantityThrowsWhenUpdateFails() {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        HoldingRequest request = new HoldingRequest(accountId, instrumentId, 50);
+        HoldingRequest request = new HoldingRequest(accountId, instrumentId, BigDecimal.valueOf(50));
 
-        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, 50)).thenReturn(0);
+        when(holdingMapper.updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(50))).thenReturn(0);
 
         assertThrows(ObjectNotProcessedException.class, () -> holdingService.updateHoldingQuantity(request));
 
-        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, 50);
+        verify(holdingMapper, times(1)).updateHoldingQuantity(accountId, instrumentId, BigDecimal.valueOf(50));
     }
 
     // Verifies deleteHolding delegates to mapper.

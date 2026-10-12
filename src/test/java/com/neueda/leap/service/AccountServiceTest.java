@@ -6,6 +6,7 @@ import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.AccountMapper;
 import com.neueda.leap.model.Account;
+import com.neueda.leap.model.Holding;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,9 @@ class AccountServiceTest {
 
     @Mock
     private AccountMapper accountMapper;
+
+    @Mock
+    private HoldingService holdingService;
 
     @InjectMocks
     private AccountService accountService;
@@ -108,6 +112,116 @@ class AccountServiceTest {
 
         assertNotNull(result);
         assertEquals(BigDecimal.ZERO, result.getBalance());
+        verify(accountMapper, times(1)).createAccount(any(Account.class));
+    }
+
+    // Verifies that createAccount keeps an existing accountId value.
+    @Test
+    void testCreateAccountKeepsExistingAccountId() {
+        UUID accountId = UUID.randomUUID();
+        Account account = new Account();
+        account.setAccountId(accountId);
+        account.setUserId(UUID.randomUUID());
+        account.setBalance(BigDecimal.valueOf(250));
+        account.setCurrency("USD");
+
+        when(accountMapper.createAccount(any(Account.class))).thenReturn(1);
+
+        Account result = accountService.createAccount(account);
+
+        assertNotNull(result);
+        assertEquals(accountId, result.getAccountId());
+        verify(accountMapper, times(1)).createAccount(any(Account.class));
+    }
+
+    // Verifies that createAccount assigns zero balance when balance is null.
+    @Test
+    void testCreateAccountAssignsZeroBalanceWhenNull() {
+        Account account = new Account();
+        account.setUserId(UUID.randomUUID());
+        account.setAccountId(UUID.randomUUID());
+        account.setBalance(null);
+        account.setCurrency("USD");
+
+        when(accountMapper.createAccount(any(Account.class))).thenReturn(1);
+
+        Account result = accountService.createAccount(account);
+
+        assertNotNull(result);
+        assertEquals(BigDecimal.ZERO, result.getBalance());
+        verify(accountMapper, times(1)).createAccount(any(Account.class));
+    }
+
+    // Verifies that createAccount sets currency to USD when currency is null.
+    @Test
+    void testCreateAccountSetsDefaultCurrencyWhenNull() {
+        Account account = new Account();
+        account.setUserId(UUID.randomUUID());
+        account.setBalance(BigDecimal.valueOf(100));
+        account.setCurrency(null);
+
+        when(accountMapper.createAccount(any(Account.class))).thenReturn(1);
+
+        Account result = accountService.createAccount(account);
+
+        assertNotNull(result);
+        assertEquals("USD", result.getCurrency());
+        verify(accountMapper, times(1)).createAccount(any(Account.class));
+    }
+
+    // Verifies that createAccount sets status to ACTIVE when status is null.
+    @Test
+    void testCreateAccountSetsDefaultStatusWhenNull() {
+        Account account = new Account();
+        account.setUserId(UUID.randomUUID());
+        account.setBalance(BigDecimal.valueOf(100));
+        account.setCurrency("USD");
+        account.setStatus(null);
+
+        when(accountMapper.createAccount(any(Account.class))).thenReturn(1);
+
+        Account result = accountService.createAccount(account);
+
+        assertNotNull(result);
+        assertEquals("ACTIVE", result.getStatus());
+        verify(accountMapper, times(1)).createAccount(any(Account.class));
+    }
+
+    // Verifies that createAccount generates createdAt when missing.
+    @Test
+    void testCreateAccountSetsCreatedAtWhenNull() {
+        Account account = new Account();
+        account.setUserId(UUID.randomUUID());
+        account.setBalance(BigDecimal.valueOf(100));
+        account.setCurrency("USD");
+        account.setCreatedAt(null);
+
+        when(accountMapper.createAccount(any(Account.class))).thenReturn(1);
+
+        Account result = accountService.createAccount(account);
+
+        assertNotNull(result);
+        assertNotNull(result.getCreatedAt());
+        verify(accountMapper, times(1)).createAccount(any(Account.class));
+    }
+
+    // Verifies that createAccount keeps an existing createdAt value.
+    @Test
+    void testCreateAccountKeepsExistingCreatedAt() {
+        OffsetDateTime createdAt = OffsetDateTime.now().minusDays(2);
+        Account account = new Account();
+        account.setUserId(UUID.randomUUID());
+        account.setAccountId(UUID.randomUUID());
+        account.setBalance(BigDecimal.valueOf(100));
+        account.setCurrency("USD");
+        account.setCreatedAt(createdAt);
+
+        when(accountMapper.createAccount(any(Account.class))).thenReturn(1);
+
+        Account result = accountService.createAccount(account);
+
+        assertNotNull(result);
+        assertEquals(createdAt, result.getCreatedAt());
         verify(accountMapper, times(1)).createAccount(any(Account.class));
     }
 
@@ -274,6 +388,12 @@ class AccountServiceTest {
     @Test
     void testCloseAccountSuccessfully() {
         UUID accountId = UUID.randomUUID();
+        Account account = new Account();
+        account.setAccountId(accountId);
+        account.setBalance(BigDecimal.ZERO);
+
+        when(accountMapper.findByAccountId(accountId)).thenReturn(account);
+        when(holdingService.getActiveHoldings(accountId)).thenReturn(List.of());
 
         when(accountMapper.updateStatus(accountId, "CLOSED")).thenReturn(1);
         when(accountMapper.updateLastModified(eq(accountId), any(OffsetDateTime.class))).thenReturn(1);
@@ -284,6 +404,8 @@ class AccountServiceTest {
 
         verify(accountMapper, times(1)).updateStatus(accountId, "CLOSED");
         verify(accountMapper, times(1)).updateLastModified(eq(accountId), any(OffsetDateTime.class));
+        verify(accountMapper, times(1)).findByAccountId(accountId);
+        verify(holdingService, times(1)).getActiveHoldings(accountId);
     }
 
     // Verifies that closeAccount throws ObjectNotFoundException when accountId is null
@@ -300,6 +422,12 @@ class AccountServiceTest {
     @Test
     void testCloseAccountThrowsExceptionWhenStatusUpdateFails() {
         UUID accountId = UUID.randomUUID();
+        Account account = new Account();
+        account.setAccountId(accountId);
+        account.setBalance(BigDecimal.ZERO);
+
+        when(accountMapper.findByAccountId(accountId)).thenReturn(account);
+        when(holdingService.getActiveHoldings(accountId)).thenReturn(List.of());
 
         when(accountMapper.updateStatus(accountId, "CLOSED")).thenReturn(0);
 
@@ -308,12 +436,21 @@ class AccountServiceTest {
         });
 
         verify(accountMapper, never()).updateLastModified(any(UUID.class), any(OffsetDateTime.class));
+        verify(accountMapper, times(1)).findByAccountId(accountId);
+        verify(holdingService, times(1)).getActiveHoldings(accountId);
+        verify(accountMapper, times(1)).updateStatus(accountId, "CLOSED");
     }
 
     // Verifies that closeAccount throws ObjectNotProcessedException when last modified update fails
     @Test
     void testCloseAccountThrowsExceptionWhenLastModifiedUpdateFails() {
         UUID accountId = UUID.randomUUID();
+        Account account = new Account();
+        account.setAccountId(accountId);
+        account.setBalance(BigDecimal.ZERO);
+
+        when(accountMapper.findByAccountId(accountId)).thenReturn(account);
+        when(holdingService.getActiveHoldings(accountId)).thenReturn(List.of());
 
         when(accountMapper.updateStatus(accountId, "CLOSED")).thenReturn(1);
         when(accountMapper.updateLastModified(eq(accountId), any(OffsetDateTime.class))).thenReturn(0);
@@ -323,6 +460,9 @@ class AccountServiceTest {
         });
 
         verify(accountMapper, times(1)).updateStatus(accountId, "CLOSED");
+        verify(accountMapper, times(1)).findByAccountId(accountId);
+        verify(holdingService, times(1)).getActiveHoldings(accountId);
+        verify(accountMapper, times(1)).updateLastModified(eq(accountId), any(OffsetDateTime.class));
     }
 
     // Test incrementBalance method
@@ -494,5 +634,44 @@ class AccountServiceTest {
         });
 
         verify(accountMapper, never()).findAllByUserId(any(UUID.class));
+    }
+
+    // Verifies that getAllActiveAccounts maps active accounts to AccountResponse.
+    @Test
+    void testGetAllActiveAccountsSuccessfully() {
+        UUID accountId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        OffsetDateTime now = OffsetDateTime.now();
+
+        Account account = new Account();
+        account.setAccountId(accountId);
+        account.setUserId(userId);
+        account.setBalance(BigDecimal.valueOf(2500));
+        account.setCurrency("USD");
+        account.setStatus("ACTIVE");
+        account.setCreatedAt(now);
+
+        when(accountMapper.findAllActiveAccounts()).thenReturn(List.of(account));
+
+        List<AccountResponse> results = accountService.getAllActiveAccounts();
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        assertEquals(accountId, results.get(0).getAccountId());
+        assertEquals(userId, results.get(0).getUserId());
+        assertEquals("ACTIVE", results.get(0).getStatus());
+        verify(accountMapper, times(1)).findAllActiveAccounts();
+    }
+
+    // Verifies that getAllActiveAccounts returns an empty list when none exist.
+    @Test
+    void testGetAllActiveAccountsReturnsEmptyList() {
+        when(accountMapper.findAllActiveAccounts()).thenReturn(new ArrayList<>());
+
+        List<AccountResponse> results = accountService.getAllActiveAccounts();
+
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+        verify(accountMapper, times(1)).findAllActiveAccounts();
     }
 }

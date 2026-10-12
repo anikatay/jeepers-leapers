@@ -50,7 +50,7 @@ class TradeControllerTest {
         UUID instrumentId = UUID.randomUUID();
         UUID tradeId = UUID.randomUUID();
 
-        TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", 10);
+        TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", BigDecimal.valueOf(10));
 
         Instrument instrument = new Instrument();
         instrument.setInstrumentId(instrumentId);
@@ -61,7 +61,7 @@ class TradeControllerTest {
         created.setAccountId(accountId);
         created.setInstrumentId(instrumentId);
         created.setSide("BUY");
-        created.setQuantity(10);
+        created.setQuantity(BigDecimal.valueOf(10));
         created.setExecutionPrice(BigDecimal.valueOf(100.50));
         created.setTradeValue(BigDecimal.valueOf(1005.00));
         created.setExecutedAt(OffsetDateTime.now());
@@ -97,7 +97,7 @@ class TradeControllerTest {
     void testCreateTradeReturnsNotFoundWhenInstrumentMissing() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", 10);
+                TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", BigDecimal.valueOf(10));
 
         when(instrumentService.getInstrumentById(instrumentId))
                 .thenThrow(new ObjectNotFoundException("Instrument not found: " + instrumentId));
@@ -114,7 +114,7 @@ class TradeControllerTest {
     void testCreateTradeReturnsBadRequestForBusinessValidationFailure() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", 10);
+                TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", BigDecimal.valueOf(10));
 
         Instrument instrument = new Instrument();
         instrument.setInstrumentId(instrumentId);
@@ -136,7 +136,7 @@ class TradeControllerTest {
     void testCreateTradeReturnsInternalServerErrorForUnhandledException() throws Exception {
         UUID accountId = UUID.randomUUID();
         UUID instrumentId = UUID.randomUUID();
-        TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", 10);
+                TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", BigDecimal.valueOf(10));
 
         Instrument instrument = new Instrument();
         instrument.setInstrumentId(instrumentId);
@@ -170,7 +170,7 @@ class TradeControllerTest {
                 OffsetDateTime.now()
         );
 
-        when(tradeService.getAllTradesByAccountWithInstrument(accountId)).thenReturn(List.of(response));
+        when(tradeService.getAllTradesByAccountWithInstrument(accountId, null, null)).thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/trades/account/{accountId}", accountId))
                 .andExpect(status().isOk())
@@ -183,7 +183,7 @@ class TradeControllerTest {
     void testGetTradesByAccountReturnsNoContentWhenEmpty() throws Exception {
         UUID accountId = UUID.randomUUID();
 
-        when(tradeService.getAllTradesByAccountWithInstrument(accountId)).thenReturn(List.of());
+        when(tradeService.getAllTradesByAccountWithInstrument(accountId, null, null)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/trades/account/{accountId}", accountId))
                 .andExpect(status().isNoContent());
@@ -194,7 +194,7 @@ class TradeControllerTest {
     void testGetTradesByAccountReturnsNotFoundFromService() throws Exception {
         UUID accountId = UUID.randomUUID();
 
-        when(tradeService.getAllTradesByAccountWithInstrument(accountId))
+        when(tradeService.getAllTradesByAccountWithInstrument(accountId, null, null))
                 .thenThrow(new ObjectNotFoundException("Account ID cannot be null"));
 
         mockMvc.perform(get("/api/trades/account/{accountId}", accountId))
