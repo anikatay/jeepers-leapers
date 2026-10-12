@@ -3,6 +3,10 @@ package com.neueda.leap.service;
 import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.mapper.AccountMapper;
 import com.neueda.leap.model.Account;
+import com.neueda.leap.service.HoldingService;
+import com.neueda.leap.model.Holding;
+
+
 
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
@@ -23,9 +27,11 @@ import java.util.UUID;
 public class AccountService implements IService {
 
     private final AccountMapper accountMapper;
+    private final HoldingService holdingService;
 
-    public AccountService(AccountMapper accountMapper) {
+    public AccountService(AccountMapper accountMapper, HoldingService holdingService) {
         this.accountMapper = accountMapper;
+        this.holdingService = holdingService;
     }
 
     @Transactional 
@@ -101,6 +107,17 @@ public class AccountService implements IService {
         if(accountId == null){
             throw new ObjectNotFoundException("Account ID cannot be null ");
         }
+        Account account = getAccount(accountId);
+
+        if(account.getBalance().compareTo(BigDecimal.ZERO) > 0){
+            throw new ObjectInvalidException("Cannot close account with non zero balance");
+        }
+
+        List<Holding> holdings = holdingService.getActiveHoldings(accountId);
+        if(holdings != null && !holdings.isEmpty()){
+            throw new ObjectInvalidException("Cannot close account with active holdings");
+        }
+
         int updateStatusFlag = accountMapper.updateStatus(accountId, "CLOSED");
         if(updateStatusFlag < 1){
             throw new ObjectNotProcessedException("Was unable to update status for account " + accountId);

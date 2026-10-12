@@ -30,8 +30,8 @@ public class HoldingController {
     public ResponseEntity<List<HoldingResponse>> getPortfolio(@PathVariable UUID accountId) {
         List<HoldingResponse> response = holdingService.getHoldingsByAccountId(accountId);
 
-        if (response == null || response.isEmpty()) {
-            return ResponseEntity.notFound().build();
+        if (response.isEmpty()) {
+            return ResponseEntity.noContent().build();
         }
 
         return ResponseEntity.ok(response);

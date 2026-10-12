@@ -1,6 +1,7 @@
 package com.neueda.leap.service;
 
 import com.neueda.leap.dto.response.TradeResponse;
+import com.neueda.leap.event.TradeExecutedEvent;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
@@ -12,6 +13,7 @@ import com.neueda.leap.model.Trade;
 
 import jakarta.transaction.Transactional;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,25 +28,30 @@ public class TradeService implements IService {
     private final AccountService accountService;
     private final InstrumentService instrumentService;
     private final HoldingService holdingService;
+    private static final int DEFAULT_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 200;
+
+    private final ApplicationEventPublisher eventPublisher;
     
-    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService) {
+    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService, ApplicationEventPublisher eventPublisher) {
         this.tradeMapper = tradeMapper;
         this.accountService = accountService;
         this.instrumentService = instrumentService;
         this.holdingService = holdingService;
+        this.eventPublisher = eventPublisher;
     }
     
     @Transactional 
     public Trade createTrade(Trade trade){
         if(trade == null){
-            throw new ObjectNotFoundException("Trade cannot be null");
+            throw new ObjectInvalidException("Trade cannot be null");
         }
         if(trade.getAccountId() == null){
-            throw new ObjectNotFoundException("Account ID cannot be null");
+            throw new ObjectInvalidException("Account ID cannot be null");
         }
 
         if(trade.getInstrumentId() == null){
-            throw new ObjectNotFoundException("Instrument ID cannot be null");
+            throw new ObjectInvalidException("Instrument ID cannot be null");
         }
         final Instrument instrument = instrumentService.getInstrumentById(trade.getInstrumentId());
         if(instrument == null){
@@ -52,11 +59,11 @@ public class TradeService implements IService {
         }
 
         if(trade.getSide() == null){
-            throw new ObjectNotFoundException("Side cannot be null");
+            throw new ObjectInvalidException("Side cannot be null");
         }
 
-        if(trade.getQuantity() <= 0){
-            throw new ObjectNotFoundException("Quantity must be non 0");
+        if(trade.getQuantity() == null || trade.getQuantity().compareTo(BigDecimal.ZERO) <= 0){
+            throw new ObjectInvalidException("Quantity must be greater than 0");
         }
 
         if(trade.getExecutionPrice() == null){
@@ -67,7 +74,7 @@ public class TradeService implements IService {
             trade.setExecutedAt(OffsetDateTime.now());
         }
         if(trade.getTradeValue() == null){
-            BigDecimal tradeValue = trade.getExecutionPrice().multiply(BigDecimal.valueOf(trade.getQuantity()));
+            BigDecimal tradeValue = trade.getExecutionPrice().multiply(trade.getQuantity());
             trade.setTradeValue(tradeValue);
         }
         int tradeCreatedFlag = tradeMapper.createTrade(trade);
@@ -79,8 +86,10 @@ public class TradeService implements IService {
             Account account = accountService.getAccount(trade.getAccountId());
             Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
             
-            if(account.getBalance().compareTo(trade.getTradeValue()) < 0){
-                throw new ObjectInvalidException("Insufficient balance for trade");
+            try{
+                accountService.decrementBalance(trade.getAccountId(), trade.getTradeValue());
+            }catch(Exception e){
+                throw new ObjectInvalidException("Insufficient balance for trade",e);
             }
             if(holding == null){
                 holding = new Holding(
@@ -89,21 +98,33 @@ public class TradeService implements IService {
                     trade.getQuantity()
                 );
                 holdingService.createHoldingInternal(holding);
-            }else if(holding != null){
-               holdingService.incrementHoldingQuantityImternal(holding, trade.getQuantity());
+            }else{
+                holdingService.incrementHoldingQuantityImternal(holding, trade.getQuantity());
             }
-            accountService.decrementBalance(trade.getAccountId(), trade.getTradeValue());
         }else if(trade.getSide().equals("SELL")){
             Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
             if(holding == null){
                 throw new ObjectInvalidException("No holding exits for this instrument");
             }
-            if(holding.getQuantity() < trade.getQuantity()){
+            if(holding.getQuantity().compareTo(trade.getQuantity()) < 0){
                 throw new ObjectInvalidException("INsufficient quantity to sell");
             }
             holdingService.decrementHoldingQuantityImternal(holding, trade.getQuantity());
             accountService.incrementBalance(trade.getAccountId(), trade.getTradeValue());
         }
+        
+        TradeExecutedEvent event = new TradeExecutedEvent(
+            trade.getTradeId(),
+            trade.getAccountId(),
+            trade.getInstrumentId(),
+            trade.getSide(),
+            trade.getQuantity(),
+            trade.getExecutionPrice(),
+            trade.getTradeValue(),
+            trade.getExecutedAt()
+        );
+        eventPublisher.publishEvent(event);
+
         return trade;
     }
 
@@ -120,11 +141,14 @@ public class TradeService implements IService {
     }
 
 
-    public List<TradeResponse> getAllTradesByAccountWithInstrument(UUID accountId){
+    public List<TradeResponse> getAllTradesByAccountWithInstrument(UUID accountId, Integer limit, Integer offset){
         if(accountId == null){
             throw new ObjectNotFoundException("Account ID cannot be null");
         }
-        return tradeMapper.findAllTradesForAccountWithInstrument(accountId);
+        int safeLimit = (limit == null) ? DEFAULT_PAGE_SIZE : Math.min(limit, MAX_PAGE_SIZE);
+        int safeOffset = (offset == null) ? 0 : Math.max(offset, 0);
+
+        return tradeMapper.findAllTradesForAccountWithInstrument(accountId, safeLimit, safeOffset);
     }
 
 }
