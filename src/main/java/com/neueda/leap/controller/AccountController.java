@@ -69,4 +69,11 @@ public class AccountController {
         return ResponseEntity.noContent().build();
     }
 
+    // get all active accounts
+    @GetMapping("/active")
+    public ResponseEntity<List<AccountResponse>> getAllActiveAccounts(){
+        List<AccountResponse> accounts = accountService.getAllActiveAccounts();
+        return ResponseEntity.ok(accounts);
+    }
+
 }
