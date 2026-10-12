@@ -1,7 +1,11 @@
 package com.neueda.leap.service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.InstrumentResponse;
+import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
@@ -11,6 +15,7 @@ import com.neueda.leap.model.Instrument;
 import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -19,9 +24,22 @@ import java.util.UUID;
 public class InstrumentService implements IService {
 
     private final InstrumentMapper instrumentMapper;
+    private final MarketDataService marketDataService;
+    private final StringRedisTemplate redis;
+    private final long quoteRefreshThresholdSeconds;
+    private final long quoteLockTtlSeconds;
 
-    public InstrumentService(InstrumentMapper instrumentMapper) {
+    public InstrumentService(
+        InstrumentMapper instrumentMapper,
+        StringRedisTemplate redis,
+        MarketDataService marketDataService,
+        @Value("${quote.refresh-threshold-seconds:120}") long quoteRefreshThresholdSeconds,
+        @Value("${quote.lock-ttl-seconds:20}") long quoteLockTtlSeconds) {
         this.instrumentMapper = instrumentMapper;
+        this.redis = redis;
+        this.marketDataService = marketDataService;
+        this.quoteRefreshThresholdSeconds = quoteRefreshThresholdSeconds;
+        this.quoteLockTtlSeconds = quoteLockTtlSeconds;
     }
 
     public Instrument getInstrumentById(UUID instrumentId){
@@ -99,6 +117,45 @@ public class InstrumentService implements IService {
                         i.getCurrentPrice(),
                         i.getExchange()))
                 .toList();
+    }
+
+    public Instrument refreshPriceIfStale(UUID instrumentId) {
+        Instrument instrument = getInstrumentById(instrumentId);
+
+        if (instrument.getUpdatedAt() != null) {
+            long ageSeconds = Duration.between(instrument.getUpdatedAt(), OffsetDateTime.now()).getSeconds();
+            if (ageSeconds <= quoteRefreshThresholdSeconds) {
+                return instrument;
+            }
+        }
+
+        String lockKey = "lock:quote:" + instrument.getTicker();
+        Boolean acquired = redis.opsForValue().setIfAbsent(lockKey, "1", Duration.ofSeconds(quoteLockTtlSeconds));
+
+        if (!Boolean.TRUE.equals(acquired)) {
+            // Another request is refreshing this ticker; return latest persisted snapshot.
+            return getInstrumentById(instrumentId);
+        }
+
+        try {
+            HistoryResponse history = marketDataService.getHistory(instrument.getTicker(), "1mo");
+            if (history.bars() == null || history.bars().isEmpty()) {
+                return instrument;
+            }
+
+            PriceBar latest = history.bars().get(history.bars().size() - 1);
+            instrument.setCurrentPrice(latest.close());
+            instrument.setUpdatedAt(OffsetDateTime.now());
+
+            int updated = instrumentMapper.updatePrice(instrument);
+            if (updated < 1) {
+                throw new ObjectNotProcessedException("Failed to refresh price for " + instrument.getTicker());
+            }
+
+            return instrument;
+        } finally {
+            redis.delete(lockKey);
+        }
     }
 
 }

@@ -10,14 +10,15 @@ import com.neueda.leap.model.Account;
 import com.neueda.leap.model.Holding;
 import com.neueda.leap.model.Instrument;
 import com.neueda.leap.model.Trade;
-
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import jakarta.transaction.Transactional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,7 +33,20 @@ public class TradeService implements IService {
     private static final int MAX_PAGE_SIZE = 200;
 
     private final ApplicationEventPublisher eventPublisher;
+    @Value("${trade.max-price-age-seconds:180}")
+    private long maxPriceAgeSeconds;
+
     
+    private void assertPriceFresh(Instrument instrument) {
+        if (instrument.getUpdatedAt() == null) {
+            throw new ObjectInvalidException("Quote timestamp missing; refresh and retry");
+        }
+        long age = Duration.between(instrument.getUpdatedAt(), OffsetDateTime.now()).getSeconds();
+        if (age > maxPriceAgeSeconds) {
+            throw new ObjectInvalidException("Quote is stale; refresh and retry");
+        }
+    }
+
     public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService, ApplicationEventPublisher eventPublisher) {
         this.tradeMapper = tradeMapper;
         this.accountService = accountService;
@@ -49,16 +63,17 @@ public class TradeService implements IService {
         if(trade.getAccountId() == null){
             throw new ObjectInvalidException("Account ID cannot be null");
         }
-
         if(trade.getInstrumentId() == null){
             throw new ObjectInvalidException("Instrument ID cannot be null");
         }
-        final Instrument instrument = instrumentService.getInstrumentById(trade.getInstrumentId());
+        final Instrument instrument = instrumentService.refreshPriceIfStale(trade.getInstrumentId());
         if(instrument == null){
             throw new ObjectNotFoundException("This instrument does not exist");
         }
-
-        if(trade.getSide() == null){
+        
+        assertPriceFresh(instrument);
+        trade.setExecutionPrice(instrument.getCurrentPrice());
+        if(!"BUY".equals(trade.getSide()) && !"SELL".equals(trade.getSide())){
             throw new ObjectInvalidException("Side cannot be null");
         }
 
@@ -83,7 +98,7 @@ public class TradeService implements IService {
         }
     
         if(trade.getSide().equals("BUY")){
-            Account account = accountService.getAccount(trade.getAccountId());
+
             Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
             
             try{
@@ -107,7 +122,7 @@ public class TradeService implements IService {
                 throw new ObjectInvalidException("No holding exits for this instrument");
             }
             if(holding.getQuantity().compareTo(trade.getQuantity()) < 0){
-                throw new ObjectInvalidException("INsufficient quantity to sell");
+                throw new ObjectInvalidException("Insufficient quantity to sell");
             }
             holdingService.decrementHoldingQuantityImternal(holding, trade.getQuantity());
             accountService.incrementBalance(trade.getAccountId(), trade.getTradeValue());
