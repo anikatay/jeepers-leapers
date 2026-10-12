@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/accounts")
@@ -67,6 +68,13 @@ public class AccountController {
     public ResponseEntity<Void> decrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request){
         accountService.decrementBalance(accountId, request.amount());
         return ResponseEntity.noContent().build();
+    }
+
+    // get all active accounts
+    @GetMapping("/active")
+    public ResponseEntity<List<AccountResponse>> getAllActiveAccounts(){
+        List<AccountResponse> accounts = accountService.getAllActiveAccounts();
+        return ResponseEntity.ok(accounts);
     }
 
 }
