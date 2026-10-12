@@ -12,7 +12,7 @@ import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.InstrumentMapper;
 import com.neueda.leap.model.Instrument;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;

@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.AuthenticationException;
 
 import java.util.stream.Collectors;
 
@@ -49,6 +50,20 @@ public class GlobalExceptionHandler {
         );
         response.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+            AuthenticationException e,
+            HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+            "AUTHENTICATION_FAILED",
+            "Authentication failed",
+            e.getMessage(),
+            401
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
      @ExceptionHandler(ObjectInvalidException.class)
     public ResponseEntity<ErrorResponse> handleInvalid(
