@@ -5,7 +5,7 @@ Extracts data from OLTP database (paysprint.public) and loads into staging schem
 Runs once per hour at :00 - all downstream ETLs reuse this data.
 
 This module provides a DataExtractor class that:
-- Extracts tables: exchanges, accounts, instruments, holdings, trades
+- Extracts tables: exchanges, accounts, instruments, holdings, trades (full history by default)
 - Adds metadata columns: etl_run_id, etl_timestamp, source_table
 - Loads to paysprint_analytics.staging schema
 - Tracks extraction/load statistics per table
@@ -67,6 +67,7 @@ class DataExtractor:
         self.staging_engine = get_staging_engine()
         self.extract_timestamp = datetime.utcnow()
         self.extraction_stats = {}
+        self.failed_tables = []  # Tables whose extract or load raised an error
         
         logger.info(f"DataExtractor initialized with run_id: {self.etl_run_id}")
     
@@ -164,6 +165,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting exchanges: {str(e)}", exc_info=True)
+            self.failed_tables.append("exchanges")
             return (0, 0)
     
     def _extract_accounts(self) -> Tuple[int, int]:
@@ -202,6 +204,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting accounts: {str(e)}", exc_info=True)
+            self.failed_tables.append("accounts")
             return (0, 0)
     
     def _extract_instruments(self) -> Tuple[int, int]:
@@ -240,6 +243,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting instruments: {str(e)}", exc_info=True)
+            self.failed_tables.append("instruments")
             return (0, 0)
     
     def _extract_holdings(self) -> Tuple[int, int]:
@@ -275,14 +279,16 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting holdings: {str(e)}", exc_info=True)
+            self.failed_tables.append("holdings")
             return (0, 0)
     
     def _extract_trades(self, days: int = None) -> Tuple[int, int]:
         """
-        Extract trades from OLTP (last N days).
+        Extract trades from OLTP (full history, or last N days if a lookback is set).
         
         Args:
-            days: Number of days to look back (default: ETL_LOOKBACK_DAYS from config)
+            days: Number of days to look back (default: ETL_LOOKBACK_DAYS from config;
+                  None extracts all trades)
         
         Returns:
             (rows_extracted, rows_loaded) tuple
@@ -290,9 +296,7 @@ class DataExtractor:
         if days is None:
             days = ETL_LOOKBACK_DAYS
         
-        logger.info(f"Extracting trades from last {days} days")
-        
-        query = f"""
+        query = """
         SELECT
             trade_id,
             account_id,
@@ -302,8 +306,13 @@ class DataExtractor:
             execution_price,
             executed_at
         FROM public.trades
-        WHERE executed_at >= NOW() - INTERVAL '{days} days'
         """
+        
+        if days is None:
+            logger.info("Extracting all trades")
+        else:
+            logger.info(f"Extracting trades from last {int(days)} days")
+            query += f"WHERE executed_at >= NOW() - INTERVAL '{int(days)} days'"
         
         try:
             df = pd.read_sql(text(query), self.oltp_engine)
@@ -321,24 +330,43 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting trades: {str(e)}", exc_info=True)
+            self.failed_tables.append("trades")
             return (0, 0)
     
     def _load_to_staging(self, df: pd.DataFrame, table_name: str) -> int:
         """
         Load DataFrame to staging table.
         
+        Creates the table even if empty to prevent "table not found" errors downstream.
+        
         Args:
             df: DataFrame to load
             table_name: Target table name in staging schema
         
         Returns:
-            Number of rows loaded (0 if empty or error)
+            Number of rows loaded (0 if empty, but table still created)
         """
-        if df is None or df.empty:
-            logger.warning(f"Skipping empty DataFrame for table: staging.{table_name}")
-            return 0
-        
         try:
+            # CRITICAL: Always create the table, even if empty
+            # Downstream ETL phases (Phase 3, etc.) expect these tables to exist
+            if df is None or df.empty:
+                logger.warning(f"Empty DataFrame for table: staging.{table_name} - creating table schema anyway")
+                
+                # Create table schema even if no data
+                # Use if_exists='replace' to ensure table is created with correct schema
+                df_empty = pd.DataFrame() if df is None else df  # Use original df if not None
+                df_empty.to_sql(
+                    name=table_name,
+                    con=self.staging_engine,
+                    schema='staging',
+                    if_exists='replace',  # Replace to ensure table exists
+                    index=False,
+                    method='multi',
+                    chunksize=BATCH_SIZE
+                )
+                logger.info(f"Created empty table schema for staging.{table_name}")
+                return 0
+            
             rows_count = len(df)
             logger.debug(f"Loading {rows_count} rows to staging.{table_name}...")
             
@@ -358,6 +386,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Failed to load data to staging.{table_name}: {str(e)}", exc_info=True)
+            self.failed_tables.append(table_name.removesuffix("_raw"))
             return 0
 
 
@@ -374,7 +403,8 @@ def run_etl() -> Dict[str, any]:
                 "exchanges": (rows_extracted, rows_loaded),
                 "accounts": (rows_extracted, rows_loaded),
                 ...
-            }
+            },
+            "failed_tables": ["trades", ...]  # tables that errored; status is "failed" if any
         }
     """
     # Validate configuration first
@@ -383,7 +413,8 @@ def run_etl() -> Dict[str, any]:
         return {
             "status": "failed",
             "run_id": None,
-            "extraction_stats": {}
+            "extraction_stats": {},
+            "failed_tables": []
         }
     
     # Generate unique run ID
@@ -401,7 +432,11 @@ def run_etl() -> Dict[str, any]:
         total_extracted = sum(row_count[0] for row_count in stats.values())
         total_loaded = sum(row_count[1] for row_count in stats.values())
         
-        if total_loaded > 0:
+        if extractor.failed_tables:
+            # A table that errored reports (0, 0), which would otherwise look like an empty table
+            logger.error(f"Extraction failed for tables: {', '.join(extractor.failed_tables)}")
+            status = "failed"
+        elif total_loaded > 0:
             status = "success" if total_extracted == total_loaded else "partial"
         else:
             status = "failed"
@@ -409,7 +444,8 @@ def run_etl() -> Dict[str, any]:
         result = {
             "status": status,
             "run_id": run_id,
-            "extraction_stats": stats
+            "extraction_stats": stats,
+            "failed_tables": extractor.failed_tables
         }
         
         logger.info("=" * 70)
@@ -424,7 +460,8 @@ def run_etl() -> Dict[str, any]:
         return {
             "status": "failed",
             "run_id": run_id,
-            "extraction_stats": {}
+            "extraction_stats": {},
+            "failed_tables": []
         }
 
 
