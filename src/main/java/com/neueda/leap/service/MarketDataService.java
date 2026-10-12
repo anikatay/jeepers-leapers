@@ -111,6 +111,7 @@ private void validateHistory(HistoryResponse response, String ticker) {
             case "3m", "3mo" -> anchor.minusMonths(3);
             case "6m", "6mo" -> anchor.minusMonths(6);
             case "1y" -> anchor.minusYears(1);
+            case "2y" -> anchor.minusYears(2);
             case "all", "max", "5y" -> null;
             default -> throw new ObjectInvalidException("Unsupported period: " + period);
         };
