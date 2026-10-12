@@ -121,7 +121,7 @@ def main():
     print("Note: paysprint_analytics database will be auto-created by ETL script if needed")
     print()
     print("Ready to run ETL script:")
-    print("  python3 analytics/etl/simple_etl.py")
+    print("  python3 analytics/etl/run_pipeline.py")
     print()
     
     return True

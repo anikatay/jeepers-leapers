@@ -5,32 +5,93 @@ Complete, tested ETL modules for the trading analytics pipeline. This guide show
 ## Quick Start
 
 ### Prerequisites
-- Python 3.9+
-- PostgreSQL 16 (remote or local)
-- Environment variables set: `OLTP_DB_URL`, `ANALYTICS_DB_URL`
+- Python 3.9+ with `pip install -r analytics/requirements.txt`
+- The stack running: `docker-compose up -d --build` (PostgreSQL 16 on port 8100, app, frontend)
+- `.env` in the repo root with `PAYSPRINT_SOURCE_DB_URL` and `PAYSPRINT_ANALYTICS_DB_URL` (see `.env.example`)
 
-### Test Full Pipeline (3 minutes)
+### Run the Full Pipeline
 
 ```bash
-cd ~/jeepers-leapers/analytics
+cd ~/jeepers-leapers
 
-# Step 1: Seed trade data into OLTP
-python3 -c "from etl.seed_trades import seed_trades_main; seed_trades_main(num_trades=50)"
+# Runs Phase 0 → 1 → 2 → 3 on the trades already in OLTP
+python3 analytics/etl/run_pipeline.py
 
-# Step 2: Run Phase 1 (Extract to staging)
-python3 -c "from etl.extract_etl import run_etl; result = run_etl(); print(result)"
-
-# Step 3: Run Phase 3 (Transform with FIFO P&L)
-python3 -c "from etl.transform_pnl import run_pnl_transformation; result = run_pnl_transformation('test-run'); print(result)"
-
-# Step 4: Verify P&L data
-psql -U paysprint -d paysprint_analytics -c "
-  SELECT account_id, instrument_id, side, quantity, 
+# Verify P&L data
+docker exec jeepers-leapers-db-1 psql -U paysprint -d paysprint_analytics -c "
+  SELECT account_id, instrument_id, side, quantity,
          realized_pnl, unrealized_pnl, pnl_status
   FROM analytics.fact_trades
   ORDER BY executed_at;
 "
 ```
+
+What the orchestrator does:
+- **Phase 0** creates the `paysprint_analytics` database (if missing) and the staging schema.
+- **Phase 1** waits for the app to finish creating the OLTP tables, then extracts them to staging.
+- **Phase 2** drops and recreates the analytics dimension and fact tables (full refresh, so the
+  database always matches `schema/01_ANALYTICS_SCHEMA.sql`) and loads the dimensions.
+- **Phase 3** loads `analytics.fact_trades` with FIFO P&L.
+
+The pipeline exits non-zero if any phase fails.
+
+Test trades are **not** inserted unless you ask for them, because seeding writes into the OLTP
+database and every run adds new rows:
+
+```bash
+python3 analytics/etl/run_pipeline.py --seed               # insert 50 test trades first
+python3 analytics/etl/run_pipeline.py --seed --trades 100  # insert 100
+```
+
+### Triggering a Refresh from an API (e.g. an admin "P&L analytics" button)
+
+The intended flow is: trigger the pipeline, wait for it to return, then read the admin views.
+
+**1. Run the pipeline.** From Python, call the function. It never raises or exits:
+
+```python
+from etl.run_pipeline import run_pipeline   # with analytics/ on sys.path
+
+result = run_pipeline()
+# {'status': 'success', 'phases': [...], 'summary': {'trades_loaded': 668, ...},
+#  'error': None, 'duration_seconds': 0.9}
+```
+
+From anything else, run the script and read the JSON it prints on stdout (logs go to stderr):
+
+```bash
+python3 analytics/etl/run_pipeline.py --json
+```
+
+| `status` | Exit code | Meaning |
+|----------|-----------|---------|
+| `success` | 0 | All phases ran; the views below are up to date |
+| `failed` | 1 | A phase failed; `error` says which and why |
+| `busy` | 2 | Another run holds the lock; nothing was changed. Wait and read the views |
+
+Only one run can happen at a time (a Postgres advisory lock), so two clicks cannot collide.
+
+**2. Read the results.** Phase 2 creates these views in `paysprint_analytics`. Each is aggregated
+across all accounts and is a snapshot of the last run:
+
+| View | Rows | Use for |
+|------|------|---------|
+| `analytics.v_pnl_summary` | Always 1 | Headline totals: trades, traded value, realized / unrealized / total P&L, `refreshed_at` |
+| `analytics.v_pnl_by_instrument` | 1 per instrument | P&L and volume per ticker |
+| `analytics.v_pnl_by_account` | 1 per account | P&L and volume per account |
+| `analytics.v_pnl_by_day` | 1 per trading date | Trades and realized P&L per day, with a running total |
+
+```sql
+SELECT * FROM analytics.v_pnl_summary;
+SELECT ticker, realized_pnl, unrealized_pnl, total_pnl FROM analytics.v_pnl_by_instrument ORDER BY total_pnl DESC;
+SELECT executed_date, realized_pnl, cumulative_realized_pnl FROM analytics.v_pnl_by_day ORDER BY executed_date;
+```
+
+Unrealized P&L is valued at each instrument's `current_price` at the time of the run, so it has no
+history; `v_pnl_by_day` covers realized P&L only. For a moment during a refresh the fact table is
+empty, so read the views after the run returns rather than while it is in progress.
+
+The steps below run each phase by hand (from the `analytics/` directory).
 
 ---
 
@@ -327,8 +388,8 @@ python3 -c "from etl.schema_init import initialize_database; initialize_database
 **Fix:**
 ```bash
 # Set environment variables
-export OLTP_DB_URL="postgresql://paysprint:j33p3rs!@10.14.142.75:8100/paysprint"
-export ANALYTICS_DB_URL="postgresql://paysprint:j33p3rs!@10.14.142.75:8100/paysprint_analytics"
+export PAYSPRINT_SOURCE_DB_URL="postgresql://paysprint:<password>@localhost:8100/paysprint"
+export PAYSPRINT_ANALYTICS_DB_URL="postgresql://paysprint:<password>@localhost:8100/paysprint_analytics"
 
 # Verify connection
 python3 -c "from etl.config import get_oltp_engine; engine = get_oltp_engine(); print('✓ Connected')"
