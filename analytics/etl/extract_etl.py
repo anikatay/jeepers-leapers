@@ -67,6 +67,7 @@ class DataExtractor:
         self.staging_engine = get_staging_engine()
         self.extract_timestamp = datetime.utcnow()
         self.extraction_stats = {}
+        self.failed_tables = []  # Tables whose extract or load raised an error
         
         logger.info(f"DataExtractor initialized with run_id: {self.etl_run_id}")
     
@@ -164,6 +165,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting exchanges: {str(e)}", exc_info=True)
+            self.failed_tables.append("exchanges")
             return (0, 0)
     
     def _extract_accounts(self) -> Tuple[int, int]:
@@ -202,6 +204,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting accounts: {str(e)}", exc_info=True)
+            self.failed_tables.append("accounts")
             return (0, 0)
     
     def _extract_instruments(self) -> Tuple[int, int]:
@@ -240,6 +243,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting instruments: {str(e)}", exc_info=True)
+            self.failed_tables.append("instruments")
             return (0, 0)
     
     def _extract_holdings(self) -> Tuple[int, int]:
@@ -275,6 +279,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting holdings: {str(e)}", exc_info=True)
+            self.failed_tables.append("holdings")
             return (0, 0)
     
     def _extract_trades(self, days: int = None) -> Tuple[int, int]:
@@ -325,6 +330,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Error extracting trades: {str(e)}", exc_info=True)
+            self.failed_tables.append("trades")
             return (0, 0)
     
     def _load_to_staging(self, df: pd.DataFrame, table_name: str) -> int:
@@ -380,6 +386,7 @@ class DataExtractor:
         
         except Exception as e:
             logger.error(f"Failed to load data to staging.{table_name}: {str(e)}", exc_info=True)
+            self.failed_tables.append(table_name.removesuffix("_raw"))
             return 0
 
 
@@ -396,7 +403,8 @@ def run_etl() -> Dict[str, any]:
                 "exchanges": (rows_extracted, rows_loaded),
                 "accounts": (rows_extracted, rows_loaded),
                 ...
-            }
+            },
+            "failed_tables": ["trades", ...]  # tables that errored; status is "failed" if any
         }
     """
     # Validate configuration first
@@ -405,7 +413,8 @@ def run_etl() -> Dict[str, any]:
         return {
             "status": "failed",
             "run_id": None,
-            "extraction_stats": {}
+            "extraction_stats": {},
+            "failed_tables": []
         }
     
     # Generate unique run ID
@@ -423,7 +432,11 @@ def run_etl() -> Dict[str, any]:
         total_extracted = sum(row_count[0] for row_count in stats.values())
         total_loaded = sum(row_count[1] for row_count in stats.values())
         
-        if total_loaded > 0:
+        if extractor.failed_tables:
+            # A table that errored reports (0, 0), which would otherwise look like an empty table
+            logger.error(f"Extraction failed for tables: {', '.join(extractor.failed_tables)}")
+            status = "failed"
+        elif total_loaded > 0:
             status = "success" if total_extracted == total_loaded else "partial"
         else:
             status = "failed"
@@ -431,7 +444,8 @@ def run_etl() -> Dict[str, any]:
         result = {
             "status": status,
             "run_id": run_id,
-            "extraction_stats": stats
+            "extraction_stats": stats,
+            "failed_tables": extractor.failed_tables
         }
         
         logger.info("=" * 70)
@@ -446,7 +460,8 @@ def run_etl() -> Dict[str, any]:
         return {
             "status": "failed",
             "run_id": run_id,
-            "extraction_stats": {}
+            "extraction_stats": {},
+            "failed_tables": []
         }
 
 
