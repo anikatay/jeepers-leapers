@@ -32,12 +32,7 @@ public class HoldingService implements IService {
 
     public List<HoldingResponse> getHoldingsByAccountId(UUID accountID) {
         List<Holding> response = holdingMapper.getHoldingsByAccountId(accountID);
-
-        if (response.isEmpty()) {
-            throw new ObjectNotFoundException("No holdings found for account");
-        }
-
-        List<HoldingResponse> holdingDtos = response.stream()
+        return response.stream()
                 .map(h ->{
                     Instrument instrument = instrumentService.getInstrumentById(h.getInstrumentId());
                     return new HoldingResponse(
@@ -48,8 +43,6 @@ public class HoldingService implements IService {
                     );
                 })
                 .toList();
-
-        return holdingDtos;
     }
 
     public HoldingResponse getHoldingByAccountIdAndInstrumentId(UUID accountId, UUID instrumentId) {
