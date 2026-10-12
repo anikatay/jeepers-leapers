@@ -118,12 +118,15 @@ def get_analytics_engine():
 # ETL CONFIGURATION CONSTANTS
 # ============================================================================
 
-# Date range for data extraction
-ETL_LOOKBACK_DAYS = int(os.getenv("ETL_LOOKBACK_DAYS", "90"))
+# Date range for trade extraction (days). Unset = full history, which FIFO P&L
+# needs: a SELL can only be costed if the BUYs before it were extracted too.
+_lookback_days = os.getenv("ETL_LOOKBACK_DAYS")
+ETL_LOOKBACK_DAYS = int(_lookback_days) if _lookback_days else None
 
 # Batch processing settings
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+# Retries for the OLTP readiness check (12 x 5s covers app startup after `docker compose up`)
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "12"))
 RETRY_DELAY_SECONDS = int(os.getenv("RETRY_DELAY_SECONDS", "5"))
 
 # ============================================================================
