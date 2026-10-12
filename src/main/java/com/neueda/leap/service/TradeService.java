@@ -1,6 +1,7 @@
 package com.neueda.leap.service;
 
 import com.neueda.leap.dto.response.TradeResponse;
+import com.neueda.leap.event.TradeExecutedEvent;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
@@ -12,6 +13,7 @@ import com.neueda.leap.model.Trade;
 
 import jakarta.transaction.Transactional;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,12 +31,14 @@ public class TradeService implements IService {
     private static final int DEFAULT_PAGE_SIZE = 50;
     private static final int MAX_PAGE_SIZE = 200;
 
+    private final ApplicationEventPublisher eventPublisher;
     
-    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService) {
+    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService, ApplicationEventPublisher eventPublisher) {
         this.tradeMapper = tradeMapper;
         this.accountService = accountService;
         this.instrumentService = instrumentService;
         this.holdingService = holdingService;
+        this.eventPublisher = eventPublisher;
     }
     
     @Transactional 
@@ -108,6 +112,19 @@ public class TradeService implements IService {
             holdingService.decrementHoldingQuantityImternal(holding, trade.getQuantity());
             accountService.incrementBalance(trade.getAccountId(), trade.getTradeValue());
         }
+        
+        TradeExecutedEvent event = new TradeExecutedEvent(
+            trade.getTradeId(),
+            trade.getAccountId(),
+            trade.getInstrumentId(),
+            trade.getSide(),
+            trade.getQuantity(),
+            trade.getExecutionPrice(),
+            trade.getTradeValue(),
+            trade.getExecutedAt()
+        );
+        eventPublisher.publishEvent(event);
+
         return trade;
     }
 
