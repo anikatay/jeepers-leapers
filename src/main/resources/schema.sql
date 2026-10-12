@@ -28,6 +28,12 @@ CREATE TABLE IF NOT EXISTS user_pii (
     email VARCHAR(255) UNIQUE NOT NULL
 );
 
+-- User Credentials
+CREATE TABLE IF NOT EXISTS user_credentials (
+    user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    password_hash VARCHAR(255) NOT NULL
+);
+
 -- 2. Tradable Instruments & Current Prices
 CREATE TABLE IF NOT EXISTS instruments (
     instrument_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

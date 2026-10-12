@@ -1,24 +1,22 @@
 package com.neueda.leap.model;
 
-import jakarta.persistence.*;
 import java.util.UUID;
 
-@Entity
-@Table(name = "users")
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id")
     private UUID userId;
 
-    @Column(nullable = false)
     private String role; // ROLE_CUSTOMER, ROLE_ADMIN, ROLE_ANALYST
 
-    @Column(nullable = false)
     private String status = "ACTIVE"; // ACTIVE, INACTIVE
 
     public User() {
+    }
+
+    public User(UUID userId, String role, String status) {
+        this.userId = userId;
+        this.role = role;
+        this.status = status;
     }
 
     public UUID getUserId() { return userId; }
