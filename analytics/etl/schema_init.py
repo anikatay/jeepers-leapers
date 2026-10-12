@@ -13,8 +13,10 @@ Or from command line:
 
 import logging
 import sys
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
+from . import config
 from .config import get_staging_engine, get_analytics_engine
 
 logging.basicConfig(
@@ -88,6 +90,52 @@ CREATE TABLE IF NOT EXISTS staging.trades_raw (
 """
 
 
+def ensure_analytics_database():
+    """
+    Create the analytics database (paysprint_analytics) if it doesn't exist.
+
+    Docker Compose only creates the OLTP database, so a fresh volume has no
+    analytics database until this runs.
+
+    Returns:
+        bool: True if the database exists or was created, False otherwise
+    """
+    try:
+        if not config.PAYSPRINT_ANALYTICS_DB_URL:
+            raise ValueError("PAYSPRINT_ANALYTICS_DB_URL not set in environment")
+
+        analytics_url = make_url(config.PAYSPRINT_ANALYTICS_DB_URL)
+        database = analytics_url.database
+
+        # CREATE DATABASE can't run inside a transaction, and we can't connect
+        # to a database that doesn't exist yet, so go through the default one
+        maintenance_engine = create_engine(
+            analytics_url.set(database="postgres"),
+            isolation_level="AUTOCOMMIT",
+        )
+        try:
+            with maintenance_engine.connect() as conn:
+                exists = conn.execute(
+                    text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                    {"name": database}
+                ).scalar()
+
+                if exists:
+                    logger.info(f"Database {database} already exists")
+                else:
+                    quoted_name = database.replace('"', '""')
+                    conn.execute(text(f'CREATE DATABASE "{quoted_name}"'))
+                    logger.info(f"✅ Created database {database}")
+        finally:
+            maintenance_engine.dispose()
+
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Failed to ensure analytics database exists: {str(e)}", exc_info=True)
+        return False
+
+
 def initialize_staging_schema():
     """Create staging schema and all tables."""
     logger.info("Initializing staging schema...")
@@ -118,6 +166,10 @@ def initialize_database():
     logger.info("=" * 70)
     
     try:
+        # Create the analytics database itself on a fresh volume
+        if not ensure_analytics_database():
+            return False
+
         # Create staging schema
         if not initialize_staging_schema():
             return False
