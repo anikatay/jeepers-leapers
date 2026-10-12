@@ -125,7 +125,8 @@ ETL_LOOKBACK_DAYS = int(_lookback_days) if _lookback_days else None
 
 # Batch processing settings
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+# Retries for the OLTP readiness check (12 x 5s covers app startup after `docker compose up`)
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "12"))
 RETRY_DELAY_SECONDS = int(os.getenv("RETRY_DELAY_SECONDS", "5"))
 
 # ============================================================================
