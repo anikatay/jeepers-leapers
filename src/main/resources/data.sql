@@ -45,6 +45,16 @@ INSERT INTO accounts (account_id, user_id, currency, balance) VALUES
     ('d4000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000003', 'USD', 60000.00)
 ON CONFLICT DO NOTHING;
 
+-- ── User Credentials ─────────────────────────────────────────────────────────
+
+INSERT INTO user_credentials (user_id, password_hash) VALUES
+    ('a1000000-0000-0000-0000-000000000001', '$2a$10$Y3EOki3i/dU27xb3MarsveGu0C/TtZGQa5PAKE4VRq8NvrLeyCCHO'),
+    ('a1000000-0000-0000-0000-000000000002', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000003', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000004', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000005', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.')
+ON CONFLICT DO NOTHING;
+
 -- ── Instruments ──────────────────────────────────────────────────────────────
 INSERT INTO instruments (instrument_id, ticker, "name", exchange_id, current_price) VALUES
     ('b2000000-0000-0000-0000-000000000001', 'AAPL',  'Apple Inc.',          'NASDAQ', 229.0000),
