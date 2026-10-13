@@ -42,7 +42,7 @@ public class UserService {
     }
 
     @Transactional
-    public User createUser(User user, UserPii userPii) {
+    public User createUser(String role) {
         // TODO: Validate simple stuff with validators
 
         // Check if user is an adult
@@ -50,11 +50,9 @@ public class UserService {
             throw new ObjectInvalidException("User must be an adult");
         }
 
-        // Check if user already exists
-        User existingUser = userMapper.getUserById(user.getUserId());
-        if (existingUser != null) {
-            throw new ObjectAlreadyExistsException("User already exists");
-        }
+        
+
+        UUID newUserId = UUID.randomUUID();
 
         int insertUserFlag = userMapper.insertUser(user);
         if (insertUserFlag == 0) {
