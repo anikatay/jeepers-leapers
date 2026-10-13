@@ -5,15 +5,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.PriceBar;
+import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.websocket.MarketQuoteWebSocketHandler;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.MarketDataUnavailableException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -23,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -42,53 +45,89 @@ public class MarketDataService implements IService {
     private static final String SUBSCRIPTION_LAST_REFRESH_PREFIX = "market:subscription:last-refresh:";
     private static final String BATCH_LOCK_KEY = "market:subscription:batch-lock";
     private static final String BATCH_LAST_CALL_KEY = "market:subscription:last-upstream-call-ms";
+    private static final String LATEST_QUOTE_PREFIX = "quote:latest:";
 
     private final long lockTtlSeconds;
     private final long refreshCooldownSeconds;
     private final long fetchRetryDelayMs;
-    private final long hotRefreshIntervalSeconds;
-    private final long warmRefreshIntervalSeconds;
-    private final long coldRefreshIntervalSeconds;
     private final long hotWindowSeconds;
-    private final long upstreamMinIntervalMillis;
-    private final int batchMaxTickers;
+    private final long latestQuoteTtlSeconds;
 
 
     private final MarketDataClient client;
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<MarketQuoteWebSocketHandler> quoteWebSocketHandler;
 
     public MarketDataService(
             MarketDataClient client, 
             StringRedisTemplate redis,
             ObjectMapper objectMapper,
+            ObjectProvider<MarketQuoteWebSocketHandler> quoteWebSocketHandler,
             @Value("${market.lock-ttl-seconds:20}") long lockTtlSeconds,
             @Value("${market.refresh-cooldown-seconds:180}") long refreshCooldownSeconds,
             @Value("${market.fetch-retry-delay-ms:120}") long fetchRetryDelayMs,
-            @Value("${market.subscription.hot-refresh-seconds:15}") long hotRefreshIntervalSeconds,
-            @Value("${market.subscription.warm-refresh-seconds:45}") long warmRefreshIntervalSeconds,
-            @Value("${market.subscription.cold-refresh-seconds:180}") long coldRefreshIntervalSeconds,
             @Value("${market.subscription.hot-window-seconds:120}") long hotWindowSeconds,
-            @Value("${market.subscription.upstream-min-interval-ms:4000}") long upstreamMinIntervalMillis,
-            @Value("${market.subscription.batch-max-tickers:25}") int batchMaxTickers) {
+            @Value("${quote.cache-ttl-seconds:60}") long latestQuoteTtlSeconds) {
         this.client = client;
         this.redis = redis;
         this.objectMapper = objectMapper;
+        this.quoteWebSocketHandler = quoteWebSocketHandler;
         this.lockTtlSeconds = lockTtlSeconds;
         this.refreshCooldownSeconds = refreshCooldownSeconds;
         this.fetchRetryDelayMs = fetchRetryDelayMs;
-        this.hotRefreshIntervalSeconds = hotRefreshIntervalSeconds;
-        this.warmRefreshIntervalSeconds = warmRefreshIntervalSeconds;
-        this.coldRefreshIntervalSeconds = coldRefreshIntervalSeconds;
         this.hotWindowSeconds = hotWindowSeconds;
-        this.upstreamMinIntervalMillis = upstreamMinIntervalMillis;
-        this.batchMaxTickers = batchMaxTickers;
+        this.latestQuoteTtlSeconds = latestQuoteTtlSeconds;
+    }
+
+    public String normalizeForSubscription(String rawTicker) {
+        return normalizeTicker(rawTicker);
     }
 
     public HistoryResponse getHistory(String rawTicker, String period) {
         String ticker = normalizeTicker(rawTicker);
         HistoryResponse full = loadFullHistory(ticker);
         return slice(full, period);
+    }
+
+    public void cacheLatestQuote(MarketQuote quote) {
+        if (quote == null || quote.ticker() == null || quote.price() == null
+                || quote.quoteTime() == null) {
+            throw new ObjectInvalidException("Invalid market quote");
+        }
+
+        String ticker = normalizeTicker(quote.ticker());
+        MarketQuote normalized = new MarketQuote(
+                quote.type(),
+                ticker,
+                quote.price(),
+                quote.quoteTime(),
+                quote.receivedTime() == null ? Instant.now() : quote.receivedTime(),
+                quote.source());
+        try {
+            String payload = objectMapper.writeValueAsString(normalized);
+            redis.opsForValue().set(
+                    LATEST_QUOTE_PREFIX + ticker,
+                    payload,
+                    Duration.ofSeconds(latestQuoteTtlSeconds));
+        } catch (JsonProcessingException e) {
+            throw new ObjectInvalidException("Unable to cache market quote for " + ticker, e);
+        }
+    }
+
+    public Optional<MarketQuote> getLatestQuote(String rawTicker) {
+        String ticker = normalizeTicker(rawTicker);
+        String cached = readCache(LATEST_QUOTE_PREFIX + ticker);
+        if (cached == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(objectMapper.readValue(cached, MarketQuote.class));
+        } catch (JsonProcessingException e) {
+            log.warn("Discarding unreadable latest quote cache entry {}", ticker, e);
+            redis.delete(LATEST_QUOTE_PREFIX + ticker);
+            return Optional.empty();
+        }
     }
 
     public Map<String, Long> getSubscriptions() {
@@ -114,6 +153,7 @@ public class MarketDataService implements IService {
 
     public long subscribeTicker(String rawTicker) {
         String ticker = normalizeTicker(rawTicker);
+        client.subscribeLiveTicker(ticker);
         String countKey = SUBSCRIPTION_COUNT_PREFIX + ticker;
         long count = redis.opsForValue().increment(countKey);
         redis.opsForSet().add(SUBSCRIPTION_SET_KEY, ticker);
@@ -128,6 +168,7 @@ public class MarketDataService implements IService {
         Long value = redis.opsForValue().decrement(countKey);
         long count = value == null ? 0L : Math.max(0L, value);
         if (count == 0L) {
+            client.unsubscribeLiveTicker(ticker);
             redis.opsForSet().remove(SUBSCRIPTION_SET_KEY, ticker);
             redis.delete(countKey);
             redis.delete(SUBSCRIPTION_HOT_UNTIL_PREFIX + ticker);
@@ -136,83 +177,12 @@ public class MarketDataService implements IService {
         return count;
     }
 
-    @Scheduled(fixedDelayString = "${market.subscription.scheduler-delay-ms:1000}")
-    public void refreshSubscribedTickers() {
-        Boolean lock = redis.opsForValue().setIfAbsent(BATCH_LOCK_KEY, "1", Duration.ofSeconds(3));
-        if (!Boolean.TRUE.equals(lock)) {
-            return;
-        }
-
-        try {
-            long nowMillis = Instant.now().toEpochMilli();
-            long lastCallMillis = readLong(BATCH_LAST_CALL_KEY, 0L);
-            if (nowMillis - lastCallMillis < upstreamMinIntervalMillis) {
-                return;
-            }
-
-            Set<String> tickers = redis.opsForSet().members(SUBSCRIPTION_SET_KEY);
-            if (tickers == null || tickers.isEmpty()) {
-                return;
-            }
-
-            List<String> due = new ArrayList<>();
-            for (String ticker : tickers) {
-                long count = readLong(SUBSCRIPTION_COUNT_PREFIX + ticker, 0L);
-                if (count <= 0) {
-                    continue;
-                }
-                if (isTickerDue(ticker, nowMillis)) {
-                    due.add(ticker);
-                }
-            }
-
-            if (due.isEmpty()) {
-                return;
-            }
-
-            int upperBound = Math.min(batchMaxTickers, due.size());
-            Set<String> batch = Set.copyOf(due.subList(0, upperBound));
-            Map<String, HistoryResponse> histories = client.fetchHistoryBatch(batch, FETCH_PERIOD);
-            for (String ticker : batch) {
-                HistoryResponse history = histories.get(ticker);
-                if (history == null || history.bars() == null || history.bars().isEmpty()) {
-                    writeCache("history:" + ticker, NOT_FOUND_MARKER, NOT_FOUND_TTL);
-                    continue;
-                }
-                writeJson("history:" + ticker, history);
-                redis.opsForValue().set(
-                        SUBSCRIPTION_LAST_REFRESH_PREFIX + ticker,
-                        Long.toString(nowMillis)
-                );
-            }
-            redis.opsForValue().set(BATCH_LAST_CALL_KEY, Long.toString(nowMillis));
-        } catch (RuntimeException e) {
-            log.warn("Failed to refresh subscribed tickers", e);
-        } finally {
-            redis.delete(BATCH_LOCK_KEY);
-        }
-    }
-
     private String normalizeTicker(String rawTicker) {
         String ticker = rawTicker == null ? "" : rawTicker.trim().toUpperCase();
         if (!TICKER_PATTERN.matcher(ticker).matches()) {
             throw new ObjectInvalidException("Invalid ticker: " + rawTicker);
         }
         return ticker;
-    }
-
-    private boolean isTickerDue(String ticker, long nowMillis) {
-        long hotUntilMillis = readLong(SUBSCRIPTION_HOT_UNTIL_PREFIX + ticker, 0L);
-        long intervalSeconds;
-        if (hotUntilMillis > nowMillis) {
-            intervalSeconds = hotRefreshIntervalSeconds;
-        } else {
-            long count = readLong(SUBSCRIPTION_COUNT_PREFIX + ticker, 0L);
-            intervalSeconds = count > 0 ? warmRefreshIntervalSeconds : coldRefreshIntervalSeconds;
-        }
-
-        long lastRefreshMillis = readLong(SUBSCRIPTION_LAST_REFRESH_PREFIX + ticker, 0L);
-        return nowMillis - lastRefreshMillis >= Duration.ofSeconds(intervalSeconds).toMillis();
     }
 
     private long readLong(String key, long defaultValue) {

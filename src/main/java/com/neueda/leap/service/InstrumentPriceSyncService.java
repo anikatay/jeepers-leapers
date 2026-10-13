@@ -1,18 +1,20 @@
 package com.neueda.leap.service;
 
-import com.neueda.leap.dto.response.HistoryResponse;
-import com.neueda.leap.dto.response.PriceBar;
-import com.neueda.leap.exception.MarketDataUnavailableException;
+import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.model.Instrument;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class InstrumentPriceSyncService implements IService {
@@ -21,10 +23,15 @@ public class InstrumentPriceSyncService implements IService {
 
     private final MarketDataService marketDataService;
     private final InstrumentService instrumentService;
+    private final long maxQuoteAgeSeconds;
 
-    public InstrumentPriceSyncService(MarketDataService marketDataService, InstrumentService instrumentService) {
+    public InstrumentPriceSyncService(
+            MarketDataService marketDataService,
+            InstrumentService instrumentService,
+            @Value("${trade.max-price-age-seconds:180}") long maxQuoteAgeSeconds) {
         this.marketDataService = marketDataService;
         this.instrumentService = instrumentService;
+        this.maxQuoteAgeSeconds = maxQuoteAgeSeconds;
     }
 
     @Scheduled(fixedDelayString = "${instrument.price-sync-delay-ms:30000}")
@@ -36,28 +43,30 @@ public class InstrumentPriceSyncService implements IService {
 
         for (String ticker : subscriptions.keySet()) {
             try {
-                HistoryResponse history = marketDataService.getHistory(ticker, "1mo");
-                if (history.bars() == null || history.bars().isEmpty()) {
+                Optional<MarketQuote> latestQuote = marketDataService.getLatestQuote(ticker);
+                if (latestQuote.isEmpty() || !isFresh(latestQuote.get().quoteTime())) {
                     continue;
                 }
 
-                PriceBar latestBar = history.bars().get(history.bars().size() - 1);
-                BigDecimal latestClose = latestBar.close();
-                if (latestClose == null) {
-                    continue;
-                }
-
+                MarketQuote quote = latestQuote.get();
                 Instrument instrument = instrumentService.getInstrumentByTicker(ticker);
-                if (instrument.getCurrentPrice() == null || instrument.getCurrentPrice().compareTo(latestClose) != 0) {
-                    instrumentService.updatePrice(instrument.getInstrumentId(), latestClose);
+                var quoteTime = quote.quoteTime().atOffset(ZoneOffset.UTC);
+                if (instrument.getUpdatedAt() == null || instrument.getUpdatedAt().isBefore(quoteTime)) {
+                    instrumentService.updatePrice(
+                            instrument.getInstrumentId(),
+                            quote.price(),
+                            quoteTime);
                 }
             } catch (ObjectNotFoundException e) {
                 log.debug("Skipping subscribed ticker not present in instruments table: {}", ticker);
-            } catch (MarketDataUnavailableException e) {
-                log.warn("Market data unavailable during sync for ticker {}: {}", ticker, e.getMessage());
             } catch (RuntimeException e) {
                 log.warn("Unexpected error syncing ticker {}", ticker, e);
             }
         }
+    }
+
+    private boolean isFresh(Instant quoteTime) {
+        Duration age = Duration.between(quoteTime, Instant.now());
+        return !age.isNegative() && age.compareTo(Duration.ofSeconds(maxQuoteAgeSeconds)) <= 0;
     }
 }

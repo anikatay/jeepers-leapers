@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.InstrumentResponse;
+import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotFoundException;
@@ -17,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -28,18 +31,21 @@ public class InstrumentService implements IService {
     private final StringRedisTemplate redis;
     private final long quoteRefreshThresholdSeconds;
     private final long quoteLockTtlSeconds;
+    private final long maxPriceAgeSeconds;
 
     public InstrumentService(
         InstrumentMapper instrumentMapper,
         StringRedisTemplate redis,
         MarketDataService marketDataService,
         @Value("${quote.refresh-threshold-seconds:120}") long quoteRefreshThresholdSeconds,
-        @Value("${quote.lock-ttl-seconds:20}") long quoteLockTtlSeconds) {
+        @Value("${quote.lock-ttl-seconds:20}") long quoteLockTtlSeconds,
+        @Value("${trade.max-price-age-seconds:180}") long maxPriceAgeSeconds) {
         this.instrumentMapper = instrumentMapper;
         this.redis = redis;
         this.marketDataService = marketDataService;
         this.quoteRefreshThresholdSeconds = quoteRefreshThresholdSeconds;
         this.quoteLockTtlSeconds = quoteLockTtlSeconds;
+        this.maxPriceAgeSeconds = maxPriceAgeSeconds;
     }
 
     public Instrument getInstrumentById(UUID instrumentId){
@@ -98,9 +104,14 @@ public class InstrumentService implements IService {
 
     @Transactional 
     public void updatePrice(UUID instrumentId, BigDecimal price){
+        updatePrice(instrumentId, price, OffsetDateTime.now());
+    }
+
+    @Transactional
+    public void updatePrice(UUID instrumentId, BigDecimal price, OffsetDateTime updatedAt){
         Instrument instrument = getInstrumentById(instrumentId);
         instrument.setCurrentPrice(price);
-        instrument.setUpdatedAt(OffsetDateTime.now());
+        instrument.setUpdatedAt(updatedAt);
         int instrumentUpdateFlag = instrumentMapper.updatePrice(instrument);
         if(instrumentUpdateFlag < 1){
             throw new ObjectNotProcessedException("Instrument was unable to be updated " + instrument);
@@ -121,6 +132,19 @@ public class InstrumentService implements IService {
 
     public Instrument refreshPriceIfStale(UUID instrumentId) {
         Instrument instrument = getInstrumentById(instrumentId);
+
+        Optional<MarketQuote> latestQuote = marketDataService.getLatestQuote(instrument.getTicker());
+        if (latestQuote.isPresent() && isFresh(latestQuote.get().quoteTime())
+                && isNewerThanInstrument(latestQuote.get(), instrument)) {
+            MarketQuote quote = latestQuote.get();
+            instrument.setCurrentPrice(quote.price());
+            instrument.setUpdatedAt(quote.quoteTime().atOffset(ZoneOffset.UTC));
+            if (instrumentMapper.updatePrice(instrument) < 1) {
+                throw new ObjectNotProcessedException(
+                        "Failed to persist live price for " + instrument.getTicker());
+            }
+            return instrument;
+        }
 
         if (instrument.getUpdatedAt() != null) {
             long ageSeconds = Duration.between(instrument.getUpdatedAt(), OffsetDateTime.now()).getSeconds();
@@ -145,7 +169,7 @@ public class InstrumentService implements IService {
 
             PriceBar latest = history.bars().get(history.bars().size() - 1);
             instrument.setCurrentPrice(latest.close());
-            instrument.setUpdatedAt(OffsetDateTime.now());
+            instrument.setUpdatedAt(latest.date().atStartOfDay().atOffset(ZoneOffset.UTC));
 
             int updated = instrumentMapper.updatePrice(instrument);
             if (updated < 1) {
@@ -156,6 +180,16 @@ public class InstrumentService implements IService {
         } finally {
             redis.delete(lockKey);
         }
+    }
+
+    private boolean isFresh(java.time.Instant quoteTime) {
+        Duration age = Duration.between(quoteTime, java.time.Instant.now());
+        return !age.isNegative() && age.compareTo(Duration.ofSeconds(maxPriceAgeSeconds)) <= 0;
+    }
+
+    private boolean isNewerThanInstrument(MarketQuote quote, Instrument instrument) {
+        return instrument.getUpdatedAt() == null
+                || instrument.getUpdatedAt().isBefore(quote.quoteTime().atOffset(ZoneOffset.UTC));
     }
 
 }
