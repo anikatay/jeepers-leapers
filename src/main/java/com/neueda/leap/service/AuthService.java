@@ -1,6 +1,8 @@
 package com.neueda.leap.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.model.User;
 import java.util.UUID;
@@ -12,10 +14,13 @@ public class AuthService {
 
     private final UserService userService;
     private final UserPiiService userPiiService;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthService(UserService userService, UserPiiService userPiiService) {
+    public AuthService(UserService userService, UserPiiService userPiiService,
+            PasswordEncoder passwordEncoder) {
         this.userService = userService;
         this.userPiiService = userPiiService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public String login(String email, String inputPassword) {
@@ -28,7 +33,11 @@ public class AuthService {
             throw new ObjectNotFoundException("User not found for ID: " + userId);
         }
         
-        // TODO: check password
+        String passwordHash = userService.getPasswordHash(userId);
+        if (inputPassword == null || passwordHash == null
+                || !passwordEncoder.matches(inputPassword, passwordHash)) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
 
         return user.getRole();
     }

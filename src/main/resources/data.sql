@@ -26,6 +26,15 @@ INSERT INTO user_pii (user_id, first_name, last_name, date_of_birth, ssn, email)
     ('a1000000-0000-0000-0000-000000000005', 'Dana', 'Davis', '1992-11-07', '555-55-5555', 'dana@platform.com')
 ON CONFLICT DO NOTHING;
 
+-- Demo credentials: password is 123 for local development only.
+INSERT INTO user_credentials (user_id, password_hash) VALUES
+    ('a1000000-0000-0000-0000-000000000001', '$2a$10$Y3EOki3i/dU27xb3MarsveGu0C/TtZGQa5PAKE4VRq8NvrLeyCCHO'),
+    ('a1000000-0000-0000-0000-000000000002', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000003', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000004', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000005', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.')
+ON CONFLICT DO NOTHING;
+
 -- ── Accounts ─────────────────────────────────────────────────────────────────
 INSERT INTO accounts (account_id, user_id, currency, balance) VALUES
     ('d4000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'USD', 50000.00),
