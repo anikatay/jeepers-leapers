@@ -51,7 +51,6 @@ class TradeEventProducerTest {
                 0,
                 42,
                 System.currentTimeMillis(),
-                Long.valueOf(0),
                 0,
                 0
         );
