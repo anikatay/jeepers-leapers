@@ -33,6 +33,7 @@ public class TradeService implements IService {
     private final HoldingService holdingService;
     private static final int DEFAULT_PAGE_SIZE = 50;
     private static final int MAX_PAGE_SIZE = 200;
+    private final MarketSessionService marketSessionService;
 
     private final ApplicationEventPublisher eventPublisher;
     @Value("${trade.max-price-age-seconds:180}")
@@ -41,20 +42,21 @@ public class TradeService implements IService {
     
     private void assertPriceFresh(Instrument instrument) {
         if (instrument.getUpdatedAt() == null) {
-            throw new ObjectInvalidException("Quote timestamp missing; refresh and retry");
+            throw new ObjectInvalidException("Unable to make trade at the moment; quote unavailable");
         }
-        long age = Duration.between(instrument.getUpdatedAt(), OffsetDateTime.now()).getSeconds();
-        if (age > maxPriceAgeSeconds) {
-            throw new ObjectInvalidException("Quote is stale; refresh and retry");
+        Duration age = Duration.between(instrument.getUpdatedAt(), OffsetDateTime.now());
+        if (age.isNegative() || age.compareTo(Duration.ofSeconds(maxPriceAgeSeconds)) > 0) {
+            throw new ObjectInvalidException("Unable to make trade at the moment; quote is too old");
         }
     }
 
-    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService, ApplicationEventPublisher eventPublisher) {
+    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService, ApplicationEventPublisher eventPublisher, MarketSessionService marketSessionService) {
         this.tradeMapper = tradeMapper;
         this.accountService = accountService;
         this.instrumentService = instrumentService;
         this.holdingService = holdingService;
         this.eventPublisher = eventPublisher;
+        this.marketSessionService = marketSessionService;
     }
     
     @Transactional 
@@ -68,32 +70,52 @@ public class TradeService implements IService {
         if(trade.getInstrumentId() == null){
             throw new ObjectInvalidException("Instrument ID cannot be null");
         }
-        final Instrument instrument = instrumentService.refreshPriceIfStale(trade.getInstrumentId());
-        if(instrument == null){
-            throw new ObjectNotFoundException("This instrument does not exist");
-        }
-        
-        assertPriceFresh(instrument);
-        trade.setExecutionPrice(instrument.getCurrentPrice());
         if(!"BUY".equals(trade.getSide()) && !"SELL".equals(trade.getSide())){
-            throw new ObjectInvalidException("Side cannot be null");
+            throw new ObjectInvalidException("Side must be BUY or SELL");
         }
-
         if(trade.getQuantity() == null || trade.getQuantity().compareTo(BigDecimal.ZERO) <= 0){
             throw new ObjectInvalidException("Quantity must be greater than 0");
         }
 
-        if(trade.getExecutionPrice() == null){
-            throw new ObjectNotFoundException("Execution price cannot be null");
+        Instrument instrument = instrumentService.getInstrumentById(trade.getInstrumentId());
+        marketSessionService.assertMarketOpen(instrument);
+
+        instrument = instrumentService.refreshPriceIfStale(instrument.getInstrumentId());
+        assertPriceFresh(instrument);
+        BigDecimal executionPrice = instrument.getCurrentPrice();
+        if(executionPrice == null){
+            throw new ObjectInvalidException("Unable to make trade at the moment; quote unavailable");
         }
 
+        BigDecimal tradeValue = executionPrice.multiply(trade.getQuantity());
+        Account account = accountService.getAccount(trade.getAccountId());
+        if(!"ACTIVE".equals(account.getStatus())){
+            throw new ObjectInvalidException("Account is not active: " + trade.getAccountId());
+        }
+
+        if("BUY".equals(trade.getSide())
+                && (account.getBalance() == null || account.getBalance().compareTo(tradeValue) < 0)){
+            throw new ObjectInvalidException("Insufficient balance for trade");
+        }
+
+        Holding holding = holdingService.findHolding(
+                trade.getAccountId(),
+                instrument.getInstrumentId());
+        if("SELL".equals(trade.getSide())){
+            if(holding == null){
+                throw new ObjectInvalidException("No holding exists for this instrument");
+            }
+            if(holding.getQuantity().compareTo(trade.getQuantity()) < 0){
+                throw new ObjectInvalidException("Insufficient quantity to sell");
+            }
+        }
+
+        // Persist the execution price only after market, quote, account, and holding validation.
+        trade.setExecutionPrice(executionPrice);
         if(trade.getExecutedAt() == null){
             trade.setExecutedAt(OffsetDateTime.now());
         }
-        if(trade.getTradeValue() == null){
-            BigDecimal tradeValue = trade.getExecutionPrice().multiply(trade.getQuantity());
-            trade.setTradeValue(tradeValue);
-        }
+        trade.setTradeValue(tradeValue);
         int tradeCreatedFlag = tradeMapper.createTrade(trade);
         if(tradeCreatedFlag < 1){
             throw new ObjectNotProcessedException("Could not create trade");
@@ -101,8 +123,6 @@ public class TradeService implements IService {
     
         if(trade.getSide().equals("BUY")){
 
-            Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
-            
             try{
                 accountService.decrementBalance(trade.getAccountId(), trade.getTradeValue());
             }catch(Exception e){
@@ -119,13 +139,6 @@ public class TradeService implements IService {
                 holdingService.incrementHoldingQuantityImternal(holding, trade.getQuantity());
             }
         }else if(trade.getSide().equals("SELL")){
-            Holding holding = holdingService.findHolding(trade.getAccountId(), instrument.getInstrumentId());
-            if(holding == null){
-                throw new ObjectInvalidException("No holding exits for this instrument");
-            }
-            if(holding.getQuantity().compareTo(trade.getQuantity()) < 0){
-                throw new ObjectInvalidException("Insufficient quantity to sell");
-            }
             holdingService.decrementHoldingQuantityImternal(holding, trade.getQuantity());
             accountService.incrementBalance(trade.getAccountId(), trade.getTradeValue());
         }

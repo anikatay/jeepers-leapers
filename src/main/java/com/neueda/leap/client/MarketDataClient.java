@@ -80,4 +80,18 @@ public class MarketDataClient {
 			throw new MarketDataUnavailableException("Market data service failed for batch request", e);
 		}
 	}
+
+	public void subscribeLiveTicker(String ticker) {
+		restClient.post()
+				.uri("/stream/subscribe/{ticker}", ticker)
+				.retrieve()
+				.toBodilessEntity();
+	}
+
+	public void unsubscribeLiveTicker(String ticker) {
+		restClient.delete()
+				.uri("/stream/subscribe/{ticker}", ticker)
+				.retrieve()
+				.toBodilessEntity();
+	}
 }

@@ -27,27 +27,21 @@ import java.util.UUID;
 public class TradeController {
 
     private final TradeService tradeService;
-    private final InstrumentService instrumentService;
 
-    public TradeController(TradeService tradeService, InstrumentService instrumentService) {
+    public TradeController(TradeService tradeService) {
         this.tradeService = tradeService;
-        this.instrumentService = instrumentService;
     }
 
     @PostMapping
     public ResponseEntity<Trade> createTrade(@Valid @RequestBody TradeRequest request) {
         
-        // Get instrument to fetch current price
-        Instrument instrument = instrumentService.getInstrumentById(request.instrumentId());
-        
-        // Map request to Trade model
+            // Map request to Trade model
         Trade trade = new Trade();
         trade.setTradeId(UUID.randomUUID());
         trade.setAccountId(request.accountId());
         trade.setInstrumentId(request.instrumentId());
         trade.setSide(request.side());
         trade.setQuantity(request.quantity());
-        trade.setExecutionPrice(instrument.getCurrentPrice());  // Use instrument's current price
         
         // Service will calculate tradeValue and update account balance
         Trade created = tradeService.createTrade(trade);

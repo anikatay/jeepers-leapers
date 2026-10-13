@@ -3,7 +3,6 @@ package com.neueda.leap.service;
 import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.mapper.AccountMapper;
 import com.neueda.leap.model.Account;
-import com.neueda.leap.service.HoldingService;
 import com.neueda.leap.model.Holding;
 
 
@@ -85,7 +84,7 @@ public class AccountService implements IService {
             throw new ObjectNotFoundException("Amount cannot be null");
         }
         if(amount.compareTo(BigDecimal.ZERO) < 0){
-            throw new ObjectNotFoundException("Amount cannot be negative!");
+            throw new ObjectInvalidException("Amount cannot be negative!");
         }
         Account account = getAccount(accountId);
         if(!"ACTIVE".equals(account.getStatus())){
