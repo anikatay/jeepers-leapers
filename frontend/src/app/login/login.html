@@ -1,29 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mission Control - Login</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <header>
-    <h1>Mission Control</h1>
-  </header>
+<h1>Mission Control</h1>
 
   <main>
-    <form id="login-form" novalidate>
+    <form (ngSubmit)="confirmLogIn()">
       <h2>Log In</h2>
 
       <div class="field">
-        <label for="username">Username</label>
+        <label for="email">Email</label>
         <input
           type="text"
-          id="username"
-          name="username"
+          id="email"
+          name="email"
           required
-          minlength="3"
-          autocomplete="username"
+          autocomplete="email"
+          [(ngModel)]="email"
         />
       </div>
 
@@ -34,12 +23,14 @@
           id="password"
           name="password"
           required
-          minlength="8"
           autocomplete="current-password"
+          [(ngModel)]="password"
         />
       </div>
 
-      <p id="message" class="message hidden"></p>
+      @if (message()){
+        <p class = "message" [class.error]="isError()">{{ message() }}</p>
+      }
 
       <button type="submit">Log In</button>
     </form>
@@ -49,6 +40,3 @@
     <p>LEAP Mission Control</p>
   </footer>
 
-  <script src="script.js"></script>
-</body>
-</html>

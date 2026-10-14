@@ -7,10 +7,10 @@
       <div class="profile-stats-section">
         <!-- Profile Card -->
         <button class="profile-card" (click)="goToProfile()">
-          <div class="profile-avatar">{{ userInitial }}</div>
+          <div class="profile-avatar">{{ user.userInitial }}</div>
           <div class="profile-info">
             <p class="profile-label">{{ 'home.your_profile' | translate }}</p>
-            <p class="profile-name font-display">{{ userName }}</p>
+            <p class="profile-name font-display">{{ user.userName }}</p>
           </div>
           <svg class="profile-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>

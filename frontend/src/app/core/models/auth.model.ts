@@ -1,10 +1,11 @@
 export interface AuthRequest {
-    username: string;
+    email: string;
     password: string;
 }
 
 export interface AuthResponse{
     token: string;
+    userId: string;
+    accountId: string | null;
     role: string;
-    userid: string;
 }
