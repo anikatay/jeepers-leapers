@@ -14,7 +14,7 @@ import java.util.UUID;
 import java.util.Arrays;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
 
     @Autowired
@@ -37,10 +37,12 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
+        UUID accountId = authService.getAccountIdByUserId(userId);
+
         // Generate JWT token with user info, role, and userId
         String token = jwtUtil.generateToken(request.getEmail(), role, userId);
 
-        return ResponseEntity.ok(new LoginResponse(token, userId, role));
+        return ResponseEntity.ok(new LoginResponse(token, userId, accountId, role));
     }
 
     // DTOs for request/response
@@ -66,15 +68,18 @@ public class AuthController {
         private String token;
         private UUID userId;
         private String role;
+        private UUID accountId;
 
-        public LoginResponse(String token, UUID userId, String role) {
+        public LoginResponse(String token, UUID userId, UUID accountId, String role) {
             this.token = token;
             this.userId = userId;
             this.role = role;
+            this.accountId = accountId;
         }
 
         public String getToken() { return token; }
         public UUID getUserId() { return userId; }
         public String getRole() { return role; }
+        public UUID getAccountId() { return accountId; }
     }
 }

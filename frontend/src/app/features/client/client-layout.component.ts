@@ -22,9 +22,9 @@ import { InstrumentResponse } from '../../core/models/instrument.model';
 })
 export class ClientLayoutComponent implements OnInit {
   navItems: NavItem[] = [
-    { label: 'Home', path: '' },
-    { label: 'Portfolio', path: 'portfolio' },
-    { label: 'Trades', path: 'trades' }
+    { label: 'Home', path: '/client' },
+    { label: 'Portfolio', path: '/client/portfolio' },
+    { label: 'Trades', path: '/client/trades' }
   ];
 
   userName = 'Joanna';

@@ -4,7 +4,7 @@
   <div class="navbar-top">
     <!-- Logo and Brand (left) -->
     <div class="navbar-logo">
-      <button class="logo-button" [routerLink]="['']">
+      <button class="logo-button" [routerLink]="['/client']">
         <img src="/assets/symbol.png" alt="Bull Exchange Logo" class="logo-image" />
         <span class="brand-text font-display">{{ brandName }}</span>
       </button>
@@ -15,7 +15,7 @@
       <a *ngFor="let item of navItems"
          [routerLink]="[item.path]"
          routerLinkActive="active"
-         [routerLinkActiveOptions]="{ exact: item.path === '' }"
+         [routerLinkActiveOptions]="{ exact: item.path === '/client' }"
          class="nav-link">
         {{ item.label }}
         <span class="nav-underline" *ngIf="false"></span>

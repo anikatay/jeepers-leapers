@@ -1,4 +1,4 @@
-import { Component, OnInit,OnDestroy, signal, effect } from '@angular/core';
+import { Component, OnInit,OnDestroy, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AccountService } from '../../../../core/services/account.service';
@@ -7,6 +7,7 @@ import { InstrumentService } from '../../../../core/services/instrument.service'
 import { TradesService } from '../../../../core/services/trades.service';
 import { TradeModalService } from '../../../../core/services/trade-modal.service';
 import { TranslationService } from '../../../../core/services/translation.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
@@ -54,12 +55,33 @@ export interface PieSlice {
   styleUrl: './client-home.component.css'
 })
 
-export class ClientHomeComponent implements OnInit, OnDestroy {
-  userInitial = 'A';
-  userName = 'd4000000-0000-0000-0000-000000000001';
+export class ClientHomeComponent implements OnInit {
+  private auth = inject(AuthService);
+  private get ACCOUNT_ID() { return this.auth.session()?.accountId ?? ''; }
+  printname() {
+    const accountId = this.auth.session()?.accountId;
 
-  // Hardcoded development account ID
-  private readonly ACCOUNT_ID = 'd4000000-0000-0000-0000-000000000001';
+    if (accountId === 'd4000000-0000-0000-0000-000000000001') {
+      return {
+        userInitial: 'J',
+        userName: 'Joanna'
+      };
+    }
+
+    if (accountId === 'd4000000-0000-0000-0000-000000000002') {
+      return {
+        userInitial: 'B',
+        userName: 'Bob'
+      };
+    }
+
+    return {
+      userInitial: 'C',
+      userName: 'Charlie'
+    };
+  }
+
+  user = this.printname();
 
 
   holdings = signal<StockHolding[]>([]);
