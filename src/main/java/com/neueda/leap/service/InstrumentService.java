@@ -169,7 +169,7 @@ public class InstrumentService implements IService {
 
             PriceBar latest = history.bars().get(history.bars().size() - 1);
             instrument.setCurrentPrice(latest.close());
-            instrument.setUpdatedAt(latest.date().atStartOfDay().atOffset(ZoneOffset.UTC));
+            instrument.setUpdatedAt(OffsetDateTime.now());
 
             int updated = instrumentMapper.updatePrice(instrument);
             if (updated < 1) {

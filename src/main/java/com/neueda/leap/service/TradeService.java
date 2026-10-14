@@ -12,8 +12,6 @@ import com.neueda.leap.model.Instrument;
 import com.neueda.leap.model.Trade;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import jakarta.transaction.Transactional;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -136,10 +134,10 @@ public class TradeService implements IService {
                 );
                 holdingService.createHoldingInternal(holding);
             }else{
-                holdingService.incrementHoldingQuantityImternal(holding, trade.getQuantity());
+                holdingService.incrementHoldingQuantityInternal(holding.getAccountId(),holding.getInstrumentId(), trade.getQuantity());
             }
         }else if(trade.getSide().equals("SELL")){
-            holdingService.decrementHoldingQuantityImternal(holding, trade.getQuantity());
+            holdingService.decrementHoldingQuantityInternal(holding.getAccountId(),holding.getInstrumentId(), trade.getQuantity());
             accountService.incrementBalance(trade.getAccountId(), trade.getTradeValue());
         }
         
