@@ -19,7 +19,7 @@ INSERT INTO users (user_id, role) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO user_pii (user_id, first_name, last_name, date_of_birth, ssn, email) VALUES
-    ('a1000000-0000-0000-0000-000000000001', 'Alice', 'Anderson', '1990-01-01', '111-11-1111', 'alice@example.com'),
+    ('a1000000-0000-0000-0000-000000000001', 'Alice', 'Anderson', '1990-01-01', '111-11-1111', 'joanna@example.com'),
     ('a1000000-0000-0000-0000-000000000002', 'Bob', 'Brown', '1988-05-12', '222-22-2222', 'bob@example.com'),
     ('a1000000-0000-0000-0000-000000000003', 'Charlie', 'Clark', '1995-09-23', '333-33-3333', 'charlie@example.com'),
     ('a1000000-0000-0000-0000-000000000004', 'Admin', 'User', '1985-03-15', '444-44-4444', 'admin@platform.com'),
