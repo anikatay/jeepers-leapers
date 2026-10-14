@@ -14,12 +14,14 @@ public class AuthService {
 
     private final UserService userService;
     private final UserPiiService userPiiService;
+    private final AccountService accountService;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthService(UserService userService, UserPiiService userPiiService,
+    public AuthService(UserService userService, UserPiiService userPiiService, AccountService accountService,
             PasswordEncoder passwordEncoder) {
         this.userService = userService;
         this.userPiiService = userPiiService;
+        this.accountService = accountService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -46,4 +48,7 @@ public class AuthService {
         return userPiiService.getUserIdByEmail(email);
     }
 
+    public UUID getAccountIdByUserId(UUID userId){
+        return accountService.getAccountIdByUserId(userId);
+    }
 }

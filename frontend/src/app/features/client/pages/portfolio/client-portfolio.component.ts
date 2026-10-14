@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, effect } from '@angular/core';
+import { Component, signal, computed, OnInit, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms';
 import { PortfolioService } from '../../../../core/services/portfolio.service';
@@ -7,6 +7,7 @@ import { AccountService } from '../../../../core/services/account.service';
 import { TradesService } from '../../../../core/services/trades.service';
 import { TradeModalService } from '../../../../core/services/trade-modal.service';
 import { TranslationService } from '../../../../core/services/translation.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { HoldingResponse } from '../../../../core/models/holding.model';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
@@ -51,8 +52,10 @@ interface StockIconStyle {
   styleUrl: './client-portfolio.component.css'
 })
 export class ClientPortfolioComponent implements OnInit {
-
-  private readonly ACCOUNT_ID = 'd4000000-0000-0000-0000-000000000001';
+  private auth = inject(AuthService);
+  private get ACCOUNT_ID(): string {
+    return this.auth.session()?.accountId ?? '';
+  }
 
   // Real data from backend
   allHoldings = signal<Holding[]>([]);
@@ -93,6 +96,7 @@ export class ClientPortfolioComponent implements OnInit {
   filterOptions: Array<'all' | 'gain' | 'loss'> = ['all', 'gain', 'loss'];
 
   constructor(
+    private autService: AuthService,
     private portfolioService: PortfolioService,
     private instrumentService: InstrumentService,
     private accountService: AccountService,

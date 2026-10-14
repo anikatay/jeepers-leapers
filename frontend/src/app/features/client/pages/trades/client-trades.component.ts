@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradesService } from '../../../../core/services/trades.service';
@@ -6,6 +6,7 @@ import { InstrumentService } from '../../../../core/services/instrument.service'
 import { TranslationService } from '../../../../core/services/translation.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { TradeResponse } from '../../../../core/models/trade.model';
+import { AuthService } from '../../../../core/services/auth.service';
 
 interface Trade {
   id?: string;
@@ -30,7 +31,10 @@ type TypeFilter = 'all' | 'Buy' | 'Sell';
   styleUrl: './client-trades.component.css'
 })
 export class ClientTradesComponent implements OnInit {
-  private readonly ACCOUNT_ID = 'd4000000-0000-0000-0000-000000000001';
+  private auth = inject(AuthService);
+  private get ACCOUNT_ID(): string {
+    return this.auth.session()?.accountId ?? '';
+  }
 
   // Real trade data from backend
   allTrades = signal<Trade[]>([]);
@@ -57,7 +61,7 @@ export class ClientTradesComponent implements OnInit {
     'BRK.B': { label: 'B', background: '#1e3a8a', color: '#ffffff' },
   };
 
-  constructor(private tradesService: TradesService, private instrumentService: InstrumentService, public translationService: TranslationService) {}
+  constructor(private authServie: AuthService, private tradesService: TradesService, private instrumentService: InstrumentService, public translationService: TranslationService) {}
 
   ngOnInit() {
     this.loadTrades();
