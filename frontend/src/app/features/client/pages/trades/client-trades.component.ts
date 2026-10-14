@@ -1,12 +1,24 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject , OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription, forkJoin } from 'rxjs';
 import { TradesService } from '../../../../core/services/trades.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
+import { PortfolioService } from '../../../../core/services/portfolio.service';
+import { MarketDataService } from '../../../../core/services/market-data.service';
+import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { TranslationService } from '../../../../core/services/translation.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { TradeResponse } from '../../../../core/models/trade.model';
 import { AuthService } from '../../../../core/services/auth.service';
+import { HoldingResponse } from '../../../../core/models/holding.model';
+import { InstrumentResponse } from '../../../../core/models/instrument.model';
+import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../shared/utils/portfolio-calculation';
+import { combinePortfolioHistory } from '../../../../shared/utils/portfolio-history';
+import { GainIndicatorComponent } from '../../../../shared/components/gain-indicator.component';
+import { SparklineComponent } from '../../../../shared/components/sparkline.component';
+import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
+
 
 interface Trade {
   id?: string;
@@ -26,7 +38,7 @@ type TypeFilter = 'all' | 'Buy' | 'Sell';
 @Component({
   selector: 'app-client-trades',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent],
   templateUrl: './client-trades.component.html',
   styleUrl: './client-trades.component.css'
 })
@@ -48,6 +60,13 @@ export class ClientTradesComponent implements OnInit {
   toDate = signal('');
   sortOrder = signal<SortOrder>('newest');
   showDateFilter = signal(false);
+  overallGain = signal<number>(0);
+  overallGainPct = signal<number>(0);
+  portfolioSparkline = signal<number[]>([]);
+
+  private heldPositions: Array<{ ticker: string; quantity: number; currentPrice: number; avgCostBasis: number }> = [];
+  private quoteSubscription?: Subscription;
+  private subscribedTickers = new Set<string>();
 
   // Stock icon styles
   stockIconStyles: Record<string, { label: string; background: string; color: string }> = {
@@ -61,10 +80,20 @@ export class ClientTradesComponent implements OnInit {
     'BRK.B': { label: 'B', background: '#1e3a8a', color: '#ffffff' },
   };
 
-  constructor(private authServie: AuthService, private tradesService: TradesService, private instrumentService: InstrumentService, public translationService: TranslationService) {}
+
+  constructor(
+    private authService: AuthService,
+    private tradesService: TradesService,
+    private instrumentService: InstrumentService,
+    private portfolioService: PortfolioService,
+    private marketDataService: MarketDataService,
+    private marketQuoteService: MarketQuoteService,
+    public translationService: TranslationService
+  ) {}
 
   ngOnInit() {
     this.loadTrades();
+    this.loadOverallPnl();
   }
 
   private loadTrades() {
@@ -84,6 +113,109 @@ export class ClientTradesComponent implements OnInit {
       }
     });
   }
+
+    private loadOverallPnl(): void {
+    this.portfolioService.getPortfolio(this.ACCOUNT_ID).subscribe({
+      next: (holdingsData) => {
+        this.instrumentService.getAllInstruments().subscribe({
+          next: (instruments) => {
+            this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
+              next: (trades) => this.computeOverallPnl(holdingsData, instruments, trades),
+              error: (err) => console.error('Failed to load trades for P&L:', err)
+            });
+          },
+          error: (err) => console.error('Failed to load instruments for P&L:', err)
+        });
+      },
+      error: (err) => console.error('Failed to load holdings for P&L:', err)
+    });
+  }
+
+  private computeOverallPnl(holdingsData: HoldingResponse[], instruments: InstrumentResponse[], trades: TradeResponse[]): void {
+    const instrumentMap = new Map(instruments.map(i => [i.instrumentId, i]));
+    this.heldPositions = [];
+
+    holdingsData.forEach(h => {
+      if (h.quantity <= 0) return;
+      const instrument = instrumentMap.get(h.instrumentId);
+      if (!instrument) return;
+
+      const avgCostBasis = calculateAverageCostBasis(h.instrumentId, trades);
+      this.heldPositions.push({
+        ticker: instrument.ticker,
+        quantity: h.quantity,
+        currentPrice: instrument.currentPrice,
+        avgCostBasis
+      });
+    });
+
+    this.recomputeOverallGain();
+    this.subscribeToLiveQuotes();
+    this.loadPortfolioSparkline();
+  }
+
+  private recomputeOverallGain(): void {
+    let totalGain = 0;
+    let totalCostBasis = 0;
+
+    this.heldPositions.forEach(p => {
+      const { gain } = calculateHoldingGain(p.quantity, p.currentPrice, p.avgCostBasis);
+      totalGain += gain;
+      totalCostBasis += p.avgCostBasis * p.quantity;
+    });
+
+    this.overallGain.set(totalGain);
+    this.overallGainPct.set(totalCostBasis > 0 ? (totalGain / totalCostBasis) * 100 : 0);
+  }
+
+  private subscribeToLiveQuotes(): void {
+    const tickers = new Set(this.heldPositions.map(p => p.ticker));
+
+    this.subscribedTickers.forEach(ticker => {
+      if (!tickers.has(ticker)) {
+        this.marketQuoteService.unsubscribe(ticker);
+      }
+    });
+    tickers.forEach(ticker => this.marketQuoteService.subscribe(ticker));
+    this.subscribedTickers = tickers;
+
+    if (!this.quoteSubscription) {
+      this.quoteSubscription = this.marketQuoteService.quotes$.subscribe(quote => {
+        this.heldPositions = this.heldPositions.map(p =>
+          p.ticker === quote.ticker ? { ...p, currentPrice: quote.price } : p
+        );
+        this.recomputeOverallGain();
+      });
+    }
+  }
+
+  private loadPortfolioSparkline(): void {
+    if (this.heldPositions.length === 0) {
+      this.portfolioSparkline.set([]);
+      return;
+    }
+
+    const requests = this.heldPositions.map(p => this.marketDataService.getHistory(p.ticker, '1mo'));
+    forkJoin(requests).subscribe({
+      next: (histories) => {
+        const points = combinePortfolioHistory(
+          this.heldPositions.map(p => ({ ticker: p.ticker, quantity: p.quantity })),
+          histories
+        );
+        this.portfolioSparkline.set(points.map(p => p.value));
+      },
+      error: (err) => {
+        console.error('Failed to load portfolio sparkline:', err);
+        this.portfolioSparkline.set([]);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.quoteSubscription?.unsubscribe();
+    this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker));
+  }
+
 
   private mapToTrade(response: TradeResponse): Trade {
     const dateTime = new Date(response.executedAt);

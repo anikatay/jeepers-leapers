@@ -13,7 +13,12 @@
 
 
   <!-- Main Content -->
+    <!-- Main Content -->
   <div class="portfolio-content" *ngIf="!loading()">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+      <app-connection-status></app-connection-status>
+    </div>
+
     <!-- Summary Cards Grid - 2 col (mobile) → 4 col (desktop) -->
     <div class="summary-cards-grid">
       <div *ngFor="let card of summaryCards()" class="summary-card">
@@ -36,7 +41,7 @@
             type="text"
             class="search-input"
             placeholder="{{ 'portfolio.search_stocks' | translate }}"
-            [(ngModel)]="searchQuery"
+            [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event)" />
         </div>
 
@@ -120,13 +125,16 @@
               <!-- Current Value -->
               <td class="col-numeric font-mono-data">{{ '$' + holding.currentValue.toLocaleString() }}</td>
 
-              <!-- Gain/Loss with % and $ -->
+              <!-- Gain/Loss: sparkline by default, numbers on hover -->
               <td class="col-gain">
-                <div class="gain-content">
-                  <p class="gain-pct font-mono-data">N/A</p>
-                  <p class="gain-dollar font-mono-data">N/A</p>
+                <div class="gain-content gain-hover-wrapper">
+                  <div class="gain-tooltip">
+                    <app-gain-indicator [gain]="holding.gain" [gainPct]="holding.gainPct"></app-gain-indicator>
+                  </div>
+                  <app-sparkline [values]="holdingSparklines()[holding.symbol]" [width]="70" [height]="24"></app-sparkline>
                 </div>
               </td>
+
 
               <!-- Buy More / Sell Buttons -->
               <td class="col-actions">
@@ -201,23 +209,49 @@
           </div>
         </div>
 
+        <!-- Shares vs Dollar Amount Toggle -->
+        <div class="order-type-section">
+          <p class="section-label">Buy By</p>
+          <div class="order-buttons">
+            <button class="order-btn" [class.active]="orderInputMode() === 'shares'" (click)="setOrderInputMode('shares')">Shares</button>
+            <button class="order-btn" [class.active]="orderInputMode() === 'cash'" (click)="setOrderInputMode('cash')">Dollar Amount</button>
+          </div>
+        </div>
+
         <!-- Shares Input -->
-        <div class="input-section">
+        <div class="input-section" *ngIf="orderInputMode() === 'shares'">
           <p class="section-label">{{ 'portfolio.shares_input' | translate }}</p>
           <input
             type="number"
             min="0"
+            step="0.000001"
             class="quantity-input"
             placeholder="0"
-            [(ngModel)]="modalQuantity"
+            [ngModel]="modalQuantity()"
             (ngModelChange)="modalQuantity.set($event)" />
+        </div>
+
+        <!-- Cash Amount Input -->
+        <div class="input-section" *ngIf="orderInputMode() === 'cash'">
+          <p class="section-label">Amount ($)</p>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            class="quantity-input"
+            placeholder="0.00"
+            [ngModel]="modalCashAmount()"
+            (ngModelChange)="modalCashAmount.set($event)" />
+          <p class="section-label" style="margin-top: 0.5rem;">
+            ≈ {{ resolvedQuantity() | number:'1.0-6' }} shares
+          </p>
         </div>
 
         <!-- Estimated Total -->
         <div class="estimated-total">
           <span class="total-label">{{ 'portfolio.estimated_total' | translate }}</span>
           <span class="total-value font-mono-data">
-            ${{ ((parseFloat(modalQuantity()) || 0) * (selectedHolding()?.currentPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+            ${{ (resolvedQuantity() * (selectedHolding()?.currentPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
           </span>
         </div>
 
@@ -230,7 +264,7 @@
         <button class="confirm-button"
                 [class.buy-mode]="modalMode() === 'BUY'"
                 [class.sell-mode]="modalMode() === 'SELL'"
-                [disabled]="(parseFloat(modalQuantity()) || 0) <= 0 || isSubmitting()"
+                [disabled]="resolvedQuantity() <= 0 || isSubmitting()"
                 (click)="confirmTrade()">
           <span *ngIf="isSubmitting()" class="spinner"></span>
           {{ isSubmitting() ? ('common.processing' | translate) : (modalMode() === 'BUY' ? ('portfolio.confirm_buy' | translate) : ('portfolio.confirm_sell' | translate)) }}

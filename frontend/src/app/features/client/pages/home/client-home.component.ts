@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, effect, inject } from '@angular/core';
+import { Component, OnInit,OnDestroy, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AccountService } from '../../../../core/services/account.service';
@@ -11,6 +11,11 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
+import { Subscription, forkJoin } from 'rxjs';
+import { MarketDataService } from '../../../../core/services/market-data.service';
+import { MarketQuoteService } from '../../../../core/services/market-quote.service';
+import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
+import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../shared/utils/portfolio-calculation';
 
 
 export interface StockHolding {
@@ -19,6 +24,7 @@ export interface StockHolding {
   pct: number;
   value: number;
   price: number;
+  avgCostBasis: number;
 }
 
 export interface Trade {
@@ -44,7 +50,7 @@ export interface PieSlice {
 @Component({
   selector: 'app-client-home',
   standalone: true,
-  imports: [CommonModule, TranslatePipe],
+  imports: [CommonModule, TranslatePipe, ConnectionStatusComponent],
   templateUrl: './client-home.component.html',
   styleUrl: './client-home.component.css'
 })
@@ -91,6 +97,22 @@ export class ClientHomeComponent implements OnInit {
   overallGain = signal<string>('N/A');
   cashRemaining = signal<string>('N/A');
 
+    chartLinePath = signal<string>('');
+  chartAreaPath = signal<string>('');
+  chartYAxisLabels = signal<string[]>(['N/A', 'N/A', 'N/A']);
+  chartXAxisLabels = signal<string[]>(['Start', 'Mid', 'Now']);
+  chartLoading = signal<boolean>(false);
+
+  private heldInstruments: Array<{ ticker: string; quantity: number }> = [];
+  private quoteSubscription?: Subscription;
+  private subscribedTickers = new Set<string>();
+
+  // Backend only supports these periods; 1D/1W are approximated by slicing the 1mo result
+  private readonly periodMap: Record<Period, string> = {
+    '1D': '1mo', '1W': '1mo', '1M': '1mo', '3M': '3mo', '1Y': '1y', 'All': 'max'
+  };
+
+
   stockIconStyles: Record<string, { label: string; background: string; color: string }> = {
     AAPL: { label: 'A', background: '#111827', color: '#ffffff' },
     TSLA: { label: 'T', background: '#dc2626', color: '#ffffff' },
@@ -110,6 +132,8 @@ export class ClientHomeComponent implements OnInit {
     private instrumentService: InstrumentService,
     private tradesService: TradesService,
     private tradeModalService: TradeModalService,
+    private marketDataService: MarketDataService,
+    private marketQuoteService: MarketQuoteService,
     public translationService: TranslationService
   ) {
     // Reload chart data when a trade is completed
@@ -147,16 +171,25 @@ export class ClientHomeComponent implements OnInit {
       }
     });
 
-    // Load instruments (global list)
+    // Load instruments, then holdings, then trades (trades feed both the recent-trades list and gain math)
     this.instrumentService.getAllInstruments().subscribe({
       next: (instruments) => {
         const instrumentMap = new Map<string, InstrumentResponse>();
         instruments.forEach(inst => instrumentMap.set(inst.instrumentId, inst));
-        
-        // Now load holdings
+
         this.portfolioService.getPortfolio(this.ACCOUNT_ID).subscribe({
           next: (holdingsData) => {
-            this.computeHoldingsUI(holdingsData, instrumentMap);
+            this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
+              next: (trades) => {
+                this.computeTradesUI(trades);
+                this.computeHoldingsUI(holdingsData, instrumentMap, trades);
+              },
+              error: (err) => {
+                console.error('Failed to load trades:', err);
+                this.completedTrades.set([]);
+                this.computeHoldingsUI(holdingsData, instrumentMap, []);
+              }
+            });
           },
           error: (err) => {
             console.error('Failed to load holdings:', err);
@@ -169,22 +202,14 @@ export class ClientHomeComponent implements OnInit {
         console.error('Failed to load instruments:', err);
       }
     });
-
-    // Load trades
-    this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
-      next: (trades) => {
-        this.computeTradesUI(trades);
-      },
-      error: (err) => {
-        console.error('Failed to load trades:', err);
-        this.completedTrades.set([]);
-      }
-    });
   }
 
-  private computeHoldingsUI(holdingsData: any[], instrumentMap: Map<string, InstrumentResponse>) {
+
+  private computeHoldingsUI(holdingsData: any[], instrumentMap: Map<string, InstrumentResponse>, trades: TradeResponse[]) {
     const computedHoldings: StockHolding[] = [];
     let totalValue = 0;
+    let totalGain = 0;
+    this.heldInstruments = [];
 
     for (const h of holdingsData) {
       // Only include holdings with positive quantity
@@ -193,14 +218,20 @@ export class ClientHomeComponent implements OnInit {
       const instrument = instrumentMap.get(h.instrumentId);
       if (instrument) {
         const value = h.quantity * (instrument.currentPrice ?? 0);
+        const avgCostBasis = calculateAverageCostBasis(h.instrumentId, trades);
+        const { gain } = calculateHoldingGain(h.quantity, instrument.currentPrice ?? 0, avgCostBasis);
+
         computedHoldings.push({
           symbol: instrument.ticker,
           name: instrument.name,
           pct: 0, // Will recalculate below
           value: value,
-          price: instrument.currentPrice ?? 0
+          price: instrument.currentPrice ?? 0,
+          avgCostBasis
         });
         totalValue += value;
+        totalGain += gain;
+        this.heldInstruments.push({ticker: instrument.ticker,quantity: h.quantity});
       }
     }
 
@@ -215,10 +246,47 @@ export class ClientHomeComponent implements OnInit {
     this.portfolioValue.set(
       `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     );
+    this.setGainSignal(this.overallGain, totalGain);
 
     // Generate pie chart slices dynamically
     this.generatePieSlices(computedHoldings, totalValue);
+    this.subscribeToLiveQuotes();
+    this.loadChartData();
+    this.loadTodaysGain();
   }
+
+  private setGainSignal(target: ReturnType<typeof signal<string>>, value: number): void {
+    const sign = value >= 0 ? '+' : '-';
+    target.set(`${sign}$${Math.abs(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`);
+  }
+
+  private loadTodaysGain(): void {
+    if (this.heldInstruments.length === 0) {
+      this.todaysGain.set('N/A');
+      return;
+    }
+
+    const requests = this.heldInstruments.map(h => this.marketDataService.getHistory(h.ticker, '1mo'));
+    forkJoin(requests).subscribe({
+      next: (histories) => {
+        let totalTodaysGain = 0;
+        histories.forEach((history, idx) => {
+          const bars = history.bars;
+          if (bars.length < 2) return;
+          const lastClose = bars[bars.length - 2].close;
+          const holding = this.holdings().find(h => h.symbol === this.heldInstruments[idx].ticker);
+          const currentPrice = holding?.price ?? bars[bars.length - 1].close;
+          totalTodaysGain += (currentPrice - lastClose) * this.heldInstruments[idx].quantity;
+        });
+        this.setGainSignal(this.todaysGain, totalTodaysGain);
+      },
+      error: (err) => {
+        console.error("Failed to load today's gain:", err);
+        this.todaysGain.set('N/A');
+      }
+    });
+  }
+
 
   private generatePieSlices(holdings: StockHolding[], totalValue: number) {
     const slices: PieSlice[] = [];
@@ -288,7 +356,145 @@ export class ClientHomeComponent implements OnInit {
 
   setPeriod(period: Period) {
     this.selectedPeriod.set(period);
+    this.loadChartData();
   }
+
+  private subscribeToLiveQuotes(): void {
+    const tickers = new Set(this.heldInstruments.map(h => h.ticker));
+
+    this.subscribedTickers.forEach(ticker => {
+      if (!tickers.has(ticker)) {
+        this.marketQuoteService.unsubscribe(ticker);
+      }
+    });
+    tickers.forEach(ticker => this.marketQuoteService.subscribe(ticker));
+    this.subscribedTickers = tickers;
+
+    if (!this.quoteSubscription) {
+      this.quoteSubscription = this.marketQuoteService.quotes$.subscribe(quote => {
+        const updated = this.holdings().map(h =>
+          h.symbol === quote.ticker
+            ? { ...h, price: quote.price, value: (h.value / h.price) * quote.price }
+            : h
+        );
+        const totalValue = updated.reduce((sum, h) => sum + h.value, 0);
+        const totalGain = updated.reduce((sum, h) => {
+          const shares = h.price > 0 ? h.value / h.price : 0;
+          return sum + (h.price - h.avgCostBasis) * shares;
+        }, 0);
+        const withPct = updated.map(h => ({
+          ...h,
+          pct: totalValue > 0 ? Math.round((h.value / totalValue) * 100) : 0
+        }));
+
+        this.holdings.set(withPct);
+        this.portfolioValue.set(
+          `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        );
+        this.setGainSignal(this.overallGain, totalGain);
+        this.generatePieSlices(withPct, totalValue);
+      });
+    }
+
+  }
+
+  private loadChartData(): void {
+    if (this.heldInstruments.length === 0) {
+      this.chartLinePath.set('');
+      this.chartAreaPath.set('');
+      this.chartYAxisLabels.set(['N/A', 'N/A', 'N/A']);
+      return;
+    }
+
+    this.chartLoading.set(true);
+    const backendPeriod = this.periodMap[this.selectedPeriod()];
+    const requests = this.heldInstruments.map(h => this.marketDataService.getHistory(h.ticker, backendPeriod));
+
+    forkJoin(requests).subscribe({
+      next: (histories) => {
+        // Approximation: values current holdings' quantities against historical closes.
+        // Does not account for quantity changes over time (trades aren't backdated).
+        const totalsByDate = new Map<string, number>();
+        histories.forEach((history, idx) => {
+          const quantity = this.heldInstruments[idx].quantity;
+          history.bars.forEach(bar => {
+            totalsByDate.set(bar.date, (totalsByDate.get(bar.date) ?? 0) + quantity * bar.close);
+          });
+        });
+
+        let dates = Array.from(totalsByDate.keys()).sort();
+        if (this.selectedPeriod() === '1D') {
+          dates = dates.slice(-2);
+        } else if (this.selectedPeriod() === '1W') {
+          dates = dates.slice(-5);
+        }
+
+        const values = dates.map(d => totalsByDate.get(d)!);
+        const { line, area } = this.buildChartPaths(values);
+        this.chartLinePath.set(line);
+        this.chartAreaPath.set(area);
+        this.updateAxisLabels(values, dates);
+        this.chartLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load chart history:', err);
+        this.chartLinePath.set('');
+        this.chartAreaPath.set('');
+        this.chartLoading.set(false);
+      }
+    });
+  }
+
+  private buildChartPaths(values: number[]): { line: string; area: string } {
+    const width = 800;
+    const top = 20;
+    const bottom = 200;
+    const n = values.length;
+
+    if (n === 0) {
+      return { line: '', area: '' };
+    }
+    if (n === 1) {
+      const y = (top + bottom) / 2;
+      return { line: `M0,${y} L${width},${y}`, area: `M0,${y} L${width},${y} L${width},220 L0,220 Z` };
+    }
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const stepX = width / (n - 1);
+
+    const points = values.map((v, i) => ({
+      x: i * stepX,
+      y: top + (1 - (v - min) / range) * (bottom - top)
+    }));
+
+    const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    return { line, area: `${line} L${width},220 L0,220 Z` };
+  }
+
+  private updateAxisLabels(values: number[], dates: string[]): void {
+    if (values.length === 0) {
+      this.chartYAxisLabels.set(['N/A', 'N/A', 'N/A']);
+      this.chartXAxisLabels.set(['Start', 'Mid', 'Now']);
+      return;
+    }
+
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const fmt = (v: number) => `$${Math.round(v / 1000)}k`;
+    this.chartYAxisLabels.set([fmt(max), fmt((max + min) / 2), fmt(min)]);
+
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const n = dates.length;
+    this.chartXAxisLabels.set([fmtDate(dates[0]), fmtDate(dates[Math.floor(n / 2)]), fmtDate(dates[n - 1])]);
+  }
+
+  ngOnDestroy(): void {
+    this.quoteSubscription?.unsubscribe();
+    this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker));
+  }
+
 
   setPieActive(index: number) {
     this.activePieIndex.set(index);

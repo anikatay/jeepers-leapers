@@ -155,7 +155,7 @@
           type="text"
           class="search-input"
           placeholder="Enter company or symbol"
-          [(ngModel)]="searchQuery"
+          [ngModel]="searchQuery()"
           (input)="onSearchInput($event)"
           (focus)="onSearchFocus()"
           (keydown)="onSearchKeyDown($event)"

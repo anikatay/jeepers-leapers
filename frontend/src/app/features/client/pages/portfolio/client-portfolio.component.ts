@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, effect, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms';
 import { PortfolioService } from '../../../../core/services/portfolio.service';
@@ -8,10 +8,18 @@ import { TradesService } from '../../../../core/services/trades.service';
 import { TradeModalService } from '../../../../core/services/trade-modal.service';
 import { TranslationService } from '../../../../core/services/translation.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { Subscription, forkJoin } from 'rxjs';
+import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { HoldingResponse } from '../../../../core/models/holding.model';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { AccountResponse } from '../../../../core/models/account.model';
+import { TradeResponse } from '../../../../core/models/trade.model';
+import { MarketDataService } from '../../../../core/services/market-data.service';
+import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../shared/utils/portfolio-calculation';
+import { GainIndicatorComponent } from '../../../../shared/components/gain-indicator.component';
+import { SparklineComponent } from '../../../../shared/components/sparkline.component';
+import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
 
 /* ─────────────────────────────────────────────────────────────────────────
    FIGMA-COMPLIANT PORTFOLIO PAGE WITH REAL BACKEND DATA
@@ -26,6 +34,7 @@ export interface Holding {
   currentValue: number;
   gain: number;
   gainPct: number;
+  avgCostBasis: number;
 }
 
 type SortKey = 'shares' | 'currentPrice' | 'currentValue' | 'gain';
@@ -47,7 +56,7 @@ interface StockIconStyle {
 @Component({
   selector: 'app-client-portfolio',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent],
   templateUrl: './client-portfolio.component.html',
   styleUrl: './client-portfolio.component.css'
 })
@@ -60,6 +69,7 @@ export class ClientPortfolioComponent implements OnInit {
   // Real data from backend
   allHoldings = signal<Holding[]>([]);
   account = signal<AccountResponse | null>(null);
+  holdingSparklines = signal<Record<string, number[]>>({});
   loading = signal(false);
   error = signal<string | null>(null);
 
@@ -91,17 +101,23 @@ export class ClientPortfolioComponent implements OnInit {
   isSubmitting = signal<boolean>(false);
   tradeSuccess = signal<boolean>(false);
   tradeError = signal<string | null>(null);
+  orderInputMode = signal<'shares' | 'cash'>('shares');
+  modalCashAmount = signal<string>('');
+  private quoteSubscription?: Subscription;
+  private subscribedTickers = new Set<string>();
 
   // Filter options
   filterOptions: Array<'all' | 'gain' | 'loss'> = ['all', 'gain', 'loss'];
 
   constructor(
-    private autService: AuthService,
+    private authService: AuthService,
     private portfolioService: PortfolioService,
     private instrumentService: InstrumentService,
     private accountService: AccountService,
     private tradesService: TradesService,
     private tradeModalService: TradeModalService,
+    private marketQuoteService: MarketQuoteService,
+    private marketDataService: MarketDataService,
     public translationService: TranslationService
   ) {
     // Watch for instrument changes from navbar trade request
@@ -117,7 +133,8 @@ export class ClientPortfolioComponent implements OnInit {
           currentPrice: instrumentToTrade.currentPrice,
           currentValue: 0,
           gain: 0,
-          gainPct: 0
+          gainPct: 0,
+          avgCostBasis: 0
         };
         this.openTradeModal(holding, 'BUY');
         // Clear the signal after handling
@@ -131,51 +148,20 @@ export class ClientPortfolioComponent implements OnInit {
 
   }
 
-  private loadData() {
+    private loadData() {
     this.loading.set(true);
     this.error.set(null);
 
-    // Load holdings and instruments in parallel
     this.portfolioService.getPortfolio(this.ACCOUNT_ID).subscribe({
-      next: (holdings) => {
+      next: (holdingsData) => {
         this.instrumentService.getAllInstruments().subscribe({
           next: (instruments) => {
-            // Build holdings with instrument data
-            const instrumentMap = new Map(instruments.map(i => [i.instrumentId, i]));
-            const buildHoldings: Holding[] = [];
-
-            holdings.forEach(h => {
-              // Only include holdings with positive quantity
-              if (h.quantity <= 0) return;
-              
-              const instrument = instrumentMap.get(h.instrumentId);
-              if (instrument) {
-                const currentValue = h.quantity * instrument.currentPrice;
-                buildHoldings.push({
-                  instrumentId: h.instrumentId,
-                  symbol: instrument.ticker,
-                  name: instrument.name,
-                  shares: h.quantity,
-                  currentPrice: instrument.currentPrice,
-                  currentValue: currentValue,
-                  gain: 0, // N/A - backend doesn't provide
-                  gainPct: 0 // N/A - backend doesn't provide
-                });
-              }
-            });
-
-            this.allHoldings.set(buildHoldings);
-
-            // Load account for cash balance
-            this.accountService.getAccount(this.ACCOUNT_ID).subscribe({
-              next: (acc) => {
-                this.account.set(acc);
-                this.loading.set(false);
-              },
+            this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
+              next: (trades) => this.buildHoldingsUI(holdingsData, instruments, trades),
               error: (err) => {
-                console.error('Failed to load account:', err);
-                this.error.set('Failed to load account data');
-                this.loading.set(false);
+                console.error('Failed to load trades:', err);
+                // Still show holdings even if gain/loss data can't be computed
+                this.buildHoldingsUI(holdingsData, instruments, []);
               }
             });
           },
@@ -193,6 +179,104 @@ export class ClientPortfolioComponent implements OnInit {
       }
     });
   }
+
+  private buildHoldingsUI(holdingsData: HoldingResponse[], instruments: InstrumentResponse[], trades: TradeResponse[]) {
+    const instrumentMap = new Map(instruments.map(i => [i.instrumentId, i]));
+    const buildHoldings: Holding[] = [];
+
+    holdingsData.forEach(h => {
+      // Only include holdings with positive quantity
+      if (h.quantity <= 0) return;
+
+      const instrument = instrumentMap.get(h.instrumentId);
+      if (instrument) {
+        const currentValue = h.quantity * instrument.currentPrice;
+        const avgCostBasis = calculateAverageCostBasis(h.instrumentId, trades);
+        const { gain, gainPct } = calculateHoldingGain(h.quantity, instrument.currentPrice, avgCostBasis);
+
+        buildHoldings.push({
+          instrumentId: h.instrumentId,
+          symbol: instrument.ticker,
+          name: instrument.name,
+          shares: h.quantity,
+          currentPrice: instrument.currentPrice,
+          currentValue: currentValue,
+          gain,
+          gainPct,
+          avgCostBasis
+        });
+      }
+    });
+
+    this.allHoldings.set(buildHoldings);
+    this.subscribeToLiveQuotes(buildHoldings);
+    this.loadSparklines(buildHoldings);
+
+    // Load account for cash balance
+    this.accountService.getAccount(this.ACCOUNT_ID).subscribe({
+      next: (acc) => {
+        this.account.set(acc);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load account:', err);
+        this.error.set('Failed to load account data');
+        this.loading.set(false);
+      }
+    });
+  }
+
+  private loadSparklines(holdings: Holding[]): void {
+    if (holdings.length === 0) {
+      this.holdingSparklines.set({});
+      return;
+    }
+
+    const requests = holdings.map(h => this.marketDataService.getHistory(h.symbol, '1mo'));
+    forkJoin(requests).subscribe({
+      next: (histories) => {
+        const sparklines: Record<string, number[]> = {};
+        histories.forEach((history, idx) => {
+          sparklines[holdings[idx].symbol] = history.bars.map(b => b.close);
+        });
+        this.holdingSparklines.set(sparklines);
+      },
+      error: (err) => {
+        console.error('Failed to load sparkline history:', err);
+        this.holdingSparklines.set({});
+      }
+    });
+  }
+
+
+  private subscribeToLiveQuotes(holdings: Holding[]): void{
+    const tickers = new Set(holdings.map(h => h.symbol));
+    this.subscribedTickers.forEach(ticker => {
+      if (!tickers.has(ticker)) {
+        this.marketQuoteService.unsubscribe(ticker);
+      }
+    });
+    tickers.forEach(ticker => this.marketQuoteService.subscribe(ticker));
+    this.subscribedTickers = tickers;
+
+    if (!this.quoteSubscription) {
+      this.quoteSubscription = this.marketQuoteService.quotes$.subscribe(quote => {
+        this.allHoldings.update(holdings =>
+          holdings.map(h => {
+            if (h.symbol !== quote.ticker) return h;
+            const { gain, gainPct } = calculateHoldingGain(h.shares, quote.price, h.avgCostBasis);
+            return { ...h, currentPrice: quote.price, currentValue: h.shares * quote.price, gain, gainPct };
+          })
+        );
+      });
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.quoteSubscription?.unsubscribe();
+    this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker));
+  }
+
 
   // ─────────────────────────────────────────────────────────────────
   // COMPUTED VALUES (Derived state)
@@ -223,20 +307,47 @@ export class ClientPortfolioComponent implements OnInit {
 
     return result;
   });
+  resolvedQuantity = computed(() => {
+    const holding = this.selectedHolding();
+    if (!holding) return 0;
+
+    if (this.orderInputMode() === 'cash') {
+      const amount = parseFloat(this.modalCashAmount()) || 0;
+      const price = holding.currentPrice || 0;
+      if (price <= 0) return 0;
+      // Round down to 6 decimals so a cash order never spends more than the amount typed
+      return Math.floor((amount / price) * 1_000_000) / 1_000_000;
+    }
+
+    return parseFloat(this.modalQuantity()) || 0;
+  });
 
   // Summary cards data
   summaryCards = computed((): SummaryCard[] => {
-    const totalValue = this.allHoldings().reduce((sum, h) => sum + h.currentValue, 0);
-    const totalGain = this.allHoldings().reduce((sum, h) => sum + h.gain, 0);
+    const holdings = this.allHoldings();
+    const sparklines = this.holdingSparklines();
+    const totalValue = holdings.reduce((sum, h) => sum + h.currentValue, 0);
+    const totalGain = holdings.reduce((sum, h) => sum + h.gain, 0);
     const cashBalance = this.account()?.balance ?? 0;
+
+    // Approximation: "today" = change since the most recent available daily close
+    const todaysGain = holdings.reduce((sum, h) => {
+      const bars = sparklines[h.symbol];
+      if (!bars || bars.length < 2) return sum;
+      const lastClose = bars[bars.length - 2];
+      return sum + (h.currentPrice - lastClose) * h.shares;
+    }, 0);
+
+    const fmt = (v: number) => `${v >= 0 ? '+' : '-'}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
     return [
       { label: 'Total Portfolio Value', value: `$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: true },
-      { label: "Today's Gain/Loss", value: 'N/A', isPositive: undefined },
-      { label: 'Overall Gain/Loss', value: 'N/A', isPositive: undefined },
+      { label: "Today's Gain/Loss", value: fmt(todaysGain), isPositive: todaysGain >= 0 },
+      { label: 'Overall Gain/Loss', value: fmt(totalGain), isPositive: totalGain >= 0 },
       { label: 'Cash Available', value: `$${cashBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: undefined },
     ];
   });
+
 
   // ─────────────────────────────────────────────────────────────────
   // METHODS
@@ -270,10 +381,17 @@ export class ClientPortfolioComponent implements OnInit {
     this.modalMode.set(mode);
     this.isModalOpen.set(true);
     this.modalQuantity.set('');
+    this.modalCashAmount.set('');
+    this.orderInputMode.set('shares');
     this.isSubmitting.set(false);
     this.tradeSuccess.set(false);
     this.tradeError.set(null);
   }
+
+  setOrderInputMode(mode: 'shares' | 'cash'): void {
+    this.orderInputMode.set(mode);
+  }
+
 
   closeModal(): void {
     this.isModalOpen.set(false);
@@ -281,18 +399,21 @@ export class ClientPortfolioComponent implements OnInit {
     setTimeout(() => {
       this.selectedHolding.set(null);
       this.modalQuantity.set('');
+      this.modalCashAmount.set('');
       this.tradeError.set(null);
     }, 300);
   }
 
+
   confirmTrade(): void {
     const holding = this.selectedHolding();
-    const qty = parseInt(this.modalQuantity(), 10);
-    
+    const qty = this.resolvedQuantity();
+
     if (!holding || qty <= 0) {
       this.tradeError.set('Invalid quantity');
       return;
     }
+
 
     this.isSubmitting.set(true);
     this.tradeError.set(null);
