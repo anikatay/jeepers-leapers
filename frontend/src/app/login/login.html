@@ -1,16 +1,21 @@
-<h1>Mission Control</h1>
+<main class="login-page">
+  <section class="login-panel" aria-labelledby="login-title">
+    <img class="login-logo" src="/symbol.PNG" alt="LEAP logo" />
 
-  <main>
+    <div class="login-heading">
+      <h1 id="login-title">Welcome back</h1>
+      <p class="subtitle">Sign in to manage your portfolio.</p>
+    </div>
+
     <form (ngSubmit)="confirmLogIn()">
-      <h2>Log In</h2>
-
       <div class="field">
         <label for="email">Email</label>
         <input
-          type="text"
+          type="email"
           id="email"
           name="email"
           required
+          placeholder="Enter your email"
           autocomplete="email"
           [(ngModel)]="email"
         />
@@ -23,20 +28,20 @@
           id="password"
           name="password"
           required
+          placeholder="Enter your password"
           autocomplete="current-password"
           [(ngModel)]="password"
         />
       </div>
 
-      @if (message()){
-        <p class = "message" [class.error]="isError()">{{ message() }}</p>
+      @if (message()) {
+        <p class="message" [class.error]="isError()" aria-live="polite">{{ message() }}</p>
       }
 
       <button type="submit">Log In</button>
     </form>
-  </main>
 
-  <footer>
-    <p>LEAP Mission Control</p>
-  </footer>
+    <p class="login-footer">Secure access to your trading workspace</p>
+  </section>
+</main>
 
