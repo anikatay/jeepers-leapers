@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     account_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR')),
-    balance NUMERIC(18, 4) NOT NULL DEFAULT 0.00,
+    balance NUMERIC(18, 4) NOT NULL DEFAULT 0.00 CHECK (balance >= 0),
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS exchanges (
 CREATE TABLE IF NOT EXISTS holdings (
     account_id UUID NOT NULL REFERENCES accounts(account_id),
     instrument_id UUID NOT NULL REFERENCES instruments(instrument_id),
-    quantity NUMERIC(18, 8) NOT NULL DEFAULT 0,
+    quantity NUMERIC(18, 8) NOT NULL DEFAULT 0 CHECK (quantity > 0),
     CONSTRAINT uq_account_instrument UNIQUE (account_id, instrument_id)
 );
 

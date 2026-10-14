@@ -64,7 +64,7 @@ public interface  AccountMapper {
     int incrementBalance(@Param("accountId") UUID accountId, @Param("amount") BigDecimal amount);
 
     // Decrement balance
-    @Update("UPDATE accounts  SET balance = balance - #{amount} WHERE account_id = #{accountId}")
+    @Update("UPDATE accounts  SET balance = balance - #{amount} WHERE account_id = #{accountId} AND balance >= #{amount}")
     int decrementBalance(@Param("accountId") UUID accountId, @Param("amount") BigDecimal amount);
 
     // check if account exists -> boolean
