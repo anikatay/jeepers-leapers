@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 
 export interface MarketQuote {
@@ -21,6 +21,12 @@ export class MarketQuoteService {
 
   readonly quotes$: Observable<MarketQuote> = this.quotesSubject.asObservable();
   readonly connected = signal(false);
+  readonly reconnecting = signal(false);
+  readonly status = computed<'connected' | 'reconnecting' | 'offline'>(() => {
+    if(this.connected()) return 'connected';
+    if(this.reconnecting()) return 'reconnecting';
+    return 'offline';
+  });
 
   connect(): void {
     if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
@@ -32,6 +38,7 @@ export class MarketQuoteService {
 
     this.socket.onopen = () => {
       this.connected.set(true);
+      this.reconnecting.set(false);
       this.subscribedTickers.forEach((ticker) => this.send('SUBSCRIBE', ticker));
     };
 
@@ -46,10 +53,13 @@ export class MarketQuoteService {
       this.connected.set(false);
       this.socket = null;
       if (this.subscribedTickers.size > 0 && !this.reconnectTimer) {
+        this.reconnecting.set(true);
         this.reconnectTimer = setTimeout(() => {
           this.reconnectTimer = null;
           this.connect();
         }, 3000);
+      }else{
+        this.reconnecting.set(false);
       }
     };
 
@@ -80,6 +90,7 @@ export class MarketQuoteService {
     this.socket?.close();
     this.socket = null;
     this.connected.set(false);
+    this.reconnecting.set(false);
   }
 
   private send(action: 'SUBSCRIBE' | 'UNSUBSCRIBE', ticker: string): void {

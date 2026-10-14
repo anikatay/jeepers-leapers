@@ -13,7 +13,7 @@ import com.neueda.leap.event.TradeExecutedEvent;
 @Component 
 public class TradeConsumer {
 	private static final Logger logger = LoggerFactory.getLogger(TradeConsumer.class);
-	@KafkaListener(topics = "trade-executed")
+	@KafkaListener(topics = "trade-executed" , groupId = "trade-consumer-logger")
 	public void onTradeExecuted(TradeExecutedEvent event){
 		logger.info("Consumed trade event {} ({} {} @ {})", 
 						event.tradeId(), event.side(), event.quantity(), event.executionPrice());

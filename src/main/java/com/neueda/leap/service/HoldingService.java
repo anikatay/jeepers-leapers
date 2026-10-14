@@ -64,7 +64,7 @@ public class HoldingService implements IService {
         return holdingMapper.getHoldingByAccountIdAndInstrumentId(accountId, instrumentId);
     }
 
-     
+
     public Holding createHoldingInternal(Holding holding) {
         int createdHolding = holdingMapper.insertHolding(holding.getAccountId(),holding.getInstrumentId(),holding.getQuantity());
 
@@ -94,41 +94,28 @@ public class HoldingService implements IService {
         );
     }
 
-    public int incrementHoldingQuantityImternal(Holding holding, BigDecimal amount){
-        if(holding == null){
-            throw new ObjectInvalidException("Holding cannot be Null");
-        }
+    public int incrementHoldingQuantityInternal(UUID accountId, UUID instrumentId, BigDecimal amount){
         if(amount == null || amount.compareTo(BigDecimal.ZERO) <= 0){
             throw new ObjectInvalidException("amount cannot be less than 1");
         }
-        BigDecimal newQuantity = holding.getQuantity().add(amount);
-        int updateHolding = holdingMapper.updateHoldingQuantity(holding.getAccountId(),holding.getInstrumentId(), newQuantity);
-        if(updateHolding < 1){
+        int updated = holdingMapper.incrementHoldingQuantity(accountId, instrumentId, amount);
+        if(updated < 1){
             throw new ObjectNotProcessedException("Was unable to update holding ");
         }
         return 1;
     }
 
-    public int decrementHoldingQuantityImternal(Holding holding, BigDecimal amount){
-        if(holding == null){
-            throw new ObjectInvalidException("Holding cannot be Null");
-        }
+    public int decrementHoldingQuantityInternal(UUID accountId, UUID instrumentId, BigDecimal amount){
         if(amount == null || amount.compareTo(BigDecimal.ZERO) <= 0){
             throw new ObjectInvalidException("amount cannot be less than 1");
         }
-        if(amount.compareTo(holding.getQuantity()) > 0){
-            throw new ObjectInvalidException("amount cannot be more than quantity");
-        }
-        final BigDecimal newQuantity = holding.getQuantity().subtract(amount);
-        int updateHolding;
-        if(newQuantity.compareTo(BigDecimal.ZERO) != 0){
-            updateHolding = holdingMapper.updateHoldingQuantity(holding.getAccountId(),holding.getInstrumentId(), newQuantity);
-        }else{
-            updateHolding = holdingMapper.deleteHolding(holding.getAccountId(),holding.getInstrumentId());
-        }
 
-        if(updateHolding < 1){
-            throw new ObjectNotProcessedException("Was unable to update holding ");
+        int updated = holdingMapper.decrementHoldingQuantity(accountId, instrumentId, amount);
+        if(updated < 1){
+            int deleted = holdingMapper.deleteHolding(accountId, instrumentId, amount);
+            if(deleted < 1){
+                throw new ObjectNotProcessedException("Was unable to update holding ");
+            }
         }
         return 1;
     }
@@ -159,8 +146,8 @@ public class HoldingService implements IService {
         );
     }
 
-    public void deleteHolding(UUID accountId, UUID instrumentId) {
-        holdingMapper.deleteHolding(accountId, instrumentId);
+    public void deleteHolding(UUID accountId, UUID instrumentId, BigDecimal amount) {
+        holdingMapper.deleteHolding(accountId, instrumentId, amount);
     }
 
     public void deleteHoldingsByAccountId(UUID accountId) {
