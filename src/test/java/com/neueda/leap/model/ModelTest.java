@@ -3,7 +3,6 @@ package com.neueda.leap.model;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -31,16 +30,14 @@ class ModelTest {
         assertEquals("INACTIVE", user.getStatus());
     }
 
-    // Verifies UserPii accessors for linked user and all PII fields.
+    // Verifies UserPii accessors for all PII fields.
     @Test
     void testUserPiiAccessors() {
         UserPii userPii = new UserPii();
-        User user = new User();
         UUID userId = UUID.randomUUID();
-        LocalDate dob = LocalDate.of(1990, 5, 20);
+        OffsetDateTime dob = OffsetDateTime.parse("1990-05-20T00:00:00Z");
 
         userPii.setUserId(userId);
-        userPii.setUser(user);
         userPii.setFirstName("Alex");
         userPii.setLastName("Smith");
         userPii.setDateOfBirth(dob);
@@ -50,7 +47,6 @@ class ModelTest {
         userPii.setEmail("alex@example.com");
 
         assertEquals(userId, userPii.getUserId());
-        assertEquals(user, userPii.getUser());
         assertEquals("Alex", userPii.getFirstName());
         assertEquals("Smith", userPii.getLastName());
         assertEquals(dob, userPii.getDateOfBirth());
