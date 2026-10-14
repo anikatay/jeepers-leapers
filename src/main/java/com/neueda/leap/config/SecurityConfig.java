@@ -43,9 +43,16 @@ public class SecurityConfig {
                         // API endpoints - all authenticated users
                         .requestMatchers("/api/**").permitAll()
                         
+                        // Live market quotes over websockets -public, same as /api/market
+                        .requestMatchers("/ws/**").permitAll()
+
+                        .requestMatchers("/internal/**").permitAll()
+
                         // Portfolio endpoints - authenticated users (CLIENT, ANALYST, ADMIN)
                         .requestMatchers("/holdings/**").authenticated()
                         .requestMatchers("/trades/**").authenticated()
+
+                
                         
                         // Everything else requires authentication
                         .anyRequest().authenticated())
