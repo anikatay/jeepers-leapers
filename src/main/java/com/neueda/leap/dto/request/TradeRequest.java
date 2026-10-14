@@ -1,6 +1,8 @@
 package com.neueda.leap.dto.request;
 
 import java.util.UUID;
+import java.math.BigDecimal;
+
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +23,6 @@ public record TradeRequest (
 
     @NotNull(message = "Quantity is required")
     @Positive(message = "Quantity must be greater than 0")
-    int quantity
+    BigDecimal quantity
     
 ){}

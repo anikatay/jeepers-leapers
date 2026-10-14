@@ -1,6 +1,11 @@
 <div class="pt-5 space-y-5 px-6 pb-8">
+  <div class="flex justify-end">
+    <app-connection-status></app-connection-status>
+  </div>
+
   <!-- Stats Cards -->
-  <div class="grid grid-cols-3 gap-3">
+  <div class="grid grid-cols-4 gap-3">
+
     <!-- Total Trades Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
       <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.total_trades' | translate }}</p>
@@ -22,7 +27,15 @@
         ${{ (totalSold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
       </p>
     </div>
+
+    <!-- Overall P&L Card -->
+    <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
+      <p class="text-xs font-medium" style="color: var(--muted-foreground);">Overall P&L</p>
+      <app-gain-indicator class="mt-1" style="display: block;" [gain]="overallGain()" [gainPct]="overallGainPct()"></app-gain-indicator>
+      <app-sparkline class="mt-2" style="display: block;" [values]="portfolioSparkline()" [width]="110" [height]="28"></app-sparkline>
+    </div>
   </div>
+
 
   <!-- Trading History Section -->
   <div class="border rounded-2xl p-5" style="background: var(--card); border-color: var(--border);">
