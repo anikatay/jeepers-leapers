@@ -1,0 +1,47 @@
+<main class="login-page">
+  <section class="login-panel" aria-labelledby="login-title">
+    <img class="login-logo" src="/symbol.PNG" alt="LEAP logo" />
+
+    <div class="login-heading">
+      <h1 id="login-title">Welcome back</h1>
+      <p class="subtitle">Sign in to manage your portfolio.</p>
+    </div>
+
+    <form (ngSubmit)="confirmLogIn()">
+      <div class="field">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          placeholder="Enter your email"
+          autocomplete="email"
+          [(ngModel)]="email"
+        />
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          [(ngModel)]="password"
+        />
+      </div>
+
+      @if (message()) {
+        <p class="message" [class.error]="isError()" aria-live="polite">{{ message() }}</p>
+      }
+
+      <button type="submit">Log In</button>
+    </form>
+
+    <p class="login-footer">Secure access to your trading workspace</p>
+  </section>
+</main>
+

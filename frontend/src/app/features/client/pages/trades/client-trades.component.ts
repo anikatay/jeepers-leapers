@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject , OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, forkJoin } from 'rxjs';
@@ -10,6 +10,7 @@ import { MarketQuoteService } from '../../../../core/services/market-quote.servi
 import { TranslationService } from '../../../../core/services/translation.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { TradeResponse } from '../../../../core/models/trade.model';
+import { AuthService } from '../../../../core/services/auth.service';
 import { HoldingResponse } from '../../../../core/models/holding.model';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../shared/utils/portfolio-calculation';
@@ -41,8 +42,11 @@ type TypeFilter = 'all' | 'Buy' | 'Sell';
   templateUrl: './client-trades.component.html',
   styleUrl: './client-trades.component.css'
 })
-export class ClientTradesComponent implements OnInit, OnDestroy {
-  private readonly ACCOUNT_ID = 'd4000000-0000-0000-0000-000000000001';
+export class ClientTradesComponent implements OnInit {
+  private auth = inject(AuthService);
+  private get ACCOUNT_ID(): string {
+    return this.auth.session()?.accountId ?? '';
+  }
 
   // Real trade data from backend
   allTrades = signal<Trade[]>([]);
@@ -76,7 +80,9 @@ export class ClientTradesComponent implements OnInit, OnDestroy {
     'BRK.B': { label: 'B', background: '#1e3a8a', color: '#ffffff' },
   };
 
+
   constructor(
+    private authService: AuthService,
     private tradesService: TradesService,
     private instrumentService: InstrumentService,
     private portfolioService: PortfolioService,
