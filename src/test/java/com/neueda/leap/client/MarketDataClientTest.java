@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.function.Function;
+import org.springframework.web.util.UriBuilder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -42,17 +43,18 @@ class MarketDataClientTest {
     private RestClient restClient;
 
     @Mock
-    @SuppressWarnings("rawtypes")
-    private RestClient.RequestHeadersUriSpec uriSpec;
+    private RestClient.RequestHeadersUriSpec<TestHeadersSpec> uriSpec;
 
     @Mock
-    @SuppressWarnings("rawtypes")
-    private RestClient.RequestHeadersSpec headersSpec;
+    private TestHeadersSpec headersSpec;
 
     @Mock
     private RestClient.ResponseSpec responseSpec;
 
     private MarketDataClient marketDataClient;
+
+    private interface TestHeadersSpec extends RestClient.RequestHeadersSpec<TestHeadersSpec> {
+    }
 
     @BeforeEach
     void setUp() {
@@ -60,8 +62,9 @@ class MarketDataClientTest {
         lenient().when(builder.requestFactory(any())).thenReturn(builder);
         lenient().when(builder.build()).thenReturn(restClient);
 
-        lenient().when(restClient.get()).thenReturn(uriSpec);
-        lenient().when(uriSpec.uri(any(Function.class))).thenReturn(headersSpec);
+        lenient().doReturn(uriSpec).when(restClient).get();
+        lenient().when(uriSpec.uri(org.mockito.ArgumentMatchers.<Function<UriBuilder, java.net.URI>>any()))
+            .thenReturn(headersSpec);
         lenient().when(headersSpec.retrieve()).thenReturn(responseSpec);
 
         marketDataClient = new MarketDataClient(builder, "http://mock-market");
@@ -169,7 +172,8 @@ class MarketDataClientTest {
     @Test
     void testFetchHistoryMapsUriBuildingErrorsToMarketDataUnavailableException() {
         RestClientException uriError = new RestClientException("uri build failed");
-        when(uriSpec.uri(any(Function.class))).thenThrow(uriError);
+        when(uriSpec.uri(org.mockito.ArgumentMatchers.<Function<UriBuilder, java.net.URI>>any()))
+            .thenThrow(uriError);
 
         MarketDataUnavailableException ex = assertThrows(
                 MarketDataUnavailableException.class,
