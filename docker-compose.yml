@@ -36,6 +36,7 @@ services:
       SPRING_DATASOURCE_USERNAME: paysprint
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:8092
+      JWT_SHARED_SECRET: ${JWT_SHARED_SECRET}
 
   db:
     image: postgres:16-alpine
