@@ -13,5 +13,5 @@ public record CreateUserRequest(
     String role,
 
     @NotEmpty (message = "Status is required")
-    String status,
+    String status
 ) {}
