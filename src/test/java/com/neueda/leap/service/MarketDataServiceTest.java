@@ -64,6 +64,15 @@ class MarketDataServiceTest {
         verify(valueOperations, never()).get(any());
     }
 
+    // Verifies null tickers are rejected before cache or client calls.
+    @Test
+    void testGetHistoryRejectsNullTicker() {
+        assertThrows(ObjectInvalidException.class, () -> marketDataService.getHistory(null, "1m"));
+
+        verifyNoInteractions(marketDataClient);
+        verify(valueOperations, never()).get(any());
+    }
+
     // Verifies ticker is normalized (trimmed/uppercased) for cache key and client calls.
     @Test
     void testGetHistoryNormalizesTickerForCacheAndClient() throws Exception {
@@ -170,6 +179,23 @@ class MarketDataServiceTest {
         verify(marketDataClient).fetchHistory("AAPL", "5y");
     }
 
+    // Verifies serialization failures do not prevent returning fresh market data.
+    @Test
+    void testGetHistoryIgnoresSerializationFailure() throws Exception {
+        when(valueOperations.get("history:AAPL")).thenReturn(null);
+        HistoryResponse fresh = history("AAPL", barsForSlicing());
+        when(marketDataClient.fetchHistory("AAPL", "5y")).thenReturn(fresh);
+        when(objectMapper.writeValueAsString(fresh))
+                .thenThrow(new JsonProcessingException("serialization failed") { });
+
+        HistoryResponse result = marketDataService.getHistory("AAPL", "all");
+
+        assertEquals(fresh.ticker(), result.ticker());
+        assertEquals(fresh.bars(), result.bars());
+        verify(marketDataClient).fetchHistory("AAPL", "5y");
+        verify(valueOperations, never()).set(any(), any(), any(Duration.class));
+    }
+
     // Verifies cached NOT_FOUND marker raises ObjectNotFoundException without client call.
     @Test
     void testGetHistoryThrowsForCachedNotFoundMarker() {
@@ -226,6 +252,19 @@ class MarketDataServiceTest {
         assertThrows(MarketDataUnavailableException.class, () -> marketDataService.getHistory("AAPL", "all"));
 
         verify(objectMapper, never()).writeValueAsString(any(HistoryResponse.class));
+    }
+
+    // Verifies all supported period aliases are accepted by the period switch.
+    @Test
+    void testGetHistorySupportsPeriodAliases() throws Exception {
+        when(valueOperations.get("history:AAPL")).thenReturn(null);
+        when(marketDataClient.fetchHistory("AAPL", "5y")).thenReturn(history("AAPL", barsForSlicing()));
+        when(objectMapper.writeValueAsString(any(HistoryResponse.class))).thenReturn("{\"fresh\":true}");
+
+        for (String period : List.of("1mo", "3m", "3mo", "6m", "6mo", "1y", "2y", "max", "5y")) {
+            HistoryResponse result = marketDataService.getHistory("AAPL", period);
+            assertEquals(period, result.period());
+        }
     }
 
     private HistoryResponse history(String ticker, List<PriceBar> bars) {
