@@ -5,6 +5,7 @@ import com.neueda.leap.mapper.UserCredentialMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
+import java.util.UUID;
 
 @Service
 public class UserCredentialService {
@@ -16,7 +17,7 @@ public class UserCredentialService {
         this.userCredentialMapper = userCredentialMapper;
     }
 
-    public String getPasswordHashByUserId(String userId) {
+    public String getPasswordHashByUserId(UUID userId) {
         String hash = userCredentialMapper.getPasswordHashByUserId(userId);
         if (hash == null) {
             throw new ObjectNotFoundException("User credentials not found");
@@ -24,21 +25,21 @@ public class UserCredentialService {
         return hash;
     }
 
-    public void insertUserCredential(String userId, String passwordHash) {
+    public void insertUserCredential(UUID userId, String passwordHash) {
         int insertFlag = userCredentialMapper.insertUserCredential(userId, passwordHash);
         if (insertFlag < 1) {
             throw new ObjectNotProcessedException("Failed to add user credentials for userId: " + userId);
         }
     }
 
-    public void updateUserCredential(String userId, String passwordHash) {
+    public void updateUserCredential(UUID userId, String passwordHash) {
         int updateFlag = userCredentialMapper.updateUserCredential(userId, passwordHash);
         if (updateFlag < 1) {
             throw new ObjectNotProcessedException("Failed to update user credentials for userId: " + userId);
         }
     }
 
-    public void deleteUserCredential(String userId) {
+    public void deleteUserCredential(UUID userId) {
         int deleteFlag = userCredentialMapper.deleteUserCredential(userId);
         if (deleteFlag < 1) {
             throw new ObjectNotProcessedException("Failed to delete user credentials for userId: " + userId);
