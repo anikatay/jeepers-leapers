@@ -98,6 +98,14 @@ public class OpenAiTradeAnalyzer {
                     "concerns", STRING_LIST,
                     "suggestions", STRING_LIST));
 
+    /** One analysis and what it cost; model is the version OpenAI reports having used. */
+    public record Analysis(
+            TradeAnalysisResult result,
+            String model,
+            int promptTokens,
+            int completionTokens,
+            long latencyMs) {}
+
     private final RestClient restClient;
     private final String apiKey;
     private final String model;
@@ -113,6 +121,10 @@ public class OpenAiTradeAnalyzer {
     }
 
     public TradeAnalysisResult analyze(TradeAnalysisContext context) {
+        return analyzeWithUsage(context).result();
+    }
+
+    public Analysis analyzeWithUsage(TradeAnalysisContext context) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new TradeAnalysisException("OpenAI API key is not configured");
         }
@@ -120,6 +132,7 @@ public class OpenAiTradeAnalyzer {
             throw new TradeAnalysisException("OpenAI model is not configured");
         }
 
+        long startedAt = System.nanoTime();
         byte[] responseBody;
         try {
             responseBody = restClient.post()
@@ -136,7 +149,7 @@ public class OpenAiTradeAnalyzer {
         } catch (RestClientException e) {
             throw new TradeAnalysisException("Could not reach OpenAI: " + e.getMessage(), e);
         }
-        return parse(responseBody);
+        return parse(responseBody, (System.nanoTime() - startedAt) / 1_000_000);
     }
 
     private byte[] requestBody(TradeAnalysisContext context) {
@@ -159,12 +172,13 @@ public class OpenAiTradeAnalyzer {
         }
     }
 
-    private TradeAnalysisResult parse(byte[] responseBody) {
+    private Analysis parse(byte[] responseBody, long latencyMs) {
         if (responseBody == null || responseBody.length == 0) {
             throw new TradeAnalysisException("OpenAI returned an empty response");
         }
         try {
-            JsonNode choice = JSON.readTree(responseBody).path("choices").path(0);
+            JsonNode root = JSON.readTree(responseBody);
+            JsonNode choice = root.path("choices").path(0);
             JsonNode message = choice.path("message");
 
             if (message.hasNonNull("refusal")) {
@@ -184,7 +198,9 @@ public class OpenAiTradeAnalyzer {
             if (result.verdict() == null || result.summary() == null || result.summary().isBlank()) {
                 throw new TradeAnalysisException("OpenAI's analysis is missing a verdict or summary");
             }
-            return result;
+            JsonNode usage = root.path("usage");
+            return new Analysis(result, root.path("model").asText(model),
+                    usage.path("prompt_tokens").asInt(0), usage.path("completion_tokens").asInt(0), latencyMs);
         } catch (IOException e) {
             throw new TradeAnalysisException("OpenAI's reply was not valid analysis JSON", e);
         }

@@ -1,5 +1,6 @@
 package com.neueda.leap.controller;
 
+import com.neueda.leap.analysis.AnalysisRateLimiter;
 import com.neueda.leap.analysis.TradeAnalysisContext;
 import com.neueda.leap.analysis.TradeAnalysisResult;
 import com.neueda.leap.analysis.TradeAnalysisService;
@@ -10,6 +11,7 @@ import com.neueda.leap.model.Trade;
 import com.neueda.leap.service.InstrumentService;
 import com.neueda.leap.service.TradeService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -31,12 +33,14 @@ public class TradeController {
     private final TradeService tradeService;
     private final InstrumentService instrumentService;
     private final TradeAnalysisService tradeAnalysisService;
+    private final AnalysisRateLimiter analysisRateLimiter;
 
     public TradeController(TradeService tradeService, InstrumentService instrumentService,
-            TradeAnalysisService tradeAnalysisService) {
+            TradeAnalysisService tradeAnalysisService, AnalysisRateLimiter analysisRateLimiter) {
         this.tradeService = tradeService;
         this.instrumentService = instrumentService;
         this.tradeAnalysisService = tradeAnalysisService;
+        this.analysisRateLimiter = analysisRateLimiter;
     }
 
     @PostMapping
@@ -88,7 +92,8 @@ public class TradeController {
     }
 
     @PostMapping("/{tradeId}/analysis")
-    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable UUID tradeId) {
+    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable UUID tradeId, HttpServletRequest request) {
+        analysisRateLimiter.acquire(clientOf(request));
         return ResponseEntity.ok(tradeAnalysisService.analyze(tradeId));
     }
 
@@ -96,6 +101,12 @@ public class TradeController {
     @GetMapping("/{tradeId}/analysis/context")
     public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable UUID tradeId) {
         return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId));
+    }
+
+    // nginx sets X-Real-IP; a caller reaching the app directly can fake it, which the global cap covers.
+    private static String clientOf(HttpServletRequest request) {
+        String realIp = request.getHeader("X-Real-IP");
+        return realIp == null || realIp.isBlank() ? request.getRemoteAddr() : realIp;
     }
 
 }

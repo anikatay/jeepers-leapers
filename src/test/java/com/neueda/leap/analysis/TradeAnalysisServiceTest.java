@@ -28,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TradeAnalysisServiceTest {
@@ -46,7 +48,7 @@ class TradeAnalysisServiceTest {
     private final OpenAiTradeAnalyzer analyzer = mock(OpenAiTradeAnalyzer.class);
 
     private final TradeAnalysisService service = new TradeAnalysisService(
-            tradeMapper, instrumentMapper, accountMapper, holdingMapper, pnlReader, analyzer);
+            tradeMapper, instrumentMapper, accountMapper, holdingMapper, pnlReader, analyzer, 2);
 
     @BeforeEach
     void setUp() {
@@ -146,11 +148,62 @@ class TradeAnalysisServiceTest {
     void analysesTheContextItBuilt() {
         when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
                 .thenReturn(trade("BUY", 5, "220.0000", OffsetDateTime.now()));
-        TradeAnalysisResult result = new TradeAnalysisResult(
-                TradeAnalysisResult.Verdict.TOO_EARLY, "Too early to say.", List.of(), List.of(), List.of());
-        when(analyzer.analyze(service.buildContext(TRADE_ID))).thenReturn(result);
+        TradeAnalysisResult result = result("Too early to say.");
+        when(analyzer.analyzeWithUsage(service.buildContext(TRADE_ID))).thenReturn(analysis(result));
 
         assertSame(result, service.analyze(TRADE_ID));
+    }
+
+    @Test
+    void reusesTheAnalysisWhileTheContextIsUnchanged() {
+        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+                .thenReturn(trade("BUY", 5, "220.0000", OffsetDateTime.now()));
+        when(analyzer.analyzeWithUsage(any())).thenReturn(analysis(result("First.")));
+
+        service.analyze(TRADE_ID);
+        service.analyze(TRADE_ID);
+
+        verify(analyzer, times(1)).analyzeWithUsage(any());
+    }
+
+    @Test
+    void analysesAgainWhenANewPnlRunChangesTheContext() {
+        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+                .thenReturn(trade("BUY", 5, "250.0000", OffsetDateTime.now()));
+        when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
+                bd("250.0000"), null, bd("0.0000"), bd("-105.0000"), "UNMATCHED", PNL_AS_OF)));
+        when(analyzer.analyzeWithUsage(any()))
+                .thenReturn(analysis(result("Before the run.")), analysis(result("After the run.")));
+
+        assertEquals("Before the run.", service.analyze(TRADE_ID).summary());
+        when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
+                bd("250.0000"), null, bd("0.0000"), bd("-105.0000"), "UNMATCHED", PNL_AS_OF.plusMinutes(10))));
+
+        assertEquals("After the run.", service.analyze(TRADE_ID).summary());
+    }
+
+    @Test
+    void keepsOnlyTheMostRecentlyUsedAnalyses() {
+        when(analyzer.analyzeWithUsage(any())).thenReturn(analysis(result("Any.")));
+        TradeResponse first = trade("BUY", 1, "220.0000", OffsetDateTime.now());
+        TradeResponse second = trade("BUY", 2, "220.0000", OffsetDateTime.now());
+        TradeResponse third = trade("BUY", 3, "220.0000", OffsetDateTime.now());
+
+        for (TradeResponse trade : List.of(first, second, third, first)) {
+            when(tradeMapper.findTradeWithInstrumentById(TRADE_ID)).thenReturn(trade);
+            service.analyze(TRADE_ID);
+        }
+
+        // The cache holds two entries, so the first trade was evicted by the third and analysed again.
+        verify(analyzer, times(4)).analyzeWithUsage(any());
+    }
+
+    private static TradeAnalysisResult result(String summary) {
+        return new TradeAnalysisResult(TradeAnalysisResult.Verdict.TOO_EARLY, summary, List.of(), List.of(), List.of());
+    }
+
+    private static OpenAiTradeAnalyzer.Analysis analysis(TradeAnalysisResult result) {
+        return new OpenAiTradeAnalyzer.Analysis(result, "test-model", 800, 150, 1200);
     }
 
     private static TradeResponse trade(String side, int quantity, String price, OffsetDateTime executedAt) {
