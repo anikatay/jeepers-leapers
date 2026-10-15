@@ -47,9 +47,13 @@ public class OpenAiTradeAnalyzer {
             - trade: the trade being reviewed.
             - outcome: its profit and loss so far, or null if that has not been calculated yet.
               realizedPnl applies to sells; unrealizedPnl applies to buys, on the quantity still held.
+              returnPct is the gain or loss per share: exit against entry for a sell, the current
+              price against entry for a buy that is still held; null when it cannot be worked out.
               pnlStatus is MATCHED, PARTIAL or UNMATCHED. For a buy, UNMATCHED means none of it has
-              been sold. For a sell, UNMATCHED means there is no recorded purchase, so the cost basis
-              and profit are unknown.
+              been sold, and MATCHED or PARTIAL means all or part of it has since been sold: the
+              profit on the sold shares is recorded against those sells and is not shown here, so
+              realizedPnl of 0 on a buy does not mean it broke even. For a sell, UNMATCHED means
+              there is no recorded purchase, so the cost basis and profit are unknown.
             - priceNow: the current price and how far it has moved since the trade.
             - portfolio: cash and holdings as they stand now, after the trade. weightPct is each
               holding's share of totalValue, and tradeValuePctOfTotal is the size of this trade
