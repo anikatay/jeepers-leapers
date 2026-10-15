@@ -15,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.beans.factory.ObjectProvider;
+import com.neueda.leap.websocket.MarketQuoteWebSocketHandler;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -47,12 +49,26 @@ class MarketDataServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private ObjectProvider<MarketQuoteWebSocketHandler> quoteWebSocketHandler;
+
     private MarketDataService marketDataService;
 
     @BeforeEach
     void setUp() {
         lenient().when(redis.opsForValue()).thenReturn(valueOperations);
-        marketDataService = new MarketDataService(marketDataClient, redis, objectMapper);
+        lenient().when(redis.hasKey(any())).thenReturn(false);
+        lenient().when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+        marketDataService = new MarketDataService(
+            marketDataClient,
+            redis,
+            objectMapper,
+            quoteWebSocketHandler,
+            20,
+            180,
+            120,
+            120,
+            60);
     }
 
     // Verifies invalid tickers are rejected before cache or client calls.
@@ -193,7 +209,7 @@ class MarketDataServiceTest {
         assertEquals(fresh.ticker(), result.ticker());
         assertEquals(fresh.bars(), result.bars());
         verify(marketDataClient).fetchHistory("AAPL", "5y");
-        verify(valueOperations, never()).set(any(), any(), any(Duration.class));
+        verify(valueOperations).set("cooldown:history:AAPL", "1", Duration.ofSeconds(180));
     }
 
     // Verifies cached NOT_FOUND marker raises ObjectNotFoundException without client call.
