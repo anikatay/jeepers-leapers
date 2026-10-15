@@ -43,4 +43,20 @@ public interface TradeMapper {
         "ORDER BY t.executed_at DESC")
     List<TradeResponse> findTradesByAccountAndInstrument(@Param("accountId") UUID accountId, @Param("instrumentId") UUID instrumentId);
 
+    @Select("SELECT t.trade_id, t.account_id, t.instrument_id, i.ticker, i.name, " +
+        "t.side, t.quantity, t.execution_price, t.trade_value, t.executed_at " +
+        "FROM trades t " +
+        "JOIN instruments i ON t.instrument_id = i.instrument_id " +
+        "WHERE t.trade_id = #{tradeId}")
+    TradeResponse findTradeWithInstrumentById(@Param("tradeId") UUID tradeId);
+
+    @Select("SELECT t.trade_id, t.account_id, t.instrument_id, i.ticker, i.name, " +
+        "t.side, t.quantity, t.execution_price, t.trade_value, t.executed_at " +
+        "FROM trades t " +
+        "JOIN instruments i ON t.instrument_id = i.instrument_id " +
+        "WHERE t.account_id = #{accountId} " +
+        "ORDER BY t.executed_at DESC " +
+        "LIMIT #{limit}")
+    List<TradeResponse> findRecentTradesForAccountWithInstrument(@Param("accountId") UUID accountId, @Param("limit") int limit);
+
 }
