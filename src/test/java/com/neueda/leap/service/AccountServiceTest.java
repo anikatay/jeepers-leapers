@@ -6,7 +6,6 @@ import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.AccountMapper;
 import com.neueda.leap.model.Account;
-import com.neueda.leap.model.Holding;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -316,12 +315,12 @@ class AccountServiceTest {
         verify(accountMapper, never()).updateBalance(any(UUID.class), any(BigDecimal.class));
     }
 
-    // Verifies that updateBalance throws ObjectNotFoundException when amount is negative
+    // Verifies that updateBalance throws ObjectInvalidException when amount is negative
     @Test
     void testUpdateBalanceThrowsExceptionWhenAmountIsNegative() {
         UUID accountId = UUID.randomUUID();
 
-        assertThrows(ObjectNotFoundException.class, () -> {
+        assertThrows(ObjectInvalidException.class, () -> {
             accountService.updateBalance(accountId, BigDecimal.valueOf(-100));
         });
 

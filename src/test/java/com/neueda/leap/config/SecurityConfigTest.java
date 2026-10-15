@@ -43,7 +43,7 @@ class SecurityConfigTest {
     // Verifies public and API endpoints are accessible without authentication.
     @Test
     void publicAndApiEndpointsPermitAnonymousRequests() throws Exception {
-        mockMvc.perform(get("/auth/login")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/auth/login")).andExpect(status().isOk());
         mockMvc.perform(get("/public/status")).andExpect(status().isOk());
         mockMvc.perform(get("/api/status")).andExpect(status().isOk());
     }
@@ -100,7 +100,7 @@ class SecurityConfigTest {
     @RestController
     static class TestEndpoints {
 
-        @GetMapping({"/auth/login", "/public/status", "/api/status", "/admin/status",
+        @GetMapping({"/api/auth/login", "/public/status", "/api/status", "/admin/status",
                 "/analyst/status", "/holdings/status", "/trades/status"})
         String status() {
             return "ok";

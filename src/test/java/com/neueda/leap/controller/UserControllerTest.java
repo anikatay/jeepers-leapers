@@ -91,8 +91,8 @@ class UserControllerTest {
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":"))
-                                .andExpect(status().isInternalServerError())
-                                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.code").value("INVALID_DATA"));
     }
 
     @Test

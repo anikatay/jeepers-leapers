@@ -37,16 +37,19 @@ class AuthControllerTest {
     void loginReturnsTokenAndUserDetailsForValidRequest() throws Exception {
         String email = "alex@example.com";
         UUID userId = UUID.randomUUID();
+        UUID accountId = UUID.randomUUID();
         when(authService.login(email, "password")).thenReturn("ROLE_CUSTOMER");
         when(authService.getUserIdByEmail(email)).thenReturn(userId);
+        when(authService.getAccountIdByUserId(userId)).thenReturn(accountId);
         when(jwtUtil.generateToken(email, "ROLE_CUSTOMER", userId)).thenReturn("jwt-token");
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alex@example.com\",\"password\":\"password\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-token"))
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
+                .andExpect(jsonPath("$.accountId").value(accountId.toString()))
                 .andExpect(jsonPath("$.role").value("ROLE_CUSTOMER"));
 
         verify(jwtUtil).generateToken(eq(email), eq("ROLE_CUSTOMER"), eq(userId));
@@ -56,7 +59,7 @@ class AuthControllerTest {
     void loginReturnsUnauthorizedWhenCredentialsAreRejected() throws Exception {
         when(authService.login("alex@example.com", "wrong-password")).thenReturn(null);
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alex@example.com\",\"password\":\"wrong-password\"}"))
                 .andExpect(status().isUnauthorized());
@@ -68,7 +71,7 @@ class AuthControllerTest {
         when(authService.login(email, "password")).thenReturn("ROLE_CUSTOMER");
         when(authService.getUserIdByEmail(email)).thenReturn(null);
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"alex@example.com\",\"password\":\"password\"}"))
                 .andExpect(status().isNotFound());
@@ -79,7 +82,7 @@ class AuthControllerTest {
         when(authService.login("missing@example.com", "password"))
                 .thenThrow(new ObjectNotFoundException("User not found"));
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"missing@example.com\",\"password\":\"password\"}"))
                 .andExpect(status().isNotFound())
@@ -88,10 +91,10 @@ class AuthControllerTest {
 
     @Test
     void loginReturnsBadRequestForMalformedJson() throws Exception {
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("INVALID_DATA"));
     }
 }

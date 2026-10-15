@@ -2,6 +2,7 @@ package com.neueda.leap.service;
 
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.model.User;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +25,12 @@ class AuthServiceTest {
     @Mock
     private UserPiiService userPiiService;
 
+    @Mock
+    private AccountService accountService;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private AuthService authService;
 
@@ -35,6 +42,8 @@ class AuthServiceTest {
 
         when(userPiiService.getUserIdByEmail(email)).thenReturn(userId);
         when(userService.getUserById(userId)).thenReturn(user);
+        when(userService.getPasswordHash(userId)).thenReturn("hashed-password");
+        when(passwordEncoder.matches("password", "hashed-password")).thenReturn(true);
 
         assertEquals("ROLE_CUSTOMER", authService.login(email, "password"));
         verify(userPiiService).getUserIdByEmail(email);

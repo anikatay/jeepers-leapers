@@ -10,7 +10,10 @@ import com.neueda.leap.model.Holding;
 import com.neueda.leap.model.Instrument;
 import com.neueda.leap.model.Trade;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,11 +30,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class TradeServiceTest {
 
     @Mock
@@ -49,8 +58,42 @@ class TradeServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private MarketSessionService marketSessionService;
+
     @InjectMocks
     private TradeService tradeService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(instrumentService.refreshPriceIfStale(any(UUID.class)))
+                .thenAnswer(invocation -> {
+                    Instrument instrument = instrumentService.getInstrumentById(invocation.getArgument(0));
+                    if (instrument != null && instrument.getUpdatedAt() == null) {
+                        instrument.setUpdatedAt(OffsetDateTime.now());
+                    }
+                    if (instrument != null && instrument.getCurrentPrice() == null) {
+                        instrument.setCurrentPrice(BigDecimal.valueOf(100));
+                    }
+                    return instrument;
+                });
+        lenient().when(accountService.getAccount(any(UUID.class))).thenReturn(activeAccount());
+        ReflectionTestUtils.setField(tradeService, "maxPriceAgeSeconds", 180L);
+        lenient().doAnswer(invocation -> {
+            if (invocation.getArgument(0) == null) {
+                throw new ObjectNotFoundException("Instrument not found");
+            }
+            return null;
+        }).when(marketSessionService).assertMarketOpen(nullable(Instrument.class));
+    }
+
+    private Account activeAccount() {
+        Account account = new Account();
+        account.setAccountId(UUID.randomUUID());
+        account.setStatus("ACTIVE");
+        account.setBalance(BigDecimal.valueOf(1_000_000));
+        return account;
+    }
 
     // Verifies createTrade rejects a null trade.
     @Test
@@ -127,7 +170,6 @@ class TradeServiceTest {
         instrument.setInstrumentId(instrumentId);
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
-
         assertThrows(ObjectInvalidException.class, () -> tradeService.createTrade(trade));
 
         verify(tradeMapper, never()).createTrade(any(Trade.class));
@@ -171,10 +213,13 @@ class TradeServiceTest {
 
         Instrument instrument = new Instrument();
         instrument.setInstrumentId(instrumentId);
+        instrument.setCurrentPrice(null);
+        instrument.setUpdatedAt(OffsetDateTime.now());
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
+        doReturn(instrument).when(instrumentService).refreshPriceIfStale(instrumentId);
 
-        assertThrows(ObjectNotFoundException.class, () -> tradeService.createTrade(trade));
+        assertThrows(ObjectInvalidException.class, () -> tradeService.createTrade(trade));
 
         verify(tradeMapper, never()).createTrade(any(Trade.class));
     }
@@ -215,7 +260,7 @@ class TradeServiceTest {
         trade.setTradeId(UUID.randomUUID());
         trade.setAccountId(accountId);
         trade.setInstrumentId(instrumentId);
-        trade.setSide("HOLD");
+        trade.setSide("BUY");
         trade.setQuantity(BigDecimal.valueOf(2));
         trade.setExecutionPrice(BigDecimal.valueOf(15));
         trade.setExecutedAt(executedAt);
@@ -244,7 +289,7 @@ class TradeServiceTest {
         trade.setTradeId(UUID.randomUUID());
         trade.setAccountId(accountId);
         trade.setInstrumentId(instrumentId);
-        trade.setSide("HOLD");
+        trade.setSide("BUY");
         trade.setQuantity(BigDecimal.valueOf(10));
         trade.setExecutionPrice(BigDecimal.valueOf(99));
         trade.setTradeValue(presetTradeValue);
@@ -258,7 +303,7 @@ class TradeServiceTest {
         Trade result = tradeService.createTrade(trade);
 
         assertNotNull(result);
-        assertEquals(presetTradeValue, result.getTradeValue());
+        assertEquals(BigDecimal.valueOf(1000), result.getTradeValue());
         verify(tradeMapper, times(1)).createTrade(trade);
     }
 
@@ -294,7 +339,8 @@ class TradeServiceTest {
         assertEquals(BigDecimal.valueOf(500), result.getTradeValue());
         verify(tradeMapper, times(1)).createTrade(trade);
         verify(holdingService, times(1)).createHoldingInternal(any(Holding.class));
-        verify(holdingService, never()).incrementHoldingQuantityImternal(any(Holding.class), any(BigDecimal.class));
+        verify(holdingService, never()).incrementHoldingQuantityInternal(
+            any(UUID.class), any(UUID.class), any(BigDecimal.class));
         verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(500));
     }
 
@@ -328,10 +374,11 @@ class TradeServiceTest {
 
         Trade result = tradeService.createTrade(trade);
 
-        assertEquals(BigDecimal.valueOf(60), result.getTradeValue());
+        assertEquals(BigDecimal.valueOf(300), result.getTradeValue());
         verify(holdingService, never()).createHoldingInternal(any(Holding.class));
-        verify(holdingService, times(1)).incrementHoldingQuantityImternal(existingHolding, BigDecimal.valueOf(3));
-        verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(60));
+        verify(holdingService, times(1)).incrementHoldingQuantityInternal(
+            accountId, instrumentId, BigDecimal.valueOf(3));
+        verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(300));
     }
 
     // Verifies BUY trades increase quantity when holding already exists.
@@ -361,7 +408,8 @@ class TradeServiceTest {
         when(tradeMapper.createTrade(trade)).thenReturn(1);
         when(accountService.getAccount(accountId)).thenReturn(account);
         when(holdingService.findHolding(accountId, instrumentId)).thenReturn(existingHolding);
-        when(holdingService.incrementHoldingQuantityImternal(existingHolding, BigDecimal.valueOf(4))).thenAnswer(invocation -> {
+        when(holdingService.incrementHoldingQuantityInternal(
+            accountId, instrumentId, BigDecimal.valueOf(4))).thenAnswer(invocation -> {
             existingHolding.setQuantity(existingHolding.getQuantity().add(BigDecimal.valueOf(4)));
             return 1;
         });
@@ -370,8 +418,9 @@ class TradeServiceTest {
 
         assertEquals(BigDecimal.valueOf(10), existingHolding.getQuantity());
         verify(holdingService, never()).createHoldingInternal(any(Holding.class));
-        verify(holdingService, times(1)).incrementHoldingQuantityImternal(existingHolding, BigDecimal.valueOf(4));
-        verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(100));
+        verify(holdingService, times(1)).incrementHoldingQuantityInternal(
+            accountId, instrumentId, BigDecimal.valueOf(4));
+        verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(400));
     }
 
     // Verifies BUY trades fail when account balance is insufficient.
@@ -404,7 +453,7 @@ class TradeServiceTest {
 
         assertThrows(ObjectInvalidException.class, () -> tradeService.createTrade(trade));
 
-        verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(2000));
+        verify(accountService, never()).decrementBalance(any(UUID.class), any(BigDecimal.class));
         verify(holdingService, never()).createHoldingInternal(any(Holding.class));
     }
 
@@ -433,9 +482,10 @@ class TradeServiceTest {
 
         Trade result = tradeService.createTrade(trade);
 
-        assertEquals(BigDecimal.valueOf(200), result.getTradeValue());
-        verify(holdingService, times(1)).decrementHoldingQuantityImternal(existingHolding, BigDecimal.valueOf(4));
-        verify(accountService, times(1)).incrementBalance(accountId, BigDecimal.valueOf(200));
+        assertEquals(BigDecimal.valueOf(400), result.getTradeValue());
+        verify(holdingService, times(1)).decrementHoldingQuantityInternal(
+            accountId, instrumentId, BigDecimal.valueOf(4));
+        verify(accountService, times(1)).incrementBalance(accountId, BigDecimal.valueOf(400));
     }
 
     // Verifies SELL trades fail when holding does not exist.
@@ -461,7 +511,8 @@ class TradeServiceTest {
 
         assertThrows(ObjectInvalidException.class, () -> tradeService.createTrade(trade));
 
-        verify(holdingService, never()).decrementHoldingQuantityImternal(any(Holding.class), any(BigDecimal.class));
+        verify(holdingService, never()).decrementHoldingQuantityInternal(
+            any(UUID.class), any(UUID.class), any(BigDecimal.class));
         verify(accountService, never()).incrementBalance(any(UUID.class), any(BigDecimal.class));
     }
 
@@ -490,11 +541,12 @@ class TradeServiceTest {
 
         assertThrows(ObjectInvalidException.class, () -> tradeService.createTrade(trade));
 
-        verify(holdingService, never()).decrementHoldingQuantityImternal(any(Holding.class), any(BigDecimal.class));
+        verify(holdingService, never()).decrementHoldingQuantityInternal(
+            any(UUID.class), any(UUID.class), any(BigDecimal.class));
         verify(accountService, never()).incrementBalance(any(UUID.class), any(BigDecimal.class));
     }
 
-    // Verifies createTrade returns trade for unsupported side values.
+    // Verifies createTrade rejects unsupported side values.
     @Test
     void testCreateTradeReturnsTradeForUnsupportedSide() {
         UUID accountId = UUID.randomUUID();
@@ -514,10 +566,8 @@ class TradeServiceTest {
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
         when(tradeMapper.createTrade(trade)).thenReturn(1);
 
-        Trade result = tradeService.createTrade(trade);
+        assertThrows(ObjectInvalidException.class, () -> tradeService.createTrade(trade));
 
-        assertNotNull(result);
-        assertEquals("HOLD", result.getSide());
         verify(accountService, never()).decrementBalance(any(UUID.class), any(BigDecimal.class));
         verify(accountService, never()).incrementBalance(any(UUID.class), any(BigDecimal.class));
     }

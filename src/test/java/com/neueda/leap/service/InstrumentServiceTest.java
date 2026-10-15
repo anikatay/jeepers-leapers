@@ -8,9 +8,9 @@ import com.neueda.leap.mapper.InstrumentMapper;
 import com.neueda.leap.model.Instrument;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -33,8 +33,24 @@ class InstrumentServiceTest {
     @Mock
     private InstrumentMapper instrumentMapper;
 
-    @InjectMocks
+    @Mock
+    private StringRedisTemplate redis;
+
+    @Mock
+    private MarketDataService marketDataService;
+
     private InstrumentService instrumentService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        instrumentService = new InstrumentService(
+                instrumentMapper,
+                redis,
+                marketDataService,
+                120,
+                20,
+                180);
+    }
 
     // Verifies getInstrumentById returns an instrument when one exists.
     @Test

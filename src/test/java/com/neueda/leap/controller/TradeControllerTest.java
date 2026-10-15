@@ -101,7 +101,7 @@ class TradeControllerTest {
         UUID instrumentId = UUID.randomUUID();
                 TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", BigDecimal.valueOf(10));
 
-        when(instrumentService.getInstrumentById(instrumentId))
+        when(tradeService.createTrade(any(Trade.class)))
                 .thenThrow(new ObjectNotFoundException("Instrument not found: " + instrumentId));
 
         mockMvc.perform(post("/api/trades")
@@ -166,7 +166,7 @@ class TradeControllerTest {
                 "AAPL",
                 "Apple Inc.",
                 "BUY",
-                5,
+                BigDecimal.valueOf(5),
                 BigDecimal.valueOf(100),
                 BigDecimal.valueOf(500),
                 OffsetDateTime.now()
@@ -224,7 +224,7 @@ class TradeControllerTest {
                 "MSFT",
                 "Microsoft Corp.",
                 "SELL",
-                3,
+                BigDecimal.valueOf(3),
                 BigDecimal.valueOf(200),
                 BigDecimal.valueOf(600),
                 OffsetDateTime.now()
