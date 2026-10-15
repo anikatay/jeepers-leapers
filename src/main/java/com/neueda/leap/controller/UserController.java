@@ -2,7 +2,6 @@ package com.neueda.leap.controller;
 import org.springframework.web.bind.annotation.*;
 import com.neueda.leap.service.UserService;
 import com.neueda.leap.model.User;
-import com.neueda.leap.model.UserPii;
 import com.neueda.leap.dto.request.CreateUserRequest;
 import java.util.UUID;
 import java.util.List;
@@ -33,17 +32,7 @@ public class UserController {
             createUserRequest.role(),
             createUserRequest.status()
         );
-        UserPii userPii = new UserPii(
-            createUserRequest.userId(),
-            createUserRequest.firstName(),
-            createUserRequest.lastName(),
-            createUserRequest.dateOfBirth(),
-            createUserRequest.ssn(),
-            createUserRequest.address(),
-            createUserRequest.phoneNumber(),
-            createUserRequest.email()
-        );
-        return userService.createUser(user, userPii);
+        return userService.createUser(user);
     }
 
     @PutMapping("/{userId}/status")
