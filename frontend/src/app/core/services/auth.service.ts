@@ -36,6 +36,14 @@ export class AuthService{
   get userId() { return this._session()?.userId ?? null; }
   get role() { return this._session()?.role ?? null; }
   get accountId() { return this._session()?.accountId ?? null; }
+  get userName(): string {
+    const names: Record<string, string> = {
+      'd4000000-0000-0000-0000-000000000001': 'Joanna',
+      'd4000000-0000-0000-0000-000000000002': 'Bob',
+      'd4000000-0000-0000-0000-000000000003': 'Charlie'
+    };
+    return names[this.accountId ?? ''] ?? 'User';
+  }
   isLoggedIn() { return !!this.token; }
 
   private loadSession(): AuthResponse | null {
