@@ -1,0 +1,141 @@
+{
+  "name": "Buy still held, at a loss",
+  "source": "trade edf4872d-e116-4546-bb2c-bf206108c99d in the dev database, exported 2026-10-15",
+  "expect": {
+    "verdicts": [
+      "POOR",
+      "MIXED",
+      "TOO_EARLY"
+    ]
+  },
+  "context": {
+    "trade": {
+      "ticker": "META",
+      "name": "Meta Platforms Inc.",
+      "exchange": "NASDAQ",
+      "side": "BUY",
+      "quantity": 7,
+      "executionPrice": 584.5,
+      "tradeValue": 4091.5,
+      "executedAt": "2026-09-17T09:08:00Z",
+      "daysAgo": 28
+    },
+    "outcome": {
+      "entryPrice": 584.5,
+      "exitPrice": null,
+      "realizedPnl": null,
+      "unrealizedPnl": -63.0,
+      "returnPct": -1.54,
+      "pnlStatus": "UNMATCHED",
+      "asOf": "2026-10-15T21:00:21.552894Z"
+    },
+    "priceNow": {
+      "currentPrice": 575.5,
+      "movePctSinceExecution": -1.54
+    },
+    "portfolio": {
+      "currency": "USD",
+      "cash": 43531.0,
+      "cashPct": 60.99,
+      "totalValue": 71368.25,
+      "tradeValuePctOfTotal": 5.73,
+      "holdings": [
+        {
+          "ticker": "NVDA",
+          "quantity": 71,
+          "marketValue": 9815.75,
+          "weightPct": 13.75
+        },
+        {
+          "ticker": "AAPL",
+          "quantity": 41,
+          "marketValue": 9389.0,
+          "weightPct": 13.16
+        },
+        {
+          "ticker": "META",
+          "quantity": 15,
+          "marketValue": 8632.5,
+          "weightPct": 12.1
+        }
+      ]
+    },
+    "trackRecord": {
+      "totalRealizedPnl": 865.0,
+      "totalUnrealizedPnl": 375.5,
+      "winRatePct": 78.13
+    },
+    "recentTrades": [
+      {
+        "date": "2026-10-02",
+        "ticker": "GOOGL",
+        "side": "SELL",
+        "quantity": 6,
+        "price": 177.25
+      },
+      {
+        "date": "2026-10-02",
+        "ticker": "NVDA",
+        "side": "SELL",
+        "quantity": 15,
+        "price": 139.0
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "META",
+        "side": "BUY",
+        "quantity": 8,
+        "price": 570.0
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "AAPL",
+        "side": "BUY",
+        "quantity": 25,
+        "price": 224.75
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "NVDA",
+        "side": "BUY",
+        "quantity": 15,
+        "price": 136.5
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "GOOGL",
+        "side": "BUY",
+        "quantity": 6,
+        "price": 175.0
+      },
+      {
+        "date": "2026-09-19",
+        "ticker": "GOOGL",
+        "side": "SELL",
+        "quantity": 22,
+        "price": 177.0
+      },
+      {
+        "date": "2026-09-18",
+        "ticker": "NVDA",
+        "side": "BUY",
+        "quantity": 32,
+        "price": 137.0
+      },
+      {
+        "date": "2026-09-17",
+        "ticker": "MSFT",
+        "side": "SELL",
+        "quantity": 9,
+        "price": 421.5
+      },
+      {
+        "date": "2026-09-17",
+        "ticker": "META",
+        "side": "BUY",
+        "quantity": 7,
+        "price": 584.5
+      }
+    ]
+  }
+}

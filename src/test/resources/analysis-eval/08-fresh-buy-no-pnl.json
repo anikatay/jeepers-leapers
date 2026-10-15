@@ -1,0 +1,102 @@
+{
+  "name": "Small buy made today, P&L not calculated yet",
+  "source": "hand-built from MockTradeContexts.freshBuyWithoutOutcome",
+  "expect": {
+    "verdicts": [
+      "TOO_EARLY"
+    ]
+  },
+  "context": {
+    "trade": {
+      "ticker": "MSFT",
+      "name": "Microsoft Corp.",
+      "exchange": "NASDAQ",
+      "side": "BUY",
+      "quantity": 5,
+      "executionPrice": 430.25,
+      "tradeValue": 2151.25,
+      "executedAt": "2026-10-13T15:55:00Z",
+      "daysAgo": 0
+    },
+    "outcome": null,
+    "priceNow": {
+      "currentPrice": 430.25,
+      "movePctSinceExecution": 0.0
+    },
+    "portfolio": {
+      "currency": "USD",
+      "cash": 18000.0,
+      "cashPct": 53.03,
+      "totalValue": 33946.25,
+      "tradeValuePctOfTotal": 6.34,
+      "holdings": [
+        {
+          "ticker": "GOOGL",
+          "quantity": 30,
+          "marketValue": 5295.0,
+          "weightPct": 15.6
+        },
+        {
+          "ticker": "AAPL",
+          "quantity": 20,
+          "marketValue": 4580.0,
+          "weightPct": 13.49
+        },
+        {
+          "ticker": "AMZN",
+          "quantity": 20,
+          "marketValue": 3920.0,
+          "weightPct": 11.55
+        },
+        {
+          "ticker": "MSFT",
+          "quantity": 5,
+          "marketValue": 2151.25,
+          "weightPct": 6.34
+        }
+      ]
+    },
+    "trackRecord": {
+      "totalRealizedPnl": 350.0,
+      "totalUnrealizedPnl": 755.0,
+      "winRatePct": 60.0
+    },
+    "recentTrades": [
+      {
+        "date": "2026-10-13",
+        "ticker": "MSFT",
+        "side": "BUY",
+        "quantity": 5,
+        "price": 430.25
+      },
+      {
+        "date": "2026-09-18",
+        "ticker": "AMZN",
+        "side": "BUY",
+        "quantity": 20,
+        "price": 190.0
+      },
+      {
+        "date": "2026-08-27",
+        "ticker": "GOOGL",
+        "side": "BUY",
+        "quantity": 30,
+        "price": 168.0
+      },
+      {
+        "date": "2026-08-03",
+        "ticker": "AAPL",
+        "side": "BUY",
+        "quantity": 20,
+        "price": 210.0
+      },
+      {
+        "date": "2026-07-20",
+        "ticker": "NVDA",
+        "side": "SELL",
+        "quantity": 10,
+        "price": 142.0
+      }
+    ]
+  }
+}
