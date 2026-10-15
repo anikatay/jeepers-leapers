@@ -12,7 +12,7 @@ public class TradeResponse {
     private String ticker;
     private String name;
     private String side;
-    private int quantity;
+    private BigDecimal quantity;
     private BigDecimal executionPrice;
     private BigDecimal tradeValue;
     private OffsetDateTime executedAt;
@@ -21,7 +21,7 @@ public class TradeResponse {
     }
 
     public TradeResponse(UUID tradeId, UUID accountId, UUID instrumentId, String ticker, String name, String side,
-                         int quantity, BigDecimal executionPrice, BigDecimal tradeValue,
+                         BigDecimal quantity, BigDecimal executionPrice, BigDecimal tradeValue,
                          OffsetDateTime executedAt) {
         this.tradeId = tradeId;
         this.accountId = accountId;
@@ -59,7 +59,7 @@ public class TradeResponse {
         return side;
     }
 
-    public int getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 

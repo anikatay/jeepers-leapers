@@ -36,8 +36,18 @@ public interface HoldingMapper {
     @Update("UPDATE holdings SET quantity = #{quantity} WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
     int updateHoldingQuantity(UUID accountId, UUID instrumentId, BigDecimal quantity);
 
-    @Delete("DELETE FROM holdings WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
-    int deleteHolding(UUID accountId, UUID instrumentId);
+    @Update("UPDATE holdings SET quantity = quantity + #{amount} " +
+            "WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
+    int incrementHoldingQuantity(UUID accountId, UUID instrumentId, BigDecimal amount);
+
+    @Update("UPDATE holdings SET quantity = quantity - #{amount} " +
+            "WHERE account_id = #{accountId} AND instrument_id = #{instrumentId} " +
+            "AND quantity >= #{amount}")
+    int decrementHoldingQuantity(UUID accountId, UUID instrumentId, BigDecimal amount);
+
+    @Delete("DELETE FROM holdings WHERE account_id = #{accountId} AND instrument_id = #{instrumentId} " + 
+            "AND quantity = #{amount}")
+    int deleteHolding(UUID accountId, UUID instrumentId, BigDecimal amount);
 
     @Delete("DELETE FROM holdings WHERE account_id = #{accountId}")
     int deleteHoldingsByAccountId(UUID accountId);

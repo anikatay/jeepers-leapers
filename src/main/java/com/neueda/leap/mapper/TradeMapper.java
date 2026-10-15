@@ -31,7 +31,7 @@ public interface TradeMapper {
         "FROM trades t " +
         "JOIN instruments i ON t.instrument_id = i.instrument_id " +
         "WHERE t.account_id = #{accountId} " +
-        "ORDER BY t.executed_at DESC" +
+        "ORDER BY t.executed_at DESC " +
         "LIMIT #{limit} OFFSET #{offset}")
     List<TradeResponse> findAllTradesForAccountWithInstrument(@Param("accountId") UUID accountId, @Param("limit") int limit, @Param("offset") int offset);
 

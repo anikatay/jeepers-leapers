@@ -5,6 +5,8 @@ services:
     build: ./market
     ports:
       - "8093:8093"  
+    environment:
+      BACKEND_QUOTE_URL: http://app:8080/internal/market/quotes
   kafka:
     image: apache/kafka:latest
     ports: 

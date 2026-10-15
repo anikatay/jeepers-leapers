@@ -20,6 +20,9 @@ public interface UserMapper {
     @Select("SELECT * FROM users WHERE user_id = #{userId}")
     User getUserById(UUID userId);
 
+    @Select("SELECT password_hash FROM user_credentials WHERE user_id = #{userId}")
+    String getPasswordHashByUserId(UUID userId);
+
     @Select("SELECT * FROM users")
     List<User> getAllUsers();
 
