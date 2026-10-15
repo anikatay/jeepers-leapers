@@ -1,4 +1,5 @@
 package com.neueda.leap.advice;
+import com.neueda.leap.analysis.TooManyAnalysesException;
 import com.neueda.leap.analysis.TradeAnalysisException;
 import com.neueda.leap.dto.response.ErrorResponse;
 import com.neueda.leap.dto.response.FieldError;
@@ -130,6 +131,22 @@ public class GlobalExceptionHandler {
         );
         response.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
+    }
+
+    @ExceptionHandler(TooManyAnalysesException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyAnalyses(
+            TooManyAnalysesException e,
+            HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+            "TOO_MANY_ANALYSES",
+            "Too many trade analyses. Please wait before trying again.",
+            e.getMessage(),
+            429
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", String.valueOf(e.getRetryAfterSeconds()))
+            .body(response);
     }
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)

@@ -94,6 +94,25 @@ class OpenAiTradeAnalyzerTest {
         assertEquals(List.of("Keep position sizes similar"), result.suggestions());
     }
 
+    @Test
+    void reportsTokenUsageAndTheModelUsed() throws Exception {
+        server.expect(requestTo(COMPLETIONS_URL))
+                .andRespond(withSuccess(JSON.writeValueAsString(Map.of(
+                        "model", "test-model-2026-01-01",
+                        "usage", Map.of("prompt_tokens", 812, "completion_tokens", 143),
+                        "choices", List.of(Map.of("index", 0, "finish_reason", "stop",
+                                "message", Map.of("role", "assistant", "content", ANALYSIS))))),
+                        MediaType.APPLICATION_JSON));
+
+        OpenAiTradeAnalyzer.Analysis analysis = analyzer.analyzeWithUsage(MockTradeContexts.profitableSell());
+
+        assertEquals(TradeAnalysisResult.Verdict.GOOD, analysis.result().verdict());
+        assertEquals("test-model-2026-01-01", analysis.model());
+        assertEquals(812, analysis.promptTokens());
+        assertEquals(143, analysis.completionTokens());
+        assertTrue(analysis.latencyMs() >= 0);
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {401, 429, 500})
     void reportsHttpErrorsWithStatusAndBody(int status) {

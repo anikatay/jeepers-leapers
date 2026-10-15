@@ -16,13 +16,18 @@ import com.neueda.leap.mapper.TradeMapper;
 import com.neueda.leap.model.Account;
 import com.neueda.leap.model.Instrument;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,6 +38,7 @@ import java.util.stream.Collectors;
 @Service
 public class TradeAnalysisService {
 
+    private static final Logger log = LoggerFactory.getLogger(TradeAnalysisService.class);
     private static final int RECENT_TRADES = 10;
     private static final BigDecimal HUNDRED = new BigDecimal("100");
 
@@ -42,20 +48,40 @@ public class TradeAnalysisService {
     private final HoldingMapper holdingMapper;
     private final AnalyticsPnlReader pnlReader;
     private final OpenAiTradeAnalyzer analyzer;
+    // Keyed by everything the model is told, so any change (new P&L run, price, holdings) misses.
+    private final Map<TradeAnalysisContext, TradeAnalysisResult> cache;
 
     public TradeAnalysisService(TradeMapper tradeMapper, InstrumentMapper instrumentMapper,
             AccountMapper accountMapper, HoldingMapper holdingMapper,
-            AnalyticsPnlReader pnlReader, OpenAiTradeAnalyzer analyzer) {
+            AnalyticsPnlReader pnlReader, OpenAiTradeAnalyzer analyzer,
+            @Value("${analysis.cache.max-entries}") int cacheMaxEntries) {
         this.tradeMapper = tradeMapper;
         this.instrumentMapper = instrumentMapper;
         this.accountMapper = accountMapper;
         this.holdingMapper = holdingMapper;
         this.pnlReader = pnlReader;
         this.analyzer = analyzer;
+        this.cache = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<TradeAnalysisContext, TradeAnalysisResult> eldest) {
+                return size() > cacheMaxEntries;
+            }
+        });
     }
 
     public TradeAnalysisResult analyze(UUID tradeId) {
-        return analyzer.analyze(buildContext(tradeId));
+        TradeAnalysisContext context = buildContext(tradeId);
+        TradeAnalysisResult cached = cache.get(context);
+        if (cached != null) {
+            log.info("analysis tradeId={} cache=hit verdict={}", tradeId, cached.verdict());
+            return cached;
+        }
+        OpenAiTradeAnalyzer.Analysis analysis = analyzer.analyzeWithUsage(context);
+        cache.put(context, analysis.result());
+        log.info("analysis tradeId={} cache=miss verdict={} model={} promptTokens={} completionTokens={} latencyMs={}",
+                tradeId, analysis.result().verdict(), analysis.model(), analysis.promptTokens(),
+                analysis.completionTokens(), analysis.latencyMs());
+        return analysis.result();
     }
 
     public TradeAnalysisContext buildContext(UUID tradeId) {
