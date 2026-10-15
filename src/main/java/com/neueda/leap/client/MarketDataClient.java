@@ -2,6 +2,7 @@ package com.neueda.leap.client;
 
 import com.neueda.leap.exception.MarketDataUnavailableException;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectInvalidException;
 
@@ -81,17 +82,57 @@ public class MarketDataClient {
 		}
 	}
 
+	public MarketInstrumentMetadata lookupInstrument(String ticker) {
+		try {
+			MarketInstrumentMetadata response = restClient.get()
+					.uri("/lookup/{ticker}", ticker)
+					.retrieve()
+					.body(MarketInstrumentMetadata.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException(
+						"Market lookup returned empty response for " + ticker);
+			}
+			return response;
+		} catch (HttpClientErrorException e) {
+			int status = e.getStatusCode().value();
+			if (status == 404) {
+				throw new ObjectNotFoundException(
+						"Ticker does not exist or is not tradable: " + ticker);
+			}
+			if (status == 400 || status == 422) {
+				throw new ObjectInvalidException(
+						"Ticker cannot be traded: " + ticker);
+			}
+			throw new MarketDataUnavailableException(
+					"Market lookup failed for " + ticker, e);
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market lookup failed for " + ticker, e);
+		}
+	}
+
 	public void subscribeLiveTicker(String ticker) {
-		restClient.post()
-				.uri("/stream/subscribe/{ticker}", ticker)
-				.retrieve()
-				.toBodilessEntity();
+		try {
+			restClient.post()
+					.uri("/stream/subscribe/{ticker}", ticker)
+					.retrieve()
+					.toBodilessEntity();
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market data service failed to subscribe to " + ticker, e);
+		}
 	}
 
 	public void unsubscribeLiveTicker(String ticker) {
-		restClient.delete()
-				.uri("/stream/subscribe/{ticker}", ticker)
-				.retrieve()
-				.toBodilessEntity();
+		try {
+			restClient.delete()
+					.uri("/stream/subscribe/{ticker}", ticker)
+					.retrieve()
+					.toBodilessEntity();
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market data service failed to unsubscribe from " + ticker, e);
+		}
 	}
 }

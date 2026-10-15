@@ -59,11 +59,27 @@ export class ClientLayoutComponent implements OnInit {
       const instrument = this.allInstruments().find(i => i.ticker === symbol);
       
       if (instrument) {
-        // Set the instrument to trade in the service
-        this.tradeModalService.openTradeModal(instrument, 'BUY');
-        // Navigate to portfolio
-        this.router.navigate(['/client/portfolio']);
+        this.openTrade(instrument);
+        return;
       }
+
+      this.instrumentService.getInstrumentByTicker(symbol).subscribe({
+        next: resolvedInstrument => {
+          this.allInstruments.update(current => [
+            ...current.filter(item => item.ticker !== resolvedInstrument.ticker),
+            resolvedInstrument
+          ]);
+          this.openTrade(resolvedInstrument);
+        },
+        error: err => {
+          console.error(`Failed to load instrument ${symbol}:`, err);
+        }
+      });
     }
+  }
+
+  private openTrade(instrument: InstrumentResponse) {
+    this.tradeModalService.openTradeModal(instrument, 'BUY');
+    this.router.navigate(['/client/portfolio']);
   }
 }

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 import os
 import re
 from datetime import datetime, timezone
@@ -9,12 +10,23 @@ from typing import Dict, List, Set
 import httpx
 import yfinance as yf
 from fastapi import FastAPI, HTTPException, Query
+from websockets.exceptions import ConnectionClosed
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("market-sidecar")
 
 TICKER_RE = re.compile(r"^[A-Z.\-]{1,10}$")
 ALLOWED_PERIODS = {"1mo", "3mo", "6mo", "1y", "2y", "5y", "max"}
+SUPPORTED_QUOTE_TYPES = {"EQUITY", "ETF"}
+SUPPORTED_CURRENCIES = {"USD", "EUR", "INR"}
+EXCHANGE_ALIASES = {
+    "NMS": "NASDAQ",
+    "NASDAQ": "NASDAQ",
+    "NASDAQGS": "NASDAQ",
+    "NASDAQCM": "NASDAQ",
+    "NYQ": "NYSE",
+    "NYSE": "NYSE",
+}
 BACKEND_QUOTE_URL = os.getenv(
     "BACKEND_QUOTE_URL",
     "http://app:8080/internal/market/quotes",
@@ -37,11 +49,105 @@ def validate_tickers(raw: str) -> List[str]:
     return tickers
 
 
+def market_instrument_metadata(ticker: str) -> dict:
+    yahoo_ticker = yf.Ticker(ticker)
+    try:
+        info = yahoo_ticker.get_info()
+        history_frame = yahoo_ticker.history(
+            period="5d",
+            interval="1d",
+            auto_adjust=False,
+            timeout=10,
+        )
+    except Exception as exc:
+        log.warning("Market metadata lookup failed for %s", ticker, exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Market data provider unavailable",
+        ) from exc
+
+    quote_type = info.get("quoteType")
+    exchange_code = str(info.get("exchange") or "").strip().upper()
+    currency = str(info.get("currency") or "").strip().upper()
+    if not info or not info.get("symbol") or quote_type not in SUPPORTED_QUOTE_TYPES:
+        raise HTTPException(status_code=404, detail=f"No tradable ticker found for {ticker}")
+    if not exchange_code:
+        raise HTTPException(status_code=404, detail=f"No exchange found for {ticker}")
+    if currency not in SUPPORTED_CURRENCIES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Currency {currency or 'unknown'} is not supported",
+        )
+
+    exchange_id = EXCHANGE_ALIASES.get(exchange_code, exchange_code)
+    if not re.fullmatch(r"[A-Z0-9.\-]{1,64}", exchange_id):
+        raise HTTPException(status_code=422, detail=f"Unsupported exchange for {ticker}")
+
+    price = info.get("regularMarketPrice") or info.get("currentPrice")
+    if price is None and history_frame is not None and not history_frame.empty:
+        closes = history_frame["Close"].dropna()
+        if not closes.empty:
+            price = float(closes.iloc[-1])
+
+    try:
+        normalized_price = float(price)
+    except (TypeError, ValueError):
+        normalized_price = math.nan
+    if not math.isfinite(normalized_price) or normalized_price <= 0:
+        raise HTTPException(status_code=422, detail=f"No usable price found for {ticker}")
+
+    return {
+        "ticker": ticker,
+        "name": info.get("longName") or info.get("shortName") or ticker,
+        "exchangeId": exchange_id,
+        "exchangeName": (
+            info.get("fullExchangeName")
+            or info.get("exchange")
+            or exchange_id
+        ),
+        "region": info.get("region") or info.get("market") or currency,
+        "timezone": info.get("exchangeTimezoneName") or "UTC",
+        "currency": currency,
+        "currentPrice": normalized_price,
+    }
+
+
+class ResilientYahooWebSocket(yf.AsyncWebSocket):
+    def is_connected(self) -> bool:
+        connection = getattr(self, "_ws", None)
+        if connection is None:
+            return False
+
+        state = getattr(connection, "state", None)
+        if state is not None:
+            return getattr(state, "name", str(state)) == "OPEN"
+
+        return getattr(connection, "closed", None) is False
+
+    def invalidate_connection(self) -> None:
+        self._ws = None
+        heartbeat_task = self._heartbeat_task
+        self._heartbeat_task = None
+        if (
+            heartbeat_task is not None
+            and heartbeat_task is not asyncio.current_task()
+            and not heartbeat_task.done()
+        ):
+            heartbeat_task.cancel()
+
+    async def _connect(self) -> None:
+        if self._ws is not None and not self.is_connected():
+            self.invalidate_connection()
+        await super()._connect()
+        if self._message_handler is not None and self._heartbeat_task is None:
+            self._heartbeat_task = asyncio.create_task(self._periodic_subscribe())
+
+
 class YahooStream:
     def __init__(self) -> None:
         self.desired: Set[str] = set()
         self.active: Set[str] = set()
-        self.websocket = None
+        self.websocket: ResilientYahooWebSocket | None = None
         self.task: asyncio.Task | None = None
         self.lock = asyncio.Lock()
 
@@ -58,27 +164,53 @@ class YahooStream:
     async def add(self, ticker: str) -> None:
         async with self.lock:
             self.desired.add(ticker)
-            if self.websocket:
-                await self.websocket.subscribe(ticker)
+            websocket = self.websocket
+            if websocket is None:
+                return
+            try:
+                await websocket.subscribe(ticker)
+            except (ConnectionClosed, OSError, TimeoutError) as exc:
+                websocket.invalidate_connection()
+                self.active.clear()
+                log.warning(
+                    "Yahoo stream disconnected while subscribing to %s; "
+                    "keeping it queued for reconnect: %s",
+                    ticker,
+                    exc,
+                )
+            else:
                 self.active.add(ticker)
 
     async def remove(self, ticker: str) -> None:
         async with self.lock:
             self.desired.discard(ticker)
-            if self.websocket and ticker in self.active:
-                await self.websocket.unsubscribe(ticker)
+            websocket = self.websocket
+            if websocket is None or ticker not in self.active:
+                return
+            try:
+                await websocket.unsubscribe(ticker)
+            except (ConnectionClosed, OSError, TimeoutError) as exc:
+                websocket.invalidate_connection()
+                self.active.clear()
+                log.warning(
+                    "Yahoo stream disconnected while unsubscribing from %s; "
+                    "the desired subscription was updated: %s",
+                    ticker,
+                    exc,
+                )
+            else:
                 self.active.discard(ticker)
 
     async def run(self) -> None:
         while True:
             try:
-                async with yf.AsyncWebSocket(verbose=False) as websocket:
+                async with ResilientYahooWebSocket(verbose=False) as websocket:
                     self.websocket = websocket
                     async with self.lock:
                         initial = list(self.desired)
-                    if initial:
-                        await websocket.subscribe(initial)
-                        self.active = set(initial)
+                        if initial:
+                            await websocket.subscribe(initial)
+                            self.active = set(initial)
                     log.info("Connected to yfinance stream for %s", sorted(self.active))
                     await websocket.listen(self.handle_message)
             except asyncio.CancelledError:
@@ -139,7 +271,7 @@ app = FastAPI(title="market-sidecar", lifespan=lifespan)
 async def health():
     return {
         "status": "ok",
-        "streamConnected": stream.websocket is not None,
+        "streamConnected": stream.websocket is not None and stream.websocket.is_connected(),
         "subscribedTickers": sorted(stream.desired),
     }
 
@@ -161,6 +293,11 @@ async def unsubscribe_stream(ticker: str):
 @app.get("/stream/subscriptions")
 async def stream_subscriptions():
     return {"tickers": sorted(stream.desired)}
+
+
+@app.get("/lookup/{ticker}")
+def lookup_ticker(ticker: str):
+    return market_instrument_metadata(validate_ticker(ticker))
 
 
 @app.get("/history")
