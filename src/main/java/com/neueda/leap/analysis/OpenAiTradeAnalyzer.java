@@ -46,28 +46,37 @@ public class OpenAiTradeAnalyzer {
             You receive a single JSON object:
             - trade: the trade being reviewed.
             - outcome: its profit and loss so far, or null if that has not been calculated yet.
-              realizedPnl applies to sells; unrealizedPnl applies to buys, on the quantity still held.
+              A null field inside outcome means it does not apply to this trade or is unknown; never
+              read a null as zero.
+              realizedPnl is the profit on a sell. It is null for buys, and null for a sell with no
+              recorded purchase (pnlStatus UNMATCHED), whose profit is unknown.
+              unrealizedPnl is the paper gain or loss on the shares of a buy that are still held. It is
+              null for sells, and null for a buy that has been sold in full (pnlStatus MATCHED): the
+              profit on sold shares is recorded against the sells, not shown here.
               returnPct is the gain or loss per share: exit against entry for a sell, the current
-              price against entry for a buy that is still held; null when it cannot be worked out.
-              pnlStatus is MATCHED, PARTIAL or UNMATCHED. For a buy, UNMATCHED means none of it has
-              been sold, and MATCHED or PARTIAL means all or part of it has since been sold: the
-              profit on the sold shares is recorded against those sells and is not shown here, so
-              realizedPnl of 0 on a buy does not mean it broke even. For a sell, UNMATCHED means
-              there is no recorded purchase, so the cost basis and profit are unknown.
+              price against entry for a buy that is still held.
+              pnlStatus is MATCHED, PARTIAL or UNMATCHED: for a buy, how much of it has since been sold
+              (all, some, none); for a sell, whether a recorded purchase covers it (fully, partly, not at all).
             - priceNow: the current price and how far it has moved since the trade.
-            - portfolio: cash and holdings as they stand now, after the trade. weightPct is each
-              holding's share of totalValue, and tradeValuePctOfTotal is the size of this trade
-              against totalValue.
+            - portfolio: cash and holdings as they stand today, which may be long after the trade.
+              cashPct and each holding's weightPct are shares of totalValue. tradeValuePctOfTotal
+              compares this trade with today's portfolio, not the portfolio at the time of the trade.
             - trackRecord: the investor's overall results, or null if there is no history.
             - recentTrades: their latest trades, including this one.
             Percentages are in percent units (12.5 means 12.5%). Money is in portfolio.currency.
 
             Rules:
-            - Use only the figures in the JSON. Do not use anything you know about the company, its
-              price history, news or the wider market.
-            - The data contains no price history, no market benchmark, no fees or taxes and no
-              sector information, so you cannot judge market timing. Do not guess at any of these.
-            - Every figure is already calculated. Quote figures as given; do not recalculate them.
+            - Use only the figures in the JSON. When you cite a number, use one that appears in the JSON,
+              exactly as given; do not calculate new ones.
+            - The only prices you know are the ones in the JSON. Never compare with any other price,
+              such as the price shortly before or after the trade.
+            - The data has no price history, benchmark, news, fees, taxes, sectors or volatility, so do
+              not mention or advise on market conditions, market trends, momentum, news, volatility,
+              sectors or industries, the economy, timing the market, or order types such as stop-loss
+              orders. For example, never write "monitor market conditions", "positive momentum",
+              "a volatile stock", "a single sector" or "set a stop-loss". Concentration always means
+              concentration in one stock.
+            - Describe cash by its cashPct: above 40% is a large cash buffer, not a small one.
             - Judge the decision as well as the result: position size against the portfolio,
               concentration in one holding, cash left afterwards and the pattern in recent trades
               count as much as profit or loss.
@@ -75,11 +84,12 @@ public class OpenAiTradeAnalyzer {
             Reply with:
             - verdict: GOOD, MIXED, POOR or TOO_EARLY. Use TOO_EARLY when there is no result to judge
               yet and the sizing and concentration give no clear reason to call the decision good or
-              poor.
+              poor. When the profit is unknown, the verdict cannot be GOOD or POOR on profit alone.
             - summary: two or three plain sentences addressed to the investor as "you".
-            - strengths, concerns, suggestions: up to three short items each; use an empty list when
-              nothing applies. Suggestions are about how to trade in future, never a recommendation
-              to buy or sell a particular stock.
+            - strengths, concerns, suggestions: at most three short items each; use an empty list when
+              nothing applies. Suggestions are about the investor's own process: position size,
+              concentration, cash buffer, and reviewing their results. Never recommend buying or
+              selling a particular stock.
             """;
 
     private static final Map<String, Object> STRING_LIST =
