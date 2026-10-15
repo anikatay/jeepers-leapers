@@ -84,10 +84,10 @@ class TradeAnalysisServiceTest {
 
         assertEquals(new TradeAnalysisContext.Trade("AAPL", "AAPL Inc.", "NASDAQ", "SELL", bd("20"),
                 bd("229.00"), bd("4580.00"), sell.getExecutedAt(), 3), context.trade());
-        assertEquals(new TradeAnalysisContext.Outcome(bd("198.50"), bd("229.00"), bd("610.00"), bd("0.00"),
+        assertEquals(new TradeAnalysisContext.Outcome(bd("198.50"), bd("229.00"), bd("610.00"), null,
                 bd("15.37"), "MATCHED", PNL_AS_OF), context.outcome());
         assertEquals(new TradeAnalysisContext.PriceNow(bd("229.00"), bd("0.00")), context.priceNow());
-        assertEquals(new TradeAnalysisContext.Portfolio("USD", bd("5000.00"), bd("15895.00"), bd("28.81"),
+        assertEquals(new TradeAnalysisContext.Portfolio("USD", bd("5000.00"), bd("31.46"), bd("15895.00"), bd("28.81"),
                 List.of(
                         new TradeAnalysisContext.Holding("MSFT", bd("20"), bd("8605.00"), bd("54.14")),
                         new TradeAnalysisContext.Holding("AAPL", bd("10"), bd("2290.00"), bd("14.41")))),
@@ -121,6 +121,7 @@ class TradeAnalysisServiceTest {
 
         assertEquals(bd("-8.40"), outcome.returnPct());
         assertEquals(bd("-105.00"), outcome.unrealizedPnl());
+        assertNull(outcome.realizedPnl());
         assertNull(outcome.exitPrice());
     }
 
@@ -130,13 +131,17 @@ class TradeAnalysisServiceTest {
                 .thenReturn(trade("BUY", 5, "250.0000", OffsetDateTime.now()));
         when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
                 bd("250.0000"), null, bd("0.0000"), bd("0.0000"), "MATCHED", PNL_AS_OF)));
-        assertNull(service.buildContext(TRADE_ID).outcome().returnPct());
+        TradeAnalysisContext.Outcome fullySoldBuy = service.buildContext(TRADE_ID).outcome();
+        assertNull(fullySoldBuy.returnPct());
+        assertNull(fullySoldBuy.unrealizedPnl());
 
         when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
                 .thenReturn(trade("SELL", 5, "250.0000", OffsetDateTime.now()));
         when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
                 null, bd("250.0000"), bd("0.0000"), bd("0.0000"), "UNMATCHED", PNL_AS_OF)));
-        assertNull(service.buildContext(TRADE_ID).outcome().returnPct());
+        TradeAnalysisContext.Outcome uncostedSell = service.buildContext(TRADE_ID).outcome();
+        assertNull(uncostedSell.returnPct());
+        assertNull(uncostedSell.realizedPnl());
     }
 
     @Test
