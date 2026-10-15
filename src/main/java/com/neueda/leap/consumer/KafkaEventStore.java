@@ -18,7 +18,7 @@ public class KafkaEventStore {
     private final List<KafkaEvent> events = new CopyOnWriteArrayList<>();
     private static final int MAX_EVENTS = 100; // Keep last 100 events
     
-    @KafkaListener(topics = "trade-executed")
+    @KafkaListener(topics = "trade-executed", groupId= "trade-event-store")
     public void listen(TradeExecutedEvent event) {
         logger.info("Received event: {}", event);
         

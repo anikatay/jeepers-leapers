@@ -1,0 +1,30 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MarketQuoteService } from '../../core/services/market-quote.service';
+
+@Component({
+  selector: 'app-connection-status',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <div class="connection-status" [class]="marketQuoteService.status()">
+      <span class="dot"></span>
+      <span class="label" [ngSwitch]="marketQuoteService.status()">
+        <ng-container *ngSwitchCase="'connected'">Live prices</ng-container>
+        <ng-container *ngSwitchCase="'reconnecting'">Live prices paused — reconnecting…</ng-container>
+        <ng-container *ngSwitchDefault>Live prices offline</ng-container>
+      </span>
+    </div>
+  `,
+  styles: [`
+    .connection-status { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--muted-foreground); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-foreground); flex-shrink: 0; }
+    .connection-status.connected .dot { background: #16a34a; }
+    .connection-status.reconnecting .dot { background: #f59e0b; animation: pulse 1s infinite; }
+    .connection-status.offline .dot { background: #dc2626; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+  `]
+})
+export class ConnectionStatusComponent {
+  constructor(public marketQuoteService: MarketQuoteService) {}
+}

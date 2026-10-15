@@ -26,9 +26,9 @@ export interface StockSymbol {
 })
 export class NavbarComponent implements OnInit {
   @Input() navItems: NavItem[] = [
-    { label: 'Home', path: '' },
-    { label: 'Portfolio', path: 'portfolio' },
-    { label: 'Trades', path: 'trades' }
+    { label: 'Home', path: '/client' },
+    { label: 'Portfolio', path: '/client/portfolio' },
+    { label: 'Trades', path: '/client/trades' }
   ];
   @Input() userName = 'User';
   @Input() brandName = 'Bull Exchange';
