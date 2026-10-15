@@ -45,6 +45,13 @@ export class InstrumentService {
     return this.http.post<InstrumentResponse>(this.apiUrl, request);
   }
 
+  resolveInstrument(ticker: string): Observable<InstrumentResponse> {
+    return this.http.post<InstrumentResponse>(
+      `${this.apiUrl}/resolve`,
+      { ticker }
+    );
+  }
+
   /**
    * Update instrument price
    * PATCH /api/instruments/{instrumentId}/price

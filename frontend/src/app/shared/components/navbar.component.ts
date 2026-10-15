@@ -25,6 +25,8 @@ export interface StockSymbol {
   styleUrl: './navbar.component.css'
 })
 export class NavbarComponent implements OnInit {
+  private static readonly TICKER_PATTERN = /^[A-Z.-]{1,10}$/;
+
   @Input() navItems: NavItem[] = [
     { label: 'Home', path: '/client' },
     { label: 'Portfolio', path: '/client/portfolio' },
@@ -147,7 +149,50 @@ export class NavbarComponent implements OnInit {
   }
 
   onSearchKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && this.searchResults().length > 0) {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    this.resolveOrSelectSearch();
+  }
+
+  private resolveOrSelectSearch() {
+    const query = this.searchQuery().trim();
+    const ticker = query.toUpperCase();
+    const existing = this.instruments().find(
+      instrument => instrument.ticker === ticker
+    );
+
+    if (existing) {
+      this.selectStock({
+        symbol: existing.ticker,
+        name: existing.name,
+        price: existing.currentPrice
+      });
+      return;
+    }
+
+    if (NavbarComponent.TICKER_PATTERN.test(ticker)) {
+      this.instrumentService.resolveInstrument(ticker).subscribe({
+        next: instrument => {
+          this.instruments.update(current => [
+            ...current.filter(item => item.ticker !== instrument.ticker),
+            instrument
+          ]);
+          this.selectStock({
+            symbol: instrument.ticker,
+            name: instrument.name,
+            price: instrument.currentPrice
+          });
+        },
+        error: error => {
+          console.error(`Unable to resolve ticker ${ticker}:`, error);
+        }
+      });
+      return;
+    }
+
+    if (this.searchResults().length > 0) {
       this.selectStock(this.searchResults()[0]);
     }
   }
@@ -159,9 +204,7 @@ export class NavbarComponent implements OnInit {
   }
 
   tradeClick() {
-    if (this.searchResults().length > 0) {
-      this.selectStock(this.searchResults()[0]);
-    }
+    this.resolveOrSelectSearch();
   }
 
   // Profile handlers
