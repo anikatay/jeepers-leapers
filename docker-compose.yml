@@ -27,6 +27,19 @@ services:
       - "8100:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+  etl:
+    # Refreshes analytics P&L (paysprint_analytics) on a fixed interval
+    build: ./analytics
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - db
+      - app
+    environment:
+      PAYSPRINT_SOURCE_DB_URL: postgresql://paysprint:${DB_PASSWORD}@db:5432/paysprint
+      PAYSPRINT_ANALYTICS_DB_URL: postgresql://paysprint:${DB_PASSWORD}@db:5432/paysprint_analytics
+      ETL_INTERVAL_SECONDS: ${ETL_INTERVAL_SECONDS:-600}
+
   frontend:
     build: ./frontend
     depends_on:
