@@ -116,14 +116,19 @@ public class TradeAnalysisService {
                         .toList());
     }
 
+    // fact_trades stores 0 where a figure does not apply or is unknown; the model reads 0 as break-even.
     private static Outcome outcome(TradePnl pnl, String side, BigDecimal currentPrice) {
         boolean sell = "SELL".equals(side);
         BigDecimal entry = pnl.entryPrice();
         BigDecimal exit = sell ? pnl.exitPrice() : currentPrice;
         // A fully sold buy has nothing left to value; its result sits on the sells that closed it.
-        boolean nothingToValue = entry == null || exit == null || (!sell && "MATCHED".equals(pnl.pnlStatus()));
-        return new Outcome(price(entry), price(pnl.exitPrice()), money(pnl.realizedPnl()),
-                money(pnl.unrealizedPnl()), nothingToValue ? null : pct(exit.subtract(entry), entry),
+        boolean fullySoldBuy = !sell && "MATCHED".equals(pnl.pnlStatus());
+        boolean uncostedSell = sell && "UNMATCHED".equals(pnl.pnlStatus());
+        boolean nothingToValue = entry == null || exit == null || fullySoldBuy;
+        return new Outcome(price(entry), price(pnl.exitPrice()),
+                sell && !uncostedSell ? money(pnl.realizedPnl()) : null,
+                !sell && !fullySoldBuy ? money(pnl.unrealizedPnl()) : null,
+                nothingToValue ? null : pct(exit.subtract(entry), entry),
                 pnl.pnlStatus(), pnl.asOf());
     }
 
@@ -142,7 +147,7 @@ public class TradeAnalysisService {
         BigDecimal cash = money(account.getBalance());
         BigDecimal totalValue = positions.stream().map(Position::marketValue).reduce(cash, BigDecimal::add);
 
-        return new Portfolio(account.getCurrency(), cash, totalValue, pct(tradeValue, totalValue),
+        return new Portfolio(account.getCurrency(), cash, pct(cash, totalValue), totalValue, pct(tradeValue, totalValue),
                 positions.stream()
                         .map(position -> new Holding(position.ticker(), position.quantity(),
                                 position.marketValue(), pct(position.marketValue(), totalValue)))

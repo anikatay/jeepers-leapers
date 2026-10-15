@@ -28,7 +28,10 @@ public record TradeAnalysisContext(
             OffsetDateTime executedAt,
             long daysAgo) {}
 
-    /** Mirrors the P&L columns of analytics.fact_trades; null when the trade has no row there yet. */
+    /**
+     * The P&L columns of analytics.fact_trades; null when the trade has no row there yet. A field is
+     * null when it does not apply to the side (realized for buys, unrealized for sells) or is unknown.
+     */
     public record Outcome(
             BigDecimal entryPrice,
             BigDecimal exitPrice,
@@ -46,6 +49,7 @@ public record TradeAnalysisContext(
     public record Portfolio(
             String currency,
             BigDecimal cash,
+            BigDecimal cashPct,
             BigDecimal totalValue,
             BigDecimal tradeValuePctOfTotal,
             List<Holding> holdings) {}

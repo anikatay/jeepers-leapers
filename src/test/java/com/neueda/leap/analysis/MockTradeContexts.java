@@ -40,7 +40,7 @@ final class MockTradeContexts {
         return new TradeAnalysisContext(
                 new Trade("AAPL", "Apple Inc.", "NASDAQ", "SELL", bd("20"), exit, tradeValue,
                         OffsetDateTime.parse("2026-09-29T14:30:00Z"), 14),
-                new Outcome(entry, exit, bd("610.00"), bd("0.00"), pct(exit.subtract(entry), entry),
+                new Outcome(entry, exit, bd("610.00"), null, pct(exit.subtract(entry), entry),
                         "MATCHED", PNL_AS_OF),
                 new PriceNow(bd("229.00"), bd("0.00")),
                 portfolio("12000.00", tradeValue,
@@ -65,7 +65,7 @@ final class MockTradeContexts {
         return new TradeAnalysisContext(
                 new Trade("TSLA", "Tesla Inc.", "NASDAQ", "BUY", bd("60"), entry, tradeValue,
                         OffsetDateTime.parse("2026-09-22T15:05:00Z"), 21),
-                new Outcome(entry, null, bd("0.00"), bd("-1815.00"), movePct, "UNMATCHED", PNL_AS_OF),
+                new Outcome(entry, null, null, bd("-1815.00"), movePct, "UNMATCHED", PNL_AS_OF),
                 new PriceNow(current, movePct),
                 portfolio("1200.00", tradeValue,
                         position("TSLA", "60", "254.75"),
@@ -120,7 +120,7 @@ final class MockTradeContexts {
             holdings.add(new Holding(position.ticker(), position.quantity(), position.marketValue(),
                     pct(position.marketValue(), total)));
         }
-        return new Portfolio("USD", bd(cash), total, pct(tradeValue, total), holdings);
+        return new Portfolio("USD", bd(cash), pct(bd(cash), total), total, pct(tradeValue, total), holdings);
     }
 
     private static RecentTrade recent(String date, String ticker, String side, String quantity, String price) {
