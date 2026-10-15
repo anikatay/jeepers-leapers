@@ -1,32 +1,31 @@
 package com.neueda.leap.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import com.neueda.leap.util.JwtUtil;
 
-import com.neueda.leap.service.UserService;
 import com.neueda.leap.model.User;
+import com.neueda.leap.model.UserPii;
 import com.neueda.leap.service.AuthService;
 import com.neueda.leap.dto.response.AuthResponse;
 import com.neueda.leap.dto.request.LoginRequest;
 import com.neueda.leap.dto.request.RegisterRequest;
 
-import java.util.UUID;
-import java.util.Arrays;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    @Autowired
-    private AuthService authService;
+    private final AuthService authService;
+    private final JwtUtil jwtUtil;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    public AuthController(AuthService authService, JwtUtil jwtUtil) {
+        this.authService = authService;
+        this.jwtUtil = jwtUtil;
+    }
 
     /**
      * Login endpoint - validates credentials and returns JWT
@@ -35,14 +34,20 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         User user = authService.login(request.getEmail(), request.getPassword());
 
-        String token = jwtUtil.generateToken(request.getEmail(), user.getRole(), user.getId());
+        String token = jwtUtil.generateToken(request.getEmail(), user.getRole(), user.getUserId());
 
-        return ResponseEntity.ok(new AuthResponse(token, user.getId(), user.getRole()));
+        return ResponseEntity.ok(new AuthResponse(token, user.getUserId(), user.getRole()));
     }
 
-    @Transactional
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        UserPii userPii = new UserPii(null, request.firstName(), request.lastName(), request.dateOfBirth(),
+                request.ssn(), request.address(), request.phoneNumber(), request.email());
+        User user = authService.register(new User(null, "ROLE_CUSTOMER", "ACTIVE"), userPii, request.password());
+
+        String token = jwtUtil.generateToken(request.email(), user.getRole(), user.getUserId());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse(token, user.getUserId(), user.getRole()));
 
     }
 

@@ -54,6 +54,13 @@ public class UserPiiService {
         return userId;
     }
 
+    public UUID findUserIdByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email cannot be null or empty");
+        }
+        return userPiiMapper.getUserIdByEmail(email);
+    }
+
     public String getUserPhoneNumberById(UUID id) {
         String phoneNumber = userPiiMapper.getUserPhoneNumberById(id);
         if (phoneNumber == null || phoneNumber.isEmpty()) {
