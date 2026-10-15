@@ -1,4 +1,5 @@
 package com.neueda.leap.advice;
+import com.neueda.leap.analysis.TradeAnalysisException;
 import com.neueda.leap.dto.response.ErrorResponse;
 import com.neueda.leap.dto.response.FieldError;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
@@ -11,6 +12,8 @@ import org.springframework.security.core.AuthenticationException;
 
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice 
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ObjectAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleAlreadyExists(ObjectAlreadyExistsException e, HttpServletRequest request){
         ErrorResponse response = new ErrorResponse(
@@ -110,6 +115,21 @@ public class GlobalExceptionHandler {
         );
         response.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(TradeAnalysisException.class)
+    public ResponseEntity<ErrorResponse> handleTradeAnalysisFailure(
+            TradeAnalysisException e,
+            HttpServletRequest request) {
+        // The cause can quote the upstream error body, so it is logged and not returned.
+        log.warn("Trade analysis failed for {}: {}", request.getRequestURI(), e.getMessage());
+        ErrorResponse response = new ErrorResponse(
+            "ANALYSIS_UNAVAILABLE",
+            "The trade could not be analysed right now. Please try again later.",
+            502
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
     }
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)

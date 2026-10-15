@@ -1,5 +1,8 @@
 package com.neueda.leap.controller;
 
+import com.neueda.leap.analysis.TradeAnalysisContext;
+import com.neueda.leap.analysis.TradeAnalysisResult;
+import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.dto.request.TradeRequest;
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.model.Instrument;
@@ -27,10 +30,13 @@ public class TradeController {
 
     private final TradeService tradeService;
     private final InstrumentService instrumentService;
+    private final TradeAnalysisService tradeAnalysisService;
 
-    public TradeController(TradeService tradeService, InstrumentService instrumentService) {
+    public TradeController(TradeService tradeService, InstrumentService instrumentService,
+            TradeAnalysisService tradeAnalysisService) {
         this.tradeService = tradeService;
         this.instrumentService = instrumentService;
+        this.tradeAnalysisService = tradeAnalysisService;
     }
 
     @PostMapping
@@ -79,6 +85,17 @@ public class TradeController {
         }
         
         return ResponseEntity.ok(trades);
+    }
+
+    @PostMapping("/{tradeId}/analysis")
+    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable UUID tradeId) {
+        return ResponseEntity.ok(tradeAnalysisService.analyze(tradeId));
+    }
+
+    /** What the model would be told about the trade, without calling it. */
+    @GetMapping("/{tradeId}/analysis/context")
+    public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable UUID tradeId) {
+        return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId));
     }
 
 }
