@@ -104,25 +104,28 @@ pipeline {
     post {
         always {
             script {
-                def logsExit = sh(
-                    script: 'docker-compose logs --no-color',
-                    returnStatus: true
-                )
+                if (getContext(hudson.FilePath) != null) {
+                    def logsExit = sh(
+                        script: 'docker compose logs --no-color',
+                        returnStatus: true
+                    )
 
-                if (logsExit != 0) {
-                    echo "docker-compose logs failed with exit code ${logsExit}"
-                }
+                    if (logsExit != 0) {
+                        echo "docker compose logs failed with exit code ${logsExit}"
+                    }
 
-                def cleanupExit = sh(
-                    script: 'docker-compose down -v --remove-orphans',
-                    returnStatus: true
-                )
+                    def cleanupExit = sh(
+                        script: 'docker compose down -v --remove-orphans',
+                        returnStatus: true
+                    )
 
-                if (cleanupExit != 0) {
-                    currentBuild.result = 'FAILURE'
-                    echo "docker-compose cleanup failed with exit code ${cleanupExit}"
+                    if (cleanupExit != 0) {
+                        currentBuild.result = 'FAILURE'
+                        echo "docker compose cleanup failed with exit code ${cleanupExit}"
+                    }
+                } else {
+                    echo 'Skipping Docker cleanup: no Jenkins workspace is available.'
                 }
             }
-        }
     }
 }
