@@ -4,10 +4,13 @@ import com.neueda.leap.dto.request.AccountRequest;
 import com.neueda.leap.dto.request.UpdateBalanceRequest;
 import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.model.Account;
+import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.service.AccountService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,14 +29,20 @@ import java.util.List;
 public class AccountController {
 
     private final AccountService accountService;
+    private final AuthorizationService authorizationService;
 
-    public AccountController(AccountService accountService) {
+    public AccountController(AccountService accountService, AuthorizationService authorizationService) {
         this.accountService = accountService;
+        this.authorizationService = authorizationService;
     }
 
     // create account
     @PostMapping 
-    public ResponseEntity<AccountResponse> createAccount(@RequestBody AccountRequest request){
+    public ResponseEntity<AccountResponse> createAccount(@RequestBody AccountRequest request,
+            @AuthenticationPrincipal Jwt jwt){
+        UUID authenticatedUserId = authorizationService.getAuthenticatedUserId(jwt);
+        authorizationService.requireUser(request.userId(), authenticatedUserId);
+
         Account account = new Account();
         account.setUserId(request.userId());
         account.setBalance(request.initialBalance() != null ? request.initialBalance() : BigDecimal.ZERO);
@@ -46,26 +55,37 @@ public class AccountController {
     
     // get specific account
     @GetMapping("/{accountId}")
-    public ResponseEntity<AccountResponse> getAccount(@PathVariable UUID accountId){
+    public ResponseEntity<AccountResponse> getAccount(@PathVariable UUID accountId,
+            @AuthenticationPrincipal Jwt jwt){
+        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+
         Account account = accountService.getAccount(accountId);
         return ResponseEntity.ok(AccountResponse.mapToResponse(account));
     }
 
     // close account
     @DeleteMapping("/{accountId}")
-    public ResponseEntity<Void> closeAccount(@PathVariable UUID accountId){
+    public ResponseEntity<Void> closeAccount(@PathVariable UUID accountId, @AuthenticationPrincipal Jwt jwt){
+        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+
         accountService.closeAccount(accountId);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{accountId}/deposit")
-    public ResponseEntity<Void> incrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request){
+    public ResponseEntity<Void> incrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request,
+            @AuthenticationPrincipal Jwt jwt){
+        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+
         accountService.incrementBalance(accountId, request.amount());
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{accountId}/withdraw")
-    public ResponseEntity<Void> decrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request){
+    public ResponseEntity<Void> decrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request,
+            @AuthenticationPrincipal Jwt jwt){
+        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+
         accountService.decrementBalance(accountId, request.amount());
         return ResponseEntity.noContent().build();
     }

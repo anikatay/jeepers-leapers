@@ -29,6 +29,7 @@ public class TradeService implements IService {
     private final AccountService accountService;
     private final InstrumentService instrumentService;
     private final HoldingService holdingService;
+    private final AuthorizationService authorizationService;
     private static final int DEFAULT_PAGE_SIZE = 50;
     private static final int MAX_PAGE_SIZE = 200;
     private final MarketSessionService marketSessionService;
@@ -48,11 +49,14 @@ public class TradeService implements IService {
         }
     }
 
-    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService, ApplicationEventPublisher eventPublisher, MarketSessionService marketSessionService) {
+    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService,
+            HoldingService holdingService, AuthorizationService authorizationService,
+            ApplicationEventPublisher eventPublisher, MarketSessionService marketSessionService) {
         this.tradeMapper = tradeMapper;
         this.accountService = accountService;
         this.instrumentService = instrumentService;
         this.holdingService = holdingService;
+        this.authorizationService = authorizationService;
         this.eventPublisher = eventPublisher;
         this.marketSessionService = marketSessionService;
     }
@@ -74,10 +78,8 @@ public class TradeService implements IService {
             throw new ObjectInvalidException("Authenticated user is required");
         }
 
+        authorizationService.requireAccountOwner(trade.getAccountId(), authenticatedUserId);
         Account account = accountService.getAccount(trade.getAccountId());
-        if(!authenticatedUserId.equals(account.getUserId())){
-            throw new ObjectInvalidException("You cannot trade on this account");
-        }
 
         if(trade.getInstrumentId() == null){
             throw new ObjectInvalidException("Instrument ID cannot be null");
