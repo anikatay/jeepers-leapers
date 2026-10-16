@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { Login } from './login/login';
 import { CLIENT_ROUTES } from './features/client/client.routes';
 import { ADMIN_ROUTES } from './features/admin/admin.routes';
+import { ANALYST_ROUTES } from './features/analyst/analyst.routes';
 
 export const routes: Routes = [
   {
@@ -20,6 +21,10 @@ export const routes: Routes = [
   {
     path: 'admin',
     children: ADMIN_ROUTES
+  },
+  {
+    path: 'analyst',
+    children: ANALYST_ROUTES
   },
   {
     path: '**',
