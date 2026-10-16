@@ -103,7 +103,7 @@ pipeline {
     }
     post {
         always {
-            cscript {
+            script {
                 def logsExit = sh(
                     script: 'docker compose logs --no-color',
                     returnStatus: true
