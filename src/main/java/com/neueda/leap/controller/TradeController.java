@@ -2,9 +2,8 @@ package com.neueda.leap.controller;
 
 import com.neueda.leap.dto.request.TradeRequest;
 import com.neueda.leap.dto.response.TradeResponse;
-import com.neueda.leap.model.Instrument;
 import com.neueda.leap.model.Trade;
-import com.neueda.leap.service.InstrumentService;
+import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.service.TradeService;
 
 import jakarta.validation.Valid;
@@ -29,9 +28,11 @@ import java.util.UUID;
 public class TradeController {
 
     private final TradeService tradeService;
+    private final AuthorizationService authorizationService;
 
-    public TradeController(TradeService tradeService) {
+    public TradeController(TradeService tradeService, AuthorizationService authorizationService) {
         this.tradeService = tradeService;
+        this.authorizationService = authorizationService;
     }
 
     @PostMapping
@@ -58,7 +59,9 @@ public class TradeController {
     public ResponseEntity<List<TradeResponse>> getTradesByAccount(
             @PathVariable UUID accountId,
             @RequestParam(required = false) Integer limit,
-            @RequestParam (required = false) Integer offset) {
+            @RequestParam (required = false) Integer offset,
+            @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
         
         List<TradeResponse> trades = tradeService.getAllTradesByAccountWithInstrument(accountId, limit, offset);
         
@@ -72,7 +75,9 @@ public class TradeController {
     @GetMapping("/account/{accountId}/instrument/{instrumentId}")
     public ResponseEntity<List<TradeResponse>> getTradesByAccountAndInstrument(
             @PathVariable UUID accountId,
-            @PathVariable UUID instrumentId) {
+            @PathVariable UUID instrumentId,
+            @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
         
         List<TradeResponse> trades = tradeService.getTradesByAccountAndInstrument(accountId, instrumentId);
         
