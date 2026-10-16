@@ -105,22 +105,22 @@ pipeline {
         always {
             script {
                 def logsExit = sh(
-                    script: 'docker compose logs --no-color',
+                    script: 'docker-compose logs --no-color',
                     returnStatus: true
                 )
 
                 if (logsExit != 0) {
-                    echo "docker compose logs failed with exit code ${logsExit}"
+                    echo "docker-compose logs failed with exit code ${logsExit}"
                 }
 
                 def cleanupExit = sh(
-                    script: 'docker compose down -v --remove-orphans',
+                    script: 'docker-compose down -v --remove-orphans',
                     returnStatus: true
                 )
 
                 if (cleanupExit != 0) {
                     currentBuild.result = 'FAILURE'
-                    echo "docker compose cleanup failed with exit code ${cleanupExit}"
+                    echo "docker-compose cleanup failed with exit code ${cleanupExit}"
                 }
             }
         }
