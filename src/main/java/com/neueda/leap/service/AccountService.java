@@ -70,6 +70,18 @@ public class AccountService implements IService {
         return account;
     }
 
+    public UUID getAccountIdByUserId(UUID userId) {
+        if (userId == null) {
+            throw new ObjectNotFoundException("User ID cannot be null");
+        }
+
+        UUID accountId = accountMapper.findAccountIdByUserId(userId);
+        if (accountId == null) {
+            throw new ObjectNotFoundException("Account not found for user ID: " + userId);
+        }
+        return accountId;
+    }
+
     @Transactional 
     public void updateBalance(UUID accountId, BigDecimal amount){
         if(accountId == null){
