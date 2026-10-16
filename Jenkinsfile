@@ -127,5 +127,6 @@ pipeline {
                     echo 'Skipping Docker cleanup: no Jenkins workspace is available.'
                 }
             }
+        }
     }
 }
