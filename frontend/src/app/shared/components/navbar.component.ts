@@ -25,7 +25,7 @@ export interface StockSymbol {
   styleUrl: './navbar.component.css'
 })
 export class NavbarComponent implements OnInit {
-  private static readonly TICKER_PATTERN = /^[A-Z.-]{1,10}$/;
+  private static readonly TICKER_PATTERN = /^[A-Z0-9][A-Z0-9._=-]{0,31}$/;
 
   @Input() navItems: NavItem[] = [
     { label: 'Home', path: '/client' },

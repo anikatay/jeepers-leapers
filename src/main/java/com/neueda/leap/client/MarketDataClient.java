@@ -2,6 +2,7 @@ package com.neueda.leap.client;
 
 import com.neueda.leap.exception.MarketDataUnavailableException;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectInvalidException;
@@ -109,6 +110,30 @@ public class MarketDataClient {
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException(
 					"Market lookup failed for " + ticker, e);
+		}
+	}
+
+	public FxRateResponse fetchExchangeRate(String baseCurrency, String quoteCurrency) {
+		try {
+			FxRateResponse response = restClient.get()
+					.uri(uri -> uri.path("/fx/rate")
+							.queryParam("base", baseCurrency)
+							.queryParam("quote", quoteCurrency)
+							.build())
+					.retrieve()
+					.body(FxRateResponse.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException(
+						"Market service returned an empty FX response");
+			}
+			return response;
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException(
+					"Unsupported FX conversion: " + baseCurrency + "/" + quoteCurrency);
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market FX service failed for " + baseCurrency + "/" + quoteCurrency, e);
 		}
 	}
 

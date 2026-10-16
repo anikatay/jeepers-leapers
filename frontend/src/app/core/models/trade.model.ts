@@ -13,6 +13,7 @@ export interface TradeResponse {
   instrumentId: string;
   ticker: string;
   name: string;
+  instrumentCurrency?: string;
   side: string;
   quantity: number;
   executionPrice: number;
