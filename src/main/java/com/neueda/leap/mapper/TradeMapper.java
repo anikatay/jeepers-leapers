@@ -14,8 +14,10 @@ import com.neueda.leap.model.Trade;
 @Mapper
 public interface TradeMapper {
     // insert new Trade
-    @Insert("INSERT INTO trades (trade_id, account_id, instrument_id, side, quantity, execution_price, executed_at) " + 
-            "VALUES (#{tradeId}, #{accountId}, #{instrumentId}, #{side}, #{quantity}, #{executionPrice}, #{executedAt})")
+    @Insert("INSERT INTO trades (trade_id, account_id, instrument_id, side, quantity, execution_price, " +
+            "settlement_value, settlement_currency, fx_rate, executed_at) " +
+            "VALUES (#{tradeId}, #{accountId}, #{instrumentId}, #{side}, #{quantity}, #{executionPrice}, " +
+            "#{settlementValue}, #{settlementCurrency}, #{fxRate}, #{executedAt})")
     int createTrade(Trade trade);
 
     // find trades all trades for a given account
@@ -26,8 +28,9 @@ public interface TradeMapper {
     @Select("SELECT * from trades WHERE account_id = #{accountId} AND instrument_id = #{instrumentId}")
     List<Trade> findAllTradesForAccountByInstrument(@Param("accountId")UUID accountId, @Param("instrumentId")UUID instrumentId);
 
-    @Select("SELECT t.trade_id, t.account_id, t.instrument_id, i.ticker, i.name, " +
-        "t.side, t.quantity, t.execution_price, t.trade_value, t.executed_at " +
+    @Select(    "SELECT t.trade_id, t.account_id, t.instrument_id, i.ticker, i.name, i.currency AS instrument_currency, " +
+        "t.side, t.quantity, t.execution_price, t.trade_value, " +
+        "t.settlement_value, t.settlement_currency, t.fx_rate, t.executed_at " +
         "FROM trades t " +
         "JOIN instruments i ON t.instrument_id = i.instrument_id " +
         "WHERE t.account_id = #{accountId} " +
@@ -36,8 +39,9 @@ public interface TradeMapper {
     List<TradeResponse> findAllTradesForAccountWithInstrument(@Param("accountId") UUID accountId, @Param("limit") int limit, @Param("offset") int offset);
 
 
-    @Select("SELECT t.trade_id, t.account_id, t.instrument_id, i.ticker, i.name, " +
-        "t.side, t.quantity, t.execution_price, t.trade_value, t.executed_at " +
+    @Select(    "SELECT t.trade_id, t.account_id, t.instrument_id, i.ticker, i.name, i.currency AS instrument_currency, " +
+        "t.side, t.quantity, t.execution_price, t.trade_value, " +
+        "t.settlement_value, t.settlement_currency, t.fx_rate, t.executed_at " +
         "FROM trades t " +
         "JOIN instruments i ON t.instrument_id = i.instrument_id " +
         "WHERE t.account_id = #{accountId} AND t.instrument_id = #{instrumentId} " +

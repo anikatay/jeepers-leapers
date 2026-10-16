@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +30,7 @@ public class TradeService implements IService {
     private final AccountService accountService;
     private final InstrumentService instrumentService;
     private final HoldingService holdingService;
+    private final MarketDataService marketDataService;
     private static final int DEFAULT_PAGE_SIZE = 50;
     private static final int MAX_PAGE_SIZE = 200;
     private final MarketSessionService marketSessionService;
@@ -48,11 +50,19 @@ public class TradeService implements IService {
         }
     }
 
-    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService, HoldingService holdingService, ApplicationEventPublisher eventPublisher, MarketSessionService marketSessionService) {
+    public TradeService(
+            TradeMapper tradeMapper,
+            AccountService accountService,
+            InstrumentService instrumentService,
+            HoldingService holdingService,
+            MarketDataService marketDataService,
+            ApplicationEventPublisher eventPublisher,
+            MarketSessionService marketSessionService) {
         this.tradeMapper = tradeMapper;
         this.accountService = accountService;
         this.instrumentService = instrumentService;
         this.holdingService = holdingService;
+        this.marketDataService = marketDataService;
         this.eventPublisher = eventPublisher;
         this.marketSessionService = marketSessionService;
     }
@@ -85,14 +95,29 @@ public class TradeService implements IService {
             throw new ObjectInvalidException("Unable to make trade at the moment; quote unavailable");
         }
 
-        BigDecimal tradeValue = executionPrice.multiply(trade.getQuantity());
         Account account = accountService.getAccount(trade.getAccountId());
         if(!"ACTIVE".equals(account.getStatus())){
             throw new ObjectInvalidException("Account is not active: " + trade.getAccountId());
         }
 
+        String instrumentCurrency = instrument.getCurrency() == null
+                ? "USD"
+                : instrument.getCurrency().toUpperCase();
+        String accountCurrency = account.getCurrency() == null
+                ? "USD"
+                : account.getCurrency().toUpperCase();
+        BigDecimal tradeValue = executionPrice
+                .multiply(trade.getQuantity())
+                .setScale(4, RoundingMode.HALF_UP);
+        BigDecimal fxRate = marketDataService.getExchangeRate(
+                instrumentCurrency,
+                accountCurrency);
+        BigDecimal settlementValue = tradeValue
+                .multiply(fxRate)
+                .setScale(4, RoundingMode.HALF_UP);
+
         if("BUY".equals(trade.getSide())
-                && (account.getBalance() == null || account.getBalance().compareTo(tradeValue) < 0)){
+                && (account.getBalance() == null || account.getBalance().compareTo(settlementValue) < 0)){
             throw new ObjectInvalidException("Insufficient balance for trade");
         }
 
@@ -114,6 +139,9 @@ public class TradeService implements IService {
             trade.setExecutedAt(OffsetDateTime.now());
         }
         trade.setTradeValue(tradeValue);
+        trade.setSettlementValue(settlementValue);
+        trade.setSettlementCurrency(accountCurrency);
+        trade.setFxRate(fxRate);
         int tradeCreatedFlag = tradeMapper.createTrade(trade);
         if(tradeCreatedFlag < 1){
             throw new ObjectNotProcessedException("Could not create trade");
@@ -122,7 +150,7 @@ public class TradeService implements IService {
         if(trade.getSide().equals("BUY")){
 
             try{
-                accountService.decrementBalance(trade.getAccountId(), trade.getTradeValue());
+                accountService.decrementBalance(trade.getAccountId(), trade.getSettlementValue());
             }catch(Exception e){
                 throw new ObjectInvalidException("Insufficient balance for trade",e);
             }
@@ -138,7 +166,7 @@ public class TradeService implements IService {
             }
         }else if(trade.getSide().equals("SELL")){
             holdingService.decrementHoldingQuantityInternal(holding.getAccountId(),holding.getInstrumentId(), trade.getQuantity());
-            accountService.incrementBalance(trade.getAccountId(), trade.getTradeValue());
+            accountService.incrementBalance(trade.getAccountId(), trade.getSettlementValue());
         }
         
         TradeExecutedEvent event = new TradeExecutedEvent(

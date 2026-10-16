@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 @Service
 public class InstrumentService implements IService {
 
-    private static final Pattern TICKER_PATTERN = Pattern.compile("^[A-Z.\\-]{1,10}$");
+    private static final Pattern TICKER_PATTERN = Pattern.compile("^[A-Z0-9][A-Z0-9.\\-_=]{0,31}$");
 
     private final InstrumentMapper instrumentMapper;
     private final MarketDataClient marketDataClient;
@@ -106,6 +106,8 @@ public class InstrumentService implements IService {
                 ticker,
                 metadata.name(),
                 metadata.exchangeId(),
+                metadata.currency(),
+                metadata.priceScale(),
                 metadata.currentPrice(),
                 OffsetDateTime.now());
 
@@ -173,7 +175,8 @@ public class InstrumentService implements IService {
                         i.getTicker(),
                         i.getName(),
                         i.getCurrentPrice(),
-                        i.getExchange()))
+                        i.getExchange(),
+                        i.getCurrency()))
                 .toList();
     }
 
@@ -255,6 +258,8 @@ public class InstrumentService implements IService {
                 || isBlank(metadata.region())
                 || isBlank(metadata.timezone())
                 || isBlank(metadata.currency())
+                || metadata.priceScale() == null
+                || metadata.priceScale().signum() <= 0
                 || metadata.currentPrice() == null
                 || metadata.currentPrice().signum() <= 0) {
             throw new ObjectInvalidException(

@@ -11,10 +11,14 @@ public class TradeResponse {
     private UUID instrumentId;
     private String ticker;
     private String name;
+    private String instrumentCurrency;
     private String side;
     private BigDecimal quantity;
     private BigDecimal executionPrice;
     private BigDecimal tradeValue;
+    private BigDecimal settlementValue;
+    private String settlementCurrency;
+    private BigDecimal fxRate;
     private OffsetDateTime executedAt;
 
     public TradeResponse() {
@@ -55,6 +59,10 @@ public class TradeResponse {
         return name;
     }
 
+    public String getInstrumentCurrency() {
+        return instrumentCurrency;
+    }
+
     public String getSide() {
         return side;
     }
@@ -69,6 +77,18 @@ public class TradeResponse {
 
     public BigDecimal getTradeValue() {
         return tradeValue;
+    }
+
+    public BigDecimal getSettlementValue() {
+        return settlementValue;
+    }
+
+    public String getSettlementCurrency() {
+        return settlementCurrency;
+    }
+
+    public BigDecimal getFxRate() {
+        return fxRate;
     }
 
     public OffsetDateTime getExecutedAt() {

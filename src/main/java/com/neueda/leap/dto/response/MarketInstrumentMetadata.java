@@ -10,5 +10,6 @@ public record MarketInstrumentMetadata(
         String region,
         String timezone,
         String currency,
+        BigDecimal priceScale,
         BigDecimal currentPrice) {
 }

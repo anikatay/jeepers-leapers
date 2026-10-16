@@ -29,6 +29,7 @@ export interface Holding {
   instrumentId: string;
   symbol: string;
   name: string;
+  currency: string;
   shares: number;
   currentPrice: number;
   currentValue: number;
@@ -101,6 +102,9 @@ export class ClientPortfolioComponent implements OnInit {
   isSubmitting = signal<boolean>(false);
   tradeSuccess = signal<boolean>(false);
   tradeError = signal<string | null>(null);
+  settlementFxRate = signal<number>(1);
+  settlementRateLoading = signal(false);
+  settlementRateError = signal<string | null>(null);
   orderInputMode = signal<'shares' | 'cash'>('shares');
   modalCashAmount = signal<string>('');
   private quoteSubscription?: Subscription;
@@ -129,6 +133,7 @@ export class ClientPortfolioComponent implements OnInit {
           instrumentId: instrumentToTrade.instrumentId,
           symbol: instrumentToTrade.ticker,
           name: instrumentToTrade.name,
+          currency: instrumentToTrade.currency || 'USD',
           shares: 0,
           currentPrice: instrumentToTrade.currentPrice,
           currentValue: 0,
@@ -198,6 +203,7 @@ export class ClientPortfolioComponent implements OnInit {
           instrumentId: h.instrumentId,
           symbol: instrument.ticker,
           name: instrument.name,
+          currency: instrument.currency || 'USD',
           shares: h.quantity,
           currentPrice: instrument.currentPrice,
           currentValue: currentValue,
@@ -216,6 +222,7 @@ export class ClientPortfolioComponent implements OnInit {
     this.accountService.getAccount(this.ACCOUNT_ID).subscribe({
       next: (acc) => {
         this.account.set(acc);
+        this.refreshSettlementRate();
         this.loading.set(false);
       },
       error: (err) => {
@@ -314,9 +321,12 @@ export class ClientPortfolioComponent implements OnInit {
     if (this.orderInputMode() === 'cash') {
       const amount = parseFloat(this.modalCashAmount()) || 0;
       const price = holding.currentPrice || 0;
-      if (price <= 0) return 0;
-      // Round down to 6 decimals so a cash order never spends more than the amount typed
-      return Math.floor((amount / price) * 1_000_000) / 1_000_000;
+      const fxRate = this.settlementFxRate();
+      if (price <= 0 || fxRate <= 0 || this.settlementRateLoading() || this.settlementRateError()) {
+        return 0;
+      }
+      // Round down to 6 decimals so a cash order never spends more than the amount typed.
+      return Math.floor((amount / (price * fxRate)) * 1_000_000) / 1_000_000;
     }
 
     return parseFloat(this.modalQuantity()) || 0;
@@ -386,6 +396,7 @@ export class ClientPortfolioComponent implements OnInit {
     this.isSubmitting.set(false);
     this.tradeSuccess.set(false);
     this.tradeError.set(null);
+    this.refreshSettlementRate();
   }
 
   setOrderInputMode(mode: 'shares' | 'cash'): void {
@@ -401,7 +412,47 @@ export class ClientPortfolioComponent implements OnInit {
       this.modalQuantity.set('');
       this.modalCashAmount.set('');
       this.tradeError.set(null);
+      this.settlementFxRate.set(1);
+      this.settlementRateError.set(null);
     }, 300);
+  }
+
+  formatCurrency(value: number | null | undefined, currency: string | null | undefined): string {
+    const amount = value ?? 0;
+    const code = currency || 'USD';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4
+    }).format(amount);
+  }
+
+  private refreshSettlementRate(): void {
+    const holding = this.selectedHolding();
+    const accountCurrency = (this.account()?.currency || 'USD').toUpperCase();
+    const instrumentCurrency = (holding?.currency || 'USD').toUpperCase();
+    if (!holding || instrumentCurrency === accountCurrency) {
+      this.settlementFxRate.set(1);
+      this.settlementRateLoading.set(false);
+      this.settlementRateError.set(null);
+      return;
+    }
+
+    this.settlementRateLoading.set(true);
+    this.settlementRateError.set(null);
+    this.marketDataService.getExchangeRate(instrumentCurrency, accountCurrency).subscribe({
+      next: response => {
+        this.settlementFxRate.set(response.rate);
+        this.settlementRateLoading.set(false);
+      },
+      error: err => {
+        console.error('Failed to load settlement FX rate:', err);
+        this.settlementFxRate.set(0);
+        this.settlementRateLoading.set(false);
+        this.settlementRateError.set('Unable to load the current currency conversion rate');
+      }
+    });
   }
 
 

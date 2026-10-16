@@ -6,7 +6,10 @@
 -- ── Exchanges ────────────────────────────────────────────────────────────────
 INSERT INTO exchanges (exchange_id, "name", region, timezone, currency) VALUES
     ('NYSE', 'New York Stock Exchange', 'USA', 'America/New_York', 'USD'),
-    ('NASDAQ', 'NASDAQ', 'USA', 'America/New_York', 'USD')
+    ('NASDAQ', 'NASDAQ', 'USA', 'America/New_York', 'USD'),
+    ('LSE', 'London Stock Exchange', 'UK', 'Europe/London', 'GBP'),
+    ('NSE', 'National Stock Exchange of India', 'INDIA', 'Asia/Kolkata', 'INR'),
+    ('BSE', 'BSE India', 'INDIA', 'Asia/Kolkata', 'INR')
 ON CONFLICT DO NOTHING;
 
 -- ── Users ────────────────────────────────────────────────────────────────────

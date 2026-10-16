@@ -43,7 +43,8 @@ public class InstrumentController {
                 created.getTicker(),
                 created.getName(),
                 created.getCurrentPrice(),
-                created.getExchange());
+                created.getExchange(),
+                created.getCurrency());
         
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -82,7 +83,8 @@ public class InstrumentController {
                 instrument.getTicker(),
                 instrument.getName(),
                 instrument.getCurrentPrice(),
-                instrument.getExchange());
+                instrument.getExchange(),
+                instrument.getCurrency());
     }
 
 }
