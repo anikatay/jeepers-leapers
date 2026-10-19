@@ -62,7 +62,8 @@ public class OpenAiTradeAnalyzer {
               cashPct and each holding's weightPct are shares of totalValue. tradeValuePctOfTotal
               compares this trade with today's portfolio, not the portfolio at the time of the trade.
             - trackRecord: the investor's overall results, or null if there is no history.
-            - recentTrades: their latest trades, including this one.
+            - recentTrades: the account's 10 most recent trades, newest first. This trade is among
+              them only if it is one of the latest 10; an older trade is not listed there.
             Percentages are in percent units (12.5 means 12.5%). Money is in portfolio.currency.
 
             Rules:
