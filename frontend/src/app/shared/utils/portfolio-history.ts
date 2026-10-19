@@ -25,4 +25,5 @@ export function combinePortfolioHistory(
   return Array.from(totalsByDate.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, value]) => ({ date, value }));
+    
 }
