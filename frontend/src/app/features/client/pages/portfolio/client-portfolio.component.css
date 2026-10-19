@@ -303,6 +303,34 @@ button {
   align-items: flex-end;
 }
 
+.gain-hover-wrapper {
+  position: relative;
+}
+
+.gain-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.gain-hover-wrapper:hover .gain-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
 .gain-pct {
   font-size: 0.875rem;
   font-weight: 600;

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -31,14 +32,12 @@ import java.util.UUID;
 public class TradeController {
 
     private final TradeService tradeService;
-    private final InstrumentService instrumentService;
     private final TradeAnalysisService tradeAnalysisService;
     private final AnalysisRateLimiter analysisRateLimiter;
 
-    public TradeController(TradeService tradeService, InstrumentService instrumentService,
-            TradeAnalysisService tradeAnalysisService, AnalysisRateLimiter analysisRateLimiter) {
+    public TradeController(TradeService tradeService, TradeAnalysisService tradeAnalysisService,
+            AnalysisRateLimiter analysisRateLimiter) {
         this.tradeService = tradeService;
-        this.instrumentService = instrumentService;
         this.tradeAnalysisService = tradeAnalysisService;
         this.analysisRateLimiter = analysisRateLimiter;
     }
@@ -46,17 +45,13 @@ public class TradeController {
     @PostMapping
     public ResponseEntity<Trade> createTrade(@Valid @RequestBody TradeRequest request) {
         
-        // Get instrument to fetch current price
-        Instrument instrument = instrumentService.getInstrumentById(request.instrumentId());
-        
-        // Map request to Trade model
+            // Map request to Trade model
         Trade trade = new Trade();
         trade.setTradeId(UUID.randomUUID());
         trade.setAccountId(request.accountId());
         trade.setInstrumentId(request.instrumentId());
         trade.setSide(request.side());
         trade.setQuantity(request.quantity());
-        trade.setExecutionPrice(instrument.getCurrentPrice());  // Use instrument's current price
         
         // Service will calculate tradeValue and update account balance
         Trade created = tradeService.createTrade(trade);
@@ -66,9 +61,11 @@ public class TradeController {
     
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<TradeResponse>> getTradesByAccount(
-            @PathVariable UUID accountId) {
+            @PathVariable UUID accountId,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam (required = false) Integer offset) {
         
-        List<TradeResponse> trades = tradeService.getAllTradesByAccountWithInstrument(accountId);
+        List<TradeResponse> trades = tradeService.getAllTradesByAccountWithInstrument(accountId, limit, offset);
         
         if (trades.isEmpty()) {
             return ResponseEntity.noContent().build();

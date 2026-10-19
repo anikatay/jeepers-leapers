@@ -14,7 +14,7 @@ public class Trade {
 
     private String side; // BUY, SELL
 
-    private int quantity;
+    private BigDecimal quantity;
 
     private BigDecimal executionPrice;
 
@@ -37,8 +37,8 @@ public class Trade {
     public String getSide() { return side; }
     public void setSide(String side) { this.side = side; }
 
-    public int getQuantity() { return quantity; }
-    public void setQuantity(int quantity) { this.quantity = quantity; }
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
 
     public BigDecimal getExecutionPrice() { return executionPrice; }
     public void setExecutionPrice(BigDecimal executionPrice) { this.executionPrice = executionPrice; }
