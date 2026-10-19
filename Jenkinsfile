@@ -85,18 +85,21 @@ pipeline {
                     }
 
                     frontend_ready() {
-                        curl -fsS http://localhost:8090/ >/dev/null 2>&1
+                        curl -fsS "http://localhost:${frontend_host_port}/" >/dev/null 2>&1
                     }
 
                     backend_ready() {
                         status="$(curl -sS -o /dev/null -w '%{http_code}' \
-                            http://localhost:8095/api/instruments)"
+                            "http://localhost:${app_host_port}/api/instruments")"
 
                         case "$status" in
                             2*|3*|4*) return 0 ;;
                             *) return 1 ;;
                         esac
                     }
+
+                    frontend_host_port="${Frontend_port%%:*}"
+                    app_host_port="${App_port%%:*}"
 
                     wait_for "PostgreSQL" postgres_ready
                     wait_for "Frontend" frontend_ready
