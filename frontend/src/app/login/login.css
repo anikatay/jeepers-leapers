@@ -130,6 +130,22 @@ button:active {
   color: #b42318;
 }
 
+.register-prompt {
+  margin: 1rem 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.register-prompt a {
+  color: var(--primary, #1a6b3c);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.register-prompt a:hover {
+  text-decoration: underline;
+}
+
 .login-footer {
   margin: 2rem 0 0;
   color: var(--muted-foreground, #4a7c5a);

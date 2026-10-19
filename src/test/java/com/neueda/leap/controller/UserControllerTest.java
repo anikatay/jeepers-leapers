@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.dto.request.CreateUserRequest;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.model.User;
-import com.neueda.leap.model.UserPii;
 import com.neueda.leap.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -74,7 +72,7 @@ class UserControllerTest {
         UUID userId = UUID.randomUUID();
         CreateUserRequest request = validRequest(userId);
         User createdUser = new User(userId, "ROLE_CUSTOMER", "ACTIVE");
-        when(userService.createUser(any(User.class), any(UserPii.class))).thenReturn(createdUser);
+        when(userService.createUser(any(User.class))).thenReturn(createdUser);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +81,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.role").value("ROLE_CUSTOMER"));
 
-        verify(userService).createUser(any(User.class), any(UserPii.class));
+        verify(userService).createUser(any(User.class));
     }
 
     @Test
@@ -148,13 +146,6 @@ class UserControllerTest {
         return new CreateUserRequest(
                 userId,
                 "ROLE_CUSTOMER",
-                "ACTIVE",
-                "Alex",
-                "Smith",
-                OffsetDateTime.now().minusYears(30),
-                "111-22-3333",
-                "123 Main St",
-                "5550100",
-                "alex@example.com");
+                "ACTIVE");
     }
 }

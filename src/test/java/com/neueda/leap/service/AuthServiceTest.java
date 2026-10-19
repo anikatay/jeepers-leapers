@@ -26,6 +26,9 @@ class AuthServiceTest {
     private UserPiiService userPiiService;
 
     @Mock
+    private UserCredentialService userCredentialService;
+
+    @Mock
     private AccountService accountService;
 
     @Mock
@@ -42,10 +45,10 @@ class AuthServiceTest {
 
         when(userPiiService.getUserIdByEmail(email)).thenReturn(userId);
         when(userService.getUserById(userId)).thenReturn(user);
-        when(userService.getPasswordHash(userId)).thenReturn("hashed-password");
+        when(userCredentialService.getPasswordHashByUserId(userId)).thenReturn("hashed-password");
         when(passwordEncoder.matches("password", "hashed-password")).thenReturn(true);
 
-        assertEquals("ROLE_CUSTOMER", authService.login(email, "password"));
+        assertEquals(user, authService.login(email, "password"));
         verify(userPiiService).getUserIdByEmail(email);
         verify(userService).getUserById(userId);
     }
@@ -67,6 +70,8 @@ class AuthServiceTest {
         String email = "alex@example.com";
         UUID userId = UUID.randomUUID();
         when(userPiiService.getUserIdByEmail(email)).thenReturn(userId);
+        when(userCredentialService.getPasswordHashByUserId(userId)).thenReturn("hashed-password");
+        when(passwordEncoder.matches("wrong-password", "hashed-password")).thenReturn(true);
         when(userService.getUserById(userId)).thenReturn(null);
 
         ObjectNotFoundException exception = assertThrows(
@@ -77,12 +82,12 @@ class AuthServiceTest {
     }
 
     @Test
-    void getUserIdByEmailDelegatesToPiiService() {
-        String email = "alex@example.com";
+    void getAccountIdByUserIdDelegatesToAccountService() {
         UUID userId = UUID.randomUUID();
-        when(userPiiService.getUserIdByEmail(email)).thenReturn(userId);
+        UUID accountId = UUID.randomUUID();
+        when(accountService.getAccountIdByUserId(userId)).thenReturn(accountId);
 
-        assertEquals(userId, authService.getUserIdByEmail(email));
-        verify(userPiiService).getUserIdByEmail(email);
+        assertEquals(accountId, authService.getAccountIdByUserId(userId));
+        verify(accountService).getAccountIdByUserId(userId);
     }
 }
