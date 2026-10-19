@@ -26,6 +26,7 @@ interface Trade {
   time: string;
   symbol: string;
   name: string;
+  currency: string;
   type: 'Buy' | 'Sell';
   qty: number;
   price: number;
@@ -225,11 +226,21 @@ export class ClientTradesComponent implements OnInit {
       time: dateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
       symbol: response.ticker,
       name: response.name,
+      currency: response.instrumentCurrency || 'USD',
       type: response.side === 'BUY' ? 'Buy' : 'Sell',
       qty: response.quantity,
       price: response.executionPrice,
       total: response.tradeValue
     };
+  }
+
+  formatCurrency(value: number, currency: string): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4
+    }).format(value);
   }
 
   getStockIcon(symbol: string) {

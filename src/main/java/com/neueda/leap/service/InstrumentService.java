@@ -3,14 +3,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.InstrumentResponse;
+import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
+import com.neueda.leap.exception.ObjectInvalidException;
+import com.neueda.leap.mapper.ExchangeMapper;
 import com.neueda.leap.mapper.InstrumentMapper;
+import com.neueda.leap.model.Exchange;
 import com.neueda.leap.model.Instrument;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +27,16 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class InstrumentService implements IService {
 
+    private static final Pattern TICKER_PATTERN = Pattern.compile("^[A-Z0-9][A-Z0-9.\\-_=]{0,31}$");
+
     private final InstrumentMapper instrumentMapper;
+    private final MarketDataClient marketDataClient;
+    private final ExchangeMapper exchangeMapper;
     private final MarketDataService marketDataService;
     private final StringRedisTemplate redis;
     private final long quoteRefreshThresholdSeconds;
@@ -35,12 +45,16 @@ public class InstrumentService implements IService {
 
     public InstrumentService(
         InstrumentMapper instrumentMapper,
+        MarketDataClient marketDataClient,
+        ExchangeMapper exchangeMapper,
         StringRedisTemplate redis,
         MarketDataService marketDataService,
         @Value("${quote.refresh-threshold-seconds:120}") long quoteRefreshThresholdSeconds,
         @Value("${quote.lock-ttl-seconds:20}") long quoteLockTtlSeconds,
         @Value("${trade.max-price-age-seconds:180}") long maxPriceAgeSeconds) {
         this.instrumentMapper = instrumentMapper;
+        this.marketDataClient = marketDataClient;
+        this.exchangeMapper = exchangeMapper;
         this.redis = redis;
         this.marketDataService = marketDataService;
         this.quoteRefreshThresholdSeconds = quoteRefreshThresholdSeconds;
@@ -60,14 +74,49 @@ public class InstrumentService implements IService {
     }
 
     public Instrument getInstrumentByTicker(String ticker) {
-        if(ticker == null || ticker.isEmpty()) {
-            throw new ObjectNotFoundException("Ticker cannot be empty");
-        }
-        Instrument instrument = instrumentMapper.findByTicker(ticker);
+        String normalizedTicker = normalizeTicker(ticker);
+        Instrument instrument = instrumentMapper.findByTicker(normalizedTicker);
         if(instrument == null){
-            throw new ObjectNotFoundException("Instrument not found ");
+            throw new ObjectNotFoundException("Instrument not found: " + normalizedTicker);
         }
         return instrument;
+    }
+
+    @Transactional
+    public Instrument resolveForTrading(String rawTicker) {
+        String ticker = normalizeTicker(rawTicker);
+        Instrument existing = instrumentMapper.findByTicker(ticker);
+        if (existing != null) {
+            return existing;
+        }
+
+        MarketInstrumentMetadata metadata = marketDataClient.lookupInstrument(ticker);
+        validateMetadata(metadata, ticker);
+
+        Exchange exchange = new Exchange(
+                metadata.exchangeId(),
+                metadata.exchangeName(),
+                metadata.region(),
+                metadata.timezone(),
+                metadata.currency());
+        exchangeMapper.insertIfAbsent(exchange);
+
+        instrumentMapper.insertIfAbsent(
+                UUID.randomUUID(),
+                ticker,
+                metadata.name(),
+                metadata.exchangeId(),
+                metadata.currency(),
+                metadata.priceScale(),
+                metadata.currentPrice(),
+                OffsetDateTime.now());
+
+        Instrument resolved = instrumentMapper.findByTicker(ticker);
+        if (resolved == null) {
+            throw new ObjectNotProcessedException(
+                    "Instrument could not be resolved: " + ticker);
+        }
+        return resolved;
     }
 
     @Transactional
@@ -126,7 +175,8 @@ public class InstrumentService implements IService {
                         i.getTicker(),
                         i.getName(),
                         i.getCurrentPrice(),
-                        i.getExchange()))
+                        i.getExchange(),
+                        i.getCurrency()))
                 .toList();
     }
 
@@ -190,6 +240,35 @@ public class InstrumentService implements IService {
     private boolean isNewerThanInstrument(MarketQuote quote, Instrument instrument) {
         return instrument.getUpdatedAt() == null
                 || instrument.getUpdatedAt().isBefore(quote.quoteTime().atOffset(ZoneOffset.UTC));
+    }
+
+    private String normalizeTicker(String rawTicker) {
+        String ticker = rawTicker == null ? "" : rawTicker.trim().toUpperCase();
+        if (!TICKER_PATTERN.matcher(ticker).matches()) {
+            throw new ObjectInvalidException("Invalid ticker: " + rawTicker);
+        }
+        return ticker;
+    }
+
+    private void validateMetadata(MarketInstrumentMetadata metadata, String ticker) {
+        if (metadata == null
+                || isBlank(metadata.name())
+                || isBlank(metadata.exchangeId())
+                || isBlank(metadata.exchangeName())
+                || isBlank(metadata.region())
+                || isBlank(metadata.timezone())
+                || isBlank(metadata.currency())
+                || metadata.priceScale() == null
+                || metadata.priceScale().signum() <= 0
+                || metadata.currentPrice() == null
+                || metadata.currentPrice().signum() <= 0) {
+            throw new ObjectInvalidException(
+                    "Market metadata is incomplete for " + ticker);
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
 }

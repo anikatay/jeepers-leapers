@@ -19,4 +19,5 @@ export interface InstrumentResponse {
   name: string;
   currentPrice: number;  // BigDecimal as number
   exchangeId: string;
+  currency: string;
 }
