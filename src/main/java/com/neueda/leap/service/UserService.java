@@ -2,6 +2,8 @@ package com.neueda.leap.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.neueda.leap.dto.response.UserDetailsResponse;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.exception.ObjectNotFoundException;
@@ -19,6 +21,20 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final UserPiiService userPiiService;
+
+    public UserDetailsResponse getUserDetails(UUID userId) {
+        User user = getUserById(userId);
+        if (user == null) {
+            throw new ObjectNotFoundException("User not found");
+        }
+
+        UserPii userPii = userPiiService.getUserPiiById(userId);
+        if (userPii == null) {
+            throw new ObjectNotFoundException("User profile not found");
+        }
+
+        return UserDetailsResponse.from(user, userPii);
+    }
 
     public UserService(UserMapper userMapper, UserPiiService userPiiService) {
         this.userMapper = userMapper;

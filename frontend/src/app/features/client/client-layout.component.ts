@@ -57,6 +57,17 @@ export class ClientLayoutComponent implements OnInit {
   }
 
   onProfileOptionSelected(option: string) {
+    if (option === 'logout') {
+      this.authService.logout();
+      this.router.navigate(['/auth/login']);
+      return;
+    }
+
+    if (option === 'profile') {
+      this.router.navigate(['/client/portfolio']);
+      return;
+    }
+
     // Handle trade: option
     if (option.startsWith('trade:')) {
       const symbol = option.substring(6);
