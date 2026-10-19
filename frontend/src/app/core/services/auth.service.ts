@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, catchError, map, switchMap, tap, throwError } from 'rxjs';
 import { AuthResponse, AuthRequest } from '../models/auth.model';
+import { UsersService } from './users.service';
 
 
 @Injectable({
@@ -14,7 +15,7 @@ export class AuthService{
   private _session = signal<AuthResponse | null>(this.loadSession());
   session = this._session.asReadonly();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private usersService: UsersService) {}
 
   /**
    * Create a new trade (BUY or SELL)
@@ -24,10 +25,24 @@ export class AuthService{
 
   login(request: AuthRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>('/api/auth/login', request).pipe(
-      tap(res => {
+      switchMap(res => {
         localStorage.setItem(this.TOKEN_KEY, res.token);
+
+        return this.usersService.getUserById(res.userId).pipe(
+          map(user => ({
+            ...res,
+            firstName: user.firstName,
+            lastName: user.lastName
+          }))
+        );
+      }),
+      tap(res => {
         localStorage.setItem(this.SESSION_KEY, JSON.stringify(res));
         this._session.set(res);
+      }),
+      catchError(error => {
+        this.clearSession();
+        return throwError(() => error);
       })
     );
   }
@@ -37,12 +52,7 @@ export class AuthService{
   get role() { return this._session()?.role ?? null; }
   get accountId() { return this._session()?.accountId ?? null; }
   get userName(): string {
-    const names: Record<string, string> = {
-      'd4000000-0000-0000-0000-000000000001': 'Joanna',
-      'd4000000-0000-0000-0000-000000000002': 'Bob',
-      'd4000000-0000-0000-0000-000000000003': 'Charlie'
-    };
-    return names[this.accountId ?? ''] ?? 'User';
+    return this._session()?.firstName?.trim() || 'User';
   }
   isLoggedIn() { return !!this.token; }
 
@@ -54,6 +64,10 @@ export class AuthService{
   }
 
   logout() {
+    this.clearSession();
+  }
+
+  private clearSession() {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.SESSION_KEY);
     this._session.set(null);
