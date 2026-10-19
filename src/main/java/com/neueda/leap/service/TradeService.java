@@ -66,15 +66,24 @@ public class TradeService implements IService {
         this.eventPublisher = eventPublisher;
         this.marketSessionService = marketSessionService;
     }
-    
-    @Transactional 
-    public Trade createTrade(Trade trade){
+
+    @Transactional
+    public Trade createTrade(Trade trade, UUID authenticatedUserId){
         if(trade == null){
             throw new ObjectInvalidException("Trade cannot be null");
         }
         if(trade.getAccountId() == null){
             throw new ObjectInvalidException("Account ID cannot be null");
         }
+        if(authenticatedUserId == null){
+            throw new ObjectInvalidException("Authenticated user is required");
+        }
+
+        Account account = accountService.getAccount(trade.getAccountId());
+        if(!authenticatedUserId.equals(account.getUserId())){
+            throw new ObjectInvalidException("You cannot trade on this account");
+        }
+
         if(trade.getInstrumentId() == null){
             throw new ObjectInvalidException("Instrument ID cannot be null");
         }
@@ -95,7 +104,6 @@ public class TradeService implements IService {
             throw new ObjectInvalidException("Unable to make trade at the moment; quote unavailable");
         }
 
-        Account account = accountService.getAccount(trade.getAccountId());
         if(!"ACTIVE".equals(account.getStatus())){
             throw new ObjectInvalidException("Account is not active: " + trade.getAccountId());
         }

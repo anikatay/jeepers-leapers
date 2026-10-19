@@ -1,7 +1,6 @@
 package com.neueda.leap.util;
 
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -30,14 +29,15 @@ public class JwtUtil {
     /**
      * Generate a JWT token for a user with a role and userId
      */
-    public String generateToken(String username, String role, UUID userId) {
+    public String generateToken(String username, String role, UUID userId, UUID accountId) {
         return Jwts.builder()
-                .subject(username)
+                .subject(userId.toString())
                 .claim("role", role)
-                .claim("userId", userId.toString())
+                .claim("email", username)
+                .claim("accountId", accountId.toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();
     }
 

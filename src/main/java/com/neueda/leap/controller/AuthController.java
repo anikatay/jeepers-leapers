@@ -40,7 +40,7 @@ public class AuthController {
         UUID accountId = authService.getAccountIdByUserId(userId);
 
         // Generate JWT token with user info, role, and userId
-        String token = jwtUtil.generateToken(request.getEmail(), role, userId);
+        String token = jwtUtil.generateToken(request.getEmail(), role, userId, accountId);
 
         return ResponseEntity.ok(new LoginResponse(token, userId, accountId, role));
     }
