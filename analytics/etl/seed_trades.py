@@ -168,14 +168,14 @@ def _apply_trade(conn, trade: dict) -> int:
             DO UPDATE SET quantity = holdings.quantity + EXCLUDED.quantity
         """), row)
     else:
-        conn.execute(text("""
-            UPDATE holdings SET quantity = quantity - :quantity
-            WHERE account_id = :account_id AND instrument_id = :instrument_id
-        """), row)
-        # The app removes a holding once it is sold out
+        # Selling every share removes the holding, as the app does; holdings have CHECK (quantity > 0)
         conn.execute(text("""
             DELETE FROM holdings
-            WHERE account_id = :account_id AND instrument_id = :instrument_id AND quantity = 0
+            WHERE account_id = :account_id AND instrument_id = :instrument_id AND quantity = :quantity
+        """), row)
+        conn.execute(text("""
+            UPDATE holdings SET quantity = quantity - :quantity
+            WHERE account_id = :account_id AND instrument_id = :instrument_id AND quantity > :quantity
         """), row)
         conn.execute(text("""
             UPDATE accounts SET balance = balance + :value, updated_at = NOW()
