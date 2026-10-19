@@ -2,6 +2,7 @@ package com.neueda.leap.controller;
 
 import com.neueda.leap.service.MarketDataService;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.FxRateResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,17 @@ public class MarketDataController {
 	public HistoryResponse history(@PathVariable String ticker,
 									@RequestParam(defaultValue = "1y") String period) {
 		return marketDataService.getHistory(ticker, period);
+	}
+
+	@GetMapping("/fx-rate")
+	public FxRateResponse exchangeRate(
+			@RequestParam String base,
+			@RequestParam String quote) {
+		return new FxRateResponse(
+				base.toUpperCase(),
+				quote.toUpperCase(),
+				marketDataService.getExchangeRate(base, quote),
+				java.time.Instant.now());
 	}
 
 	@PostMapping("/subscriptions/{ticker}")

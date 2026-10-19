@@ -22,9 +22,20 @@ import com.neueda.leap.model.Instrument;
 @Service
 public class MarketSessionService {
 
+    private static final Set<String> NASDAQ_ALIASES = Set.of(
+            "NASDAQ", "NMS", "NCM", "NGM", "NASDAQGS", "NASDAQGM", "NASDAQCM");
     private static final Set<String> SUPPORTED_US_EXCHANGES = Set.of("NYSE", "NASDAQ");
+    private static final Set<String> LSE_ALIASES = Set.of("LSE");
+    private static final Set<String> INDIA_EXCHANGE_ALIASES = Set.of("NSE", "NSI", "BSE");
     private static final LocalTime REGULAR_OPEN = LocalTime.of(9, 30);
     private static final LocalTime REGULAR_CLOSE = LocalTime.of(16, 0);
+    private static final LocalTime LSE_OPEN = LocalTime.of(8, 0);
+    private static final LocalTime LSE_CLOSE = LocalTime.of(16, 30);
+    private static final LocalTime INDIA_OPEN = LocalTime.of(9, 15);
+    private static final LocalTime INDIA_CLOSE = LocalTime.of(15, 30);
+    private static final ZoneId FOREX_ZONE = ZoneId.of("America/New_York");
+    private static final LocalTime FOREX_CLOSE_FRIDAY = LocalTime.of(17, 0);
+    private static final LocalTime FOREX_OPEN_SUNDAY = LocalTime.of(17, 0);
 
     private final ExchangeMapper exchangeMapper;
     private final Clock clock;
@@ -40,12 +51,32 @@ public class MarketSessionService {
                         new ObjectNotFoundException(
                                 "Exchange not found: " + instrument.getExchange()));
 
-        String exchangeId = exchange.getExchangeId().toUpperCase(Locale.ROOT);
+        String exchangeId = normalizeExchangeId(exchange.getExchangeId());
         if("CRYPTO".equals(exchangeId)){
             return;
         }
+        if ("FOREX".equals(exchangeId)) {
+            assertForexOpen();
+            return;
+        }
+        if ("LSE".equals(exchangeId)) {
+            assertRegularSessionOpen(
+                    exchangeId,
+                    ZoneId.of("Europe/London"),
+                    LSE_OPEN,
+                    LSE_CLOSE);
+            return;
+        }
+        if ("NSE".equals(exchangeId) || "BSE".equals(exchangeId)) {
+            assertRegularSessionOpen(
+                    exchangeId,
+                    ZoneId.of("Asia/Kolkata"),
+                    INDIA_OPEN,
+                    INDIA_CLOSE);
+            return;
+        }
         if (!SUPPORTED_US_EXCHANGES.contains(exchangeId)
-                || !"USA".equalsIgnoreCase(exchange.getRegion())) {
+                || !isUnitedStatesRegion(exchange.getRegion())) {
             throw new MarketClosedException(
                     "Unable to make trade at the moment; trading schedule is unavailable for "
                             + exchange.getExchangeId());
@@ -64,6 +95,51 @@ public class MarketSessionService {
                 || !isWithinRegularSession(exchange, now)) {
             throw new MarketClosedException(
                     "Unable to make trade at the moment; market is closed");
+        }
+    }
+
+    private void assertForexOpen() {
+        ZonedDateTime now = clock.instant().atZone(FOREX_ZONE);
+        DayOfWeek day = now.getDayOfWeek();
+        LocalTime time = now.toLocalTime();
+
+        boolean closed = day == DayOfWeek.SATURDAY
+                || (day == DayOfWeek.FRIDAY && !time.isBefore(FOREX_CLOSE_FRIDAY))
+                || (day == DayOfWeek.SUNDAY && time.isBefore(FOREX_OPEN_SUNDAY));
+        if (closed) {
+            throw new MarketClosedException(
+                    "Unable to make trade at the moment; the forex market is closed");
+        }
+
+    }
+    private String normalizeExchangeId(String exchangeId) {
+        String normalized = exchangeId.toUpperCase(Locale.ROOT);
+        if (NASDAQ_ALIASES.contains(normalized)) {
+            return "NASDAQ";
+        }
+        if (LSE_ALIASES.contains(normalized)) {
+            return "LSE";
+        }
+        if (INDIA_EXCHANGE_ALIASES.contains(normalized)) {
+            return normalized.equals("NSI") ? "NSE" : normalized;
+        }
+        return normalized;
+    }
+
+    private boolean isUnitedStatesRegion(String region) {
+        return "USA".equalsIgnoreCase(region) || "US".equalsIgnoreCase(region);
+    }
+
+    private void assertRegularSessionOpen(
+            String exchangeId,
+            ZoneId zone,
+            LocalTime open,
+            LocalTime close) {
+        ZonedDateTime now = clock.instant().atZone(zone);
+        LocalTime current = now.toLocalTime();
+        if (isWeekend(now) || current.isBefore(open) || !current.isBefore(close)) {
+            throw new MarketClosedException(
+                    "Unable to make trade at the moment; " + exchangeId + " market is closed");
         }
     }
 

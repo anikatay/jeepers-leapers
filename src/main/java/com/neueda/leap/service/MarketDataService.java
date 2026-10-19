@@ -3,6 +3,7 @@ package com.neueda.leap.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.client.MarketDataClient;
+import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.dto.response.MarketQuote;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +37,7 @@ public class MarketDataService implements IService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketDataService.class);
 
-    private static final Pattern TICKER_PATTERN = Pattern.compile("^[A-Z.\\-]{1,10}$");
+    private static final Pattern TICKER_PATTERN = Pattern.compile("^[A-Z0-9][A-Z0-9.\\-_=]{0,31}$");
     private static final String FETCH_PERIOD = "5y";
     private static final String NOT_FOUND_MARKER = "NOT_FOUND";
     private static final Duration HISTORY_TTL = Duration.ofHours(6);
@@ -46,12 +49,15 @@ public class MarketDataService implements IService {
     private static final String BATCH_LOCK_KEY = "market:subscription:batch-lock";
     private static final String BATCH_LAST_CALL_KEY = "market:subscription:last-upstream-call-ms";
     private static final String LATEST_QUOTE_PREFIX = "quote:latest:";
+    private static final Pattern CURRENCY_PATTERN = Pattern.compile("^[A-Z]{3}$");
+    private static final Set<String> SUPPORTED_CURRENCIES = Set.of("USD", "EUR", "INR", "GBP");
 
     private final long lockTtlSeconds;
     private final long refreshCooldownSeconds;
     private final long fetchRetryDelayMs;
     private final long hotWindowSeconds;
     private final long latestQuoteTtlSeconds;
+    private final long fxRateTtlSeconds;
 
 
     private final MarketDataClient client;
@@ -68,7 +74,8 @@ public class MarketDataService implements IService {
             @Value("${market.refresh-cooldown-seconds:180}") long refreshCooldownSeconds,
             @Value("${market.fetch-retry-delay-ms:120}") long fetchRetryDelayMs,
             @Value("${market.subscription.hot-window-seconds:120}") long hotWindowSeconds,
-            @Value("${quote.cache-ttl-seconds:60}") long latestQuoteTtlSeconds) {
+            @Value("${quote.cache-ttl-seconds:60}") long latestQuoteTtlSeconds,
+            @Value("${fx.rate-cache-ttl-seconds:60}") long fxRateTtlSeconds) {
         this.client = client;
         this.redis = redis;
         this.objectMapper = objectMapper;
@@ -78,6 +85,7 @@ public class MarketDataService implements IService {
         this.fetchRetryDelayMs = fetchRetryDelayMs;
         this.hotWindowSeconds = hotWindowSeconds;
         this.latestQuoteTtlSeconds = latestQuoteTtlSeconds;
+        this.fxRateTtlSeconds = fxRateTtlSeconds;
     }
 
     public String normalizeForSubscription(String rawTicker) {
@@ -127,6 +135,67 @@ public class MarketDataService implements IService {
             log.warn("Discarding unreadable latest quote cache entry {}", ticker, e);
             redis.delete(LATEST_QUOTE_PREFIX + ticker);
             return Optional.empty();
+        }
+    }
+
+    public BigDecimal getExchangeRate(String rawBaseCurrency, String rawQuoteCurrency) {
+        String baseCurrency = normalizeCurrency(rawBaseCurrency);
+        String quoteCurrency = normalizeCurrency(rawQuoteCurrency);
+        if (baseCurrency.equals(quoteCurrency)) {
+            return BigDecimal.ONE;
+        }
+
+        String cacheKey = "fx:rate:" + baseCurrency + ":" + quoteCurrency;
+        String lockKey = "lock:" + cacheKey;
+        String cached = readCache(cacheKey);
+        if (cached != null) {
+            try {
+                BigDecimal rate = new BigDecimal(cached);
+                if (rate.signum() > 0) {
+                    return rate;
+                }
+            } catch (NumberFormatException e) {
+                log.warn("Discarding invalid FX cache entry {}", cacheKey, e);
+                redis.delete(cacheKey);
+            }
+        }
+
+        Boolean lockAcquired = redis.opsForValue().setIfAbsent(
+                lockKey,
+                "1",
+                Duration.ofSeconds(lockTtlSeconds));
+        if (!Boolean.TRUE.equals(lockAcquired)) {
+            try {
+                Thread.sleep(fetchRetryDelayMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            String retryCache = readCache(cacheKey);
+            if (retryCache != null) {
+                try {
+                    BigDecimal rate = new BigDecimal(retryCache);
+                    if (rate.signum() > 0) {
+                        return rate;
+                    }
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid retry FX cache entry {}", cacheKey, e);
+                }
+            }
+            throw new MarketDataUnavailableException(
+                    "FX rate fetch already in progress for " + baseCurrency + "/" + quoteCurrency);
+        }
+
+        try {
+            FxRateResponse response = client.fetchExchangeRate(baseCurrency, quoteCurrency);
+            if (response.rate() == null || response.rate().signum() <= 0) {
+                throw new MarketDataUnavailableException(
+                        "Market service returned an invalid FX rate");
+            }
+            BigDecimal rate = response.rate().setScale(12, RoundingMode.HALF_UP);
+            writeCache(cacheKey, rate.toPlainString(), Duration.ofSeconds(fxRateTtlSeconds));
+            return rate;
+        } finally {
+            redis.delete(lockKey);
         }
     }
 
@@ -183,6 +252,15 @@ public class MarketDataService implements IService {
             throw new ObjectInvalidException("Invalid ticker: " + rawTicker);
         }
         return ticker;
+    }
+
+    private String normalizeCurrency(String rawCurrency) {
+        String currency = rawCurrency == null ? "" : rawCurrency.trim().toUpperCase();
+        if (!CURRENCY_PATTERN.matcher(currency).matches()
+                || !SUPPORTED_CURRENCIES.contains(currency)) {
+            throw new ObjectInvalidException("Unsupported currency: " + rawCurrency);
+        }
+        return currency;
     }
 
     private long readLong(String key, long defaultValue) {

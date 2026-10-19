@@ -14,6 +14,10 @@ public class Instrument {
 
     private String exchangeId;
 
+    private String currency = "USD";
+
+    private BigDecimal priceScale = BigDecimal.ONE;
+
     private BigDecimal currentPrice;
 
     private OffsetDateTime updatedAt;
@@ -32,6 +36,12 @@ public class Instrument {
 
     public String getExchange() { return exchangeId; }
     public void setExchange(String exchangeId) { this.exchangeId = exchangeId; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
+
+    public BigDecimal getPriceScale() { return priceScale; }
+    public void setPriceScale(BigDecimal priceScale) { this.priceScale = priceScale; }
 
     public BigDecimal getCurrentPrice() { return currentPrice; }
     public void setCurrentPrice(BigDecimal currentPrice) { this.currentPrice = currentPrice; }

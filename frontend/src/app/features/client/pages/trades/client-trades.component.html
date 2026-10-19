@@ -187,8 +187,8 @@
               </span>
             </td>
             <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ trade.qty }}</td>
-            <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">${{ trade.price.toFixed(2) }}</td>
-            <td class="py-3 font-mono font-semibold" style="color: var(--foreground);">${{ trade.total.toFixed(2) }}</td>
+            <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ formatCurrency(trade.price, trade.currency) }}</td>
+            <td class="py-3 font-mono font-semibold" style="color: var(--foreground);">{{ formatCurrency(trade.total, trade.currency) }}</td>
           </tr>
 
           <!-- Empty State -->
