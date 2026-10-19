@@ -10,6 +10,8 @@ INSERT INTO exchanges (exchange_id, "name", region, timezone, currency) VALUES
     ('LSE', 'London Stock Exchange', 'UK', 'Europe/London', 'GBP'),
     ('NSE', 'National Stock Exchange of India', 'INDIA', 'Asia/Kolkata', 'INR'),
     ('BSE', 'BSE India', 'INDIA', 'Asia/Kolkata', 'INR')
+    ('CRYPTO', 'Crypto currency', 'USA', 'America/New_York', 'USD')
+
 ON CONFLICT DO NOTHING;
 
 -- ── Users ────────────────────────────────────────────────────────────────────
@@ -53,7 +55,9 @@ INSERT INTO instruments (instrument_id, ticker, "name", exchange_id, current_pri
     ('b2000000-0000-0000-0000-000000000004', 'TSLA',  'Tesla Inc.',          'NASDAQ', 254.7500),
     ('b2000000-0000-0000-0000-000000000005', 'AMZN',  'Amazon.com Inc.',     'NASDAQ', 196.0000),
     ('b2000000-0000-0000-0000-000000000006', 'NVDA',  'NVIDIA Corp.',        'NASDAQ', 138.2500),
-    ('b2000000-0000-0000-0000-000000000007', 'META',  'Meta Platforms Inc.', 'NASDAQ', 575.5000)
+    ('b2000000-0000-0000-0000-000000000007', 'META',  'Meta Platforms Inc.', 'NASDAQ', 575.5000),
+    ('b2000000-0000-0000-0000-000000000008', 'BTC-USD',  'Bitcoin US dollar', 'CRYPTO', 575.5000)
+
 ON CONFLICT DO NOTHING;
 
 -- ── Holdings (portfolio holdings) ────────────────────────────────────────────
