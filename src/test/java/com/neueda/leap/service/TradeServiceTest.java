@@ -56,6 +56,9 @@ class TradeServiceTest {
     private HoldingService holdingService;
 
     @Mock
+    private MarketDataService marketDataService;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
@@ -78,6 +81,8 @@ class TradeServiceTest {
                     return instrument;
                 });
         lenient().when(accountService.getAccount(any(UUID.class))).thenReturn(activeAccount());
+        lenient().when(marketDataService.getExchangeRate(any(String.class), any(String.class)))
+                .thenReturn(BigDecimal.ONE);
         ReflectionTestUtils.setField(tradeService, "maxPriceAgeSeconds", 180L);
         lenient().doAnswer(invocation -> {
             if (invocation.getArgument(0) == null) {
@@ -303,7 +308,7 @@ class TradeServiceTest {
         Trade result = tradeService.createTrade(trade);
 
         assertNotNull(result);
-        assertEquals(BigDecimal.valueOf(1000), result.getTradeValue());
+        assertEquals(BigDecimal.valueOf(1000).setScale(4), result.getTradeValue());
         verify(tradeMapper, times(1)).createTrade(trade);
     }
 
@@ -336,12 +341,13 @@ class TradeServiceTest {
         Trade result = tradeService.createTrade(trade);
 
         assertNotNull(result.getExecutedAt());
-        assertEquals(BigDecimal.valueOf(500), result.getTradeValue());
+        assertEquals(BigDecimal.valueOf(500).setScale(4), result.getTradeValue());
         verify(tradeMapper, times(1)).createTrade(trade);
         verify(holdingService, times(1)).createHoldingInternal(any(Holding.class));
         verify(holdingService, never()).incrementHoldingQuantityInternal(
             any(UUID.class), any(UUID.class), any(BigDecimal.class));
-        verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(500));
+        verify(accountService, times(1)).decrementBalance(
+                accountId, BigDecimal.valueOf(500).setScale(4));
     }
 
     // Verifies BUY trades increment an existing holding.
@@ -374,11 +380,12 @@ class TradeServiceTest {
 
         Trade result = tradeService.createTrade(trade);
 
-        assertEquals(BigDecimal.valueOf(300), result.getTradeValue());
+        assertEquals(BigDecimal.valueOf(300).setScale(4), result.getTradeValue());
         verify(holdingService, never()).createHoldingInternal(any(Holding.class));
         verify(holdingService, times(1)).incrementHoldingQuantityInternal(
             accountId, instrumentId, BigDecimal.valueOf(3));
-        verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(300));
+        verify(accountService, times(1)).decrementBalance(
+                accountId, BigDecimal.valueOf(300).setScale(4));
     }
 
     // Verifies BUY trades increase quantity when holding already exists.
@@ -420,7 +427,8 @@ class TradeServiceTest {
         verify(holdingService, never()).createHoldingInternal(any(Holding.class));
         verify(holdingService, times(1)).incrementHoldingQuantityInternal(
             accountId, instrumentId, BigDecimal.valueOf(4));
-        verify(accountService, times(1)).decrementBalance(accountId, BigDecimal.valueOf(400));
+        verify(accountService, times(1)).decrementBalance(
+                accountId, BigDecimal.valueOf(400).setScale(4));
     }
 
     // Verifies BUY trades fail when account balance is insufficient.
@@ -482,10 +490,11 @@ class TradeServiceTest {
 
         Trade result = tradeService.createTrade(trade);
 
-        assertEquals(BigDecimal.valueOf(400), result.getTradeValue());
+        assertEquals(BigDecimal.valueOf(400).setScale(4), result.getTradeValue());
         verify(holdingService, times(1)).decrementHoldingQuantityInternal(
             accountId, instrumentId, BigDecimal.valueOf(4));
-        verify(accountService, times(1)).incrementBalance(accountId, BigDecimal.valueOf(400));
+        verify(accountService, times(1)).incrementBalance(
+                accountId, BigDecimal.valueOf(400).setScale(4));
     }
 
     // Verifies SELL trades fail when holding does not exist.

@@ -24,7 +24,6 @@ import java.time.LocalDate;
 import java.time.Instant;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +45,6 @@ public class MarketDataService implements IService {
     private static final String SUBSCRIPTION_COUNT_PREFIX = "market:subscription:count:";
     private static final String SUBSCRIPTION_HOT_UNTIL_PREFIX = "market:subscription:hot-until:";
     private static final String SUBSCRIPTION_LAST_REFRESH_PREFIX = "market:subscription:last-refresh:";
-    private static final String BATCH_LOCK_KEY = "market:subscription:batch-lock";
-    private static final String BATCH_LAST_CALL_KEY = "market:subscription:last-upstream-call-ms";
     private static final String LATEST_QUOTE_PREFIX = "quote:latest:";
     private static final Pattern CURRENCY_PATTERN = Pattern.compile("^[A-Z]{3}$");
     private static final Set<String> SUPPORTED_CURRENCIES = Set.of("USD", "EUR", "INR", "GBP");
