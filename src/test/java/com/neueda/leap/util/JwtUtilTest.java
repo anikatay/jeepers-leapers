@@ -32,8 +32,9 @@ class JwtUtilTest {
     @Test
     void generateTokenCreatesReadableToken() {
         UUID userId = UUID.randomUUID();
+        UUID accountId = UUID.randomUUID();
 
-        String token = jwtUtil.generateToken("alex@example.com", "ROLE_CUSTOMER", userId);
+        String token = jwtUtil.generateToken("alex@example.com", "ROLE_CUSTOMER", userId, accountId);
 
         assertEquals("alex@example.com", jwtUtil.extractUsername(token));
         assertTrue(jwtUtil.isTokenValid(token));

@@ -33,10 +33,6 @@ public class AccountService implements IService {
         this.holdingService = holdingService;
     }
 
-    public UUID getAccountIdByUserId(UUID userId){
-        return accountMapper.findAccountIdByUserId(userId);
-    }
-
     @Transactional 
     public Account createAccount(Account account){
         if(account == null){
