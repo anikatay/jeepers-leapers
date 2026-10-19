@@ -68,6 +68,7 @@ class MarketDataServiceTest {
             180,
             120,
             120,
+            60,
             60);
     }
 
