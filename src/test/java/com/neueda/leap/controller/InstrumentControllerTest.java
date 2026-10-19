@@ -115,8 +115,8 @@ class InstrumentControllerTest {
     // Verifies listing instruments returns 200 with the collection payload.
     @Test
     void testGetAllInstrumentsReturnsOk() throws Exception {
-        InstrumentResponse one = new InstrumentResponse(UUID.randomUUID(), "AAPL", "Apple Inc.", BigDecimal.valueOf(195.25), "XNYS");
-        InstrumentResponse two = new InstrumentResponse(UUID.randomUUID(), "MSFT", "Microsoft Corp.", BigDecimal.valueOf(401.75), "XNAS");
+        InstrumentResponse one = new InstrumentResponse(UUID.randomUUID(), "AAPL", "Apple Inc.", BigDecimal.valueOf(195.25), "XNYS","USD");
+        InstrumentResponse two = new InstrumentResponse(UUID.randomUUID(), "MSFT", "Microsoft Corp.", BigDecimal.valueOf(401.75), "XNAS","USD");
 
         when(instrumentService.findAllInstruments()).thenReturn(List.of(one, two));
 
