@@ -74,6 +74,9 @@ public class InstrumentService implements IService {
     }
 
     public Instrument getInstrumentByTicker(String ticker) {
+        if (ticker == null || ticker.isBlank()) {
+            throw new ObjectNotFoundException("Ticker cannot be empty");
+        }
         String normalizedTicker = normalizeTicker(ticker);
         Instrument instrument = instrumentMapper.findByTicker(normalizedTicker);
         if(instrument == null){
