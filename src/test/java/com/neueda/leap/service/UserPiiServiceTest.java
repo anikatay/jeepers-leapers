@@ -10,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -154,7 +155,7 @@ class UserPiiServiceTest {
                 userId,
                 "Alex",
                 "Smith",
-                OffsetDateTime.parse("1990-05-20T00:00:00Z"),
+                LocalDate.parse("1990-05-20"),
                 "111-22-3333",
                 "123 Main St",
                 "5550100",

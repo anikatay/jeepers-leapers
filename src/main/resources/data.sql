@@ -9,7 +9,7 @@ INSERT INTO exchanges (exchange_id, "name", region, timezone, currency) VALUES
     ('NASDAQ', 'NASDAQ', 'USA', 'America/New_York', 'USD'),
     ('LSE', 'London Stock Exchange', 'UK', 'Europe/London', 'GBP'),
     ('NSE', 'National Stock Exchange of India', 'INDIA', 'Asia/Kolkata', 'INR'),
-    ('BSE', 'BSE India', 'INDIA', 'Asia/Kolkata', 'INR')
+    ('BSE', 'BSE India', 'INDIA', 'Asia/Kolkata', 'INR'),
     ('CRYPTO', 'Crypto currency', 'USA', 'America/New_York', 'USD')
 
 ON CONFLICT DO NOTHING;

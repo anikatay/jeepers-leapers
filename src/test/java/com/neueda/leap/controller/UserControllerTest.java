@@ -14,6 +14,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -151,7 +152,7 @@ class UserControllerTest {
                 "ACTIVE",
                 "Alex",
                 "Smith",
-                OffsetDateTime.now().minusYears(30),
+                LocalDate.now().minusYears(30),
                 "111-22-3333",
                 "123 Main St",
                 "5550100",

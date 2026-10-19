@@ -3,6 +3,7 @@ package com.neueda.leap.model;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -35,7 +36,7 @@ class ModelTest {
     void testUserPiiAccessors() {
         UserPii userPii = new UserPii();
         UUID userId = UUID.randomUUID();
-        OffsetDateTime dob = OffsetDateTime.parse("1990-05-20T00:00:00Z");
+        LocalDate dob = LocalDate.parse("1990-05-20");
 
         userPii.setUserId(userId);
         userPii.setFirstName("Alex");

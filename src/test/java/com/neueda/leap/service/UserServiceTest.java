@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -90,7 +91,7 @@ class UserServiceTest {
     void createUserRejectsMinor() {
         UUID userId = UUID.randomUUID();
         UserPii userPii = adultUserPii(userId);
-        userPii.setDateOfBirth(OffsetDateTime.now().minusYears(17));
+        userPii.setDateOfBirth(LocalDate.now().minusYears(17));
 
         assertThrows(ObjectInvalidException.class,
                 () -> userService.createUser(new User(userId, "ROLE_CUSTOMER", "ACTIVE"), userPii));
@@ -173,7 +174,7 @@ class UserServiceTest {
                 userId,
                 "Alex",
                 "Smith",
-                OffsetDateTime.now().minusYears(30),
+                LocalDate.now().minusYears(30),
                 "111-22-3333",
                 "123 Main St",
                 "555-0100",
