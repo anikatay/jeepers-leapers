@@ -69,7 +69,7 @@ class TradeControllerTest {
         created.setExecutedAt(OffsetDateTime.now());
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
-        when(tradeService.createTrade(any(Trade.class))).thenReturn(created);
+        when(tradeService.createTrade(any(Trade.class), null)).thenReturn(created);
 
         mockMvc.perform(post("/api/trades")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -101,7 +101,7 @@ class TradeControllerTest {
         UUID instrumentId = UUID.randomUUID();
                 TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", BigDecimal.valueOf(10));
 
-        when(tradeService.createTrade(any(Trade.class)))
+        when(tradeService.createTrade(any(Trade.class), null))
                 .thenThrow(new ObjectNotFoundException("Instrument not found: " + instrumentId));
 
         mockMvc.perform(post("/api/trades")
@@ -123,7 +123,7 @@ class TradeControllerTest {
         instrument.setCurrentPrice(BigDecimal.valueOf(100.50));
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
-        when(tradeService.createTrade(any(Trade.class)))
+        when(tradeService.createTrade(any(Trade.class), null))
                 .thenThrow(new ObjectInvalidException("Insufficient balance for trade"));
 
         mockMvc.perform(post("/api/trades")
@@ -145,7 +145,7 @@ class TradeControllerTest {
         instrument.setCurrentPrice(BigDecimal.valueOf(100.50));
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
-        when(tradeService.createTrade(any(Trade.class))).thenThrow(new RuntimeException("unexpected"));
+        when(tradeService.createTrade(any(Trade.class), null)).thenThrow(new RuntimeException("unexpected"));
 
         mockMvc.perform(post("/api/trades")
                         .contentType(MediaType.APPLICATION_JSON)

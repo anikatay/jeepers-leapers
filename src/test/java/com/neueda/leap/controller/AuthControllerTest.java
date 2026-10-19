@@ -41,7 +41,7 @@ class AuthControllerTest {
         when(authService.login(email, "password")).thenReturn("ROLE_CUSTOMER");
         when(authService.getUserIdByEmail(email)).thenReturn(userId);
         when(authService.getAccountIdByUserId(userId)).thenReturn(accountId);
-        when(jwtUtil.generateToken(email, "ROLE_CUSTOMER", userId)).thenReturn("jwt-token");
+        when(jwtUtil.generateToken(email, "ROLE_CUSTOMER", userId, accountId)).thenReturn("jwt-token");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -52,7 +52,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.accountId").value(accountId.toString()))
                 .andExpect(jsonPath("$.role").value("ROLE_CUSTOMER"));
 
-        verify(jwtUtil).generateToken(eq(email), eq("ROLE_CUSTOMER"), eq(userId));
+        verify(jwtUtil).generateToken(eq(email), eq("ROLE_CUSTOMER"), eq(userId), eq(accountId));
     }
 
     @Test
