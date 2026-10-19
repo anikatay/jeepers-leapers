@@ -1,569 +1,531 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, HostListener, WritableSignal, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslationService } from '../../../../core/services/translation.service';
 import {
   AnalystDataSource,
-  AnalystInstrument,
   AnalystMockDataSource,
-  AnalystTrade
+  AnalystSnapshot,
+  AnalystTrade,
+  PriceBar
 } from '../../data-access/analyst-data-source';
 
 type Period = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
-type Metric = 'Both' | 'Buy' | 'Sell' | 'Profit/Loss';
-type ChartType = 'Line' | 'Bar' | 'Candlestick';
-type Scope = 'All Users' | 'Specific User' | 'Specific Account';
-type SortOrder = 'Newest' | 'Oldest' | 'Highest value' | 'Lowest value';
-type VolumeMode = 'Buy' | 'Sell' | 'Both' | 'Net Flow';
-type VolumeChartType = 'Area' | 'Line' | 'Bar' | 'Stacked Bar';
-type VolumeGrouping = 'Hourly' | 'Daily' | 'Weekly' | 'Monthly';
-type VolumePeriod = Period | 'Custom';
+type ChartMode = 'line' | 'candles';
+type Flow = 'BUY' | 'SELL' | 'BOTH' | 'NET';
+type VolumeView = 'bars' | 'line' | 'area';
+type Side = 'ALL' | 'BUY' | 'SELL';
+type Sort = 'newest' | 'oldest' | 'value' | 'pnl';
+type Menu = 'compare' | 'volume' | 'filters';
 
-interface ChartRow {
-  date: string;
-  label: string;
-  buy: number;
-  sell: number;
-  total: number;
-  profitLoss: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
+interface Scale {
+  min: number;
+  max: number;
+  ticks: number[];
 }
 
-interface ChartSeries {
-  symbol: string;
-  color: string;
-  rows: ChartRow[];
+interface Kpi {
+  label: string;
+  value: string;
+  tone?: 'up' | 'down';
+  delta?: number;
+  note: string;
 }
 
-interface VolumeRow {
-  label: string;
+interface Bucket {
   date: string;
   buy: number;
   sell: number;
-  total: number;
   net: number;
   trades: number;
 }
+
+const PERIOD_SESSIONS: Record<Period, number> = { '1D': 1, '1W': 5, '1M': 21, '3M': 63, '1Y': 252, ALL: Infinity };
+const MAX_SERIES = 4;
+const MAX_CANDLES = 80;
+const FLAT_BAND = 0.005;
+const TABLE_LIMIT = 100;
+const DONUT_RADIUS = 38.3;
+
+const SORTS: Record<Sort, (left: AnalystTrade, right: AnalystTrade) => number> = {
+  newest: (left, right) => right.executedAt.localeCompare(left.executedAt),
+  oldest: (left, right) => left.executedAt.localeCompare(right.executedAt),
+  value: (left, right) => right.tradeValue - left.tradeValue,
+  pnl: (left, right) => right.pnl - left.pnl
+};
+
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const usdCents = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const usdCompact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 2 });
+const count = new Intl.NumberFormat('en-US');
+const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 
 @Component({
   selector: 'app-analyst-dashboard',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  providers: [
-    { provide: AnalystDataSource, useClass: AnalystMockDataSource }
-  ],
+  providers: [{ provide: AnalystDataSource, useClass: AnalystMockDataSource }],
   templateUrl: './analyst-dashboard.component.html',
   styleUrl: './analyst-dashboard.component.css'
 })
 export class AnalystDashboardComponent {
-  private readonly axisFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    notation: 'compact',
-    maximumFractionDigits: 1
-  });
-
-  private readonly seriesPalette = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#64748b'];
-  readonly gridLevels = [0, 25, 50, 75];
   readonly periods: Period[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
-  readonly metrics: Metric[] = ['Both', 'Buy', 'Sell', 'Profit/Loss'];
-  readonly chartTypes: ChartType[] = ['Line', 'Bar', 'Candlestick'];
-  readonly scopes: Scope[] = ['All Users', 'Specific User', 'Specific Account'];
+  readonly flows: { key: Flow; label: string }[] = [
+    { key: 'BOTH', label: 'Buy & Sell' },
+    { key: 'BUY', label: 'Buy' },
+    { key: 'SELL', label: 'Sell' },
+    { key: 'NET', label: 'Net Flow' }
+  ];
+  readonly maxSeries = MAX_SERIES;
+  readonly tableLimit = TABLE_LIMIT;
 
-  period = signal<Period>('3M');
-  metric = signal<Metric>('Both');
-  chartType = signal<ChartType>('Line');
-  scope = signal<Scope>('All Users');
-  scopeSearch = signal('');
-  comparisonOpen = signal(false);
-  comparisonSearch = signal('');
-  percentage = signal(false);
-  hoverIndex = signal<number | null>(null);
-  selectedStock = signal<string | null>(null);
-  search = signal('');
-  activityDate = signal('');
-  sideFilter = signal('All');
-  instrumentFilter = signal('All');
-  sortOrder = signal<SortOrder>('Newest');
-  selectedSymbols = signal<string[]>([]);
-  trades = signal<AnalystTrade[]>([]);
-  instruments = signal<AnalystInstrument[]>([]);
-  loading = signal(true);
-  error = signal(false);
-  selectedTrade = signal<AnalystTrade | null>(null);
-  volumeMode = signal<VolumeMode>('Both');
-  volumeChartType = signal<VolumeChartType>('Stacked Bar');
-  volumeGrouping = signal<VolumeGrouping>('Weekly');
-  volumeStock = signal('All');
-  volumeUser = signal('All');
-  volumeAccount = signal('All');
-  volumePeriod = signal<VolumePeriod>('3M');
-  volumeStartDate = signal('2026-09-01');
-  volumeEndDate = signal('2026-10-16');
-  readonly volumeRangeMin = '2026-09-01';
-  readonly volumeRangeMax = '2026-10-16';
-  volumeTooltip = signal<VolumeRow | null>(null);
-  selectedVolumePoint = signal<VolumeRow | null>(null);
+  readonly snapshot = signal<AnalystSnapshot | null>(null);
+  readonly error = signal(false);
+  readonly menu = signal<Menu | null>(null);
+  readonly period = signal<Period>('3M');
+  readonly mode = signal<ChartMode>('line');
+  readonly selected = signal<string[]>([]);
+  readonly compareQuery = signal('');
+  readonly hover = signal<number | null>(null);
+  readonly outcomeHover = signal<string | null>(null);
+  readonly volumePeriod = signal<Period>('3M');
+  readonly flow = signal<Flow>('BOTH');
+  readonly volumeView = signal<VolumeView>('bars');
+  readonly volumeHover = signal<number | null>(null);
+  readonly search = signal('');
+  readonly side = signal<Side>('ALL');
+  readonly symbol = signal('ALL');
+  readonly account = signal('ALL');
+  readonly dateFrom = signal('');
+  readonly dateTo = signal('');
+  readonly sort = signal<Sort>('newest');
 
-  filteredTrades = computed(() => {
-    const cutoff = this.periodCutoff();
-    const search = this.search().trim().toLowerCase();
-    return this.trades()
-      .filter(trade => new Date(trade.executedAt).getTime() >= cutoff)
-      .filter(trade => this.sideFilter() === 'All' || trade.side.toUpperCase() === this.sideFilter())
-      .filter(trade => this.instrumentFilter() === 'All' || trade.ticker === this.instrumentFilter())
-      .filter(trade => !search || `${trade.ticker} ${trade.name} ${trade.accountId}`.toLowerCase().includes(search))
-      .sort((left, right) => this.compareTrades(left, right));
+  readonly instruments = computed(() => this.snapshot()?.instruments ?? []);
+
+  readonly compareOptions = computed(() => {
+    const query = this.compareQuery().trim().toLowerCase();
+    return this.instruments().filter(item => !query || `${item.ticker} ${item.name}`.toLowerCase().includes(query));
   });
 
-  activityTrades = computed(() => this.filteredTrades()
-    .filter(trade => !this.activityDate() || trade.executedAt.slice(0, 10) === this.activityDate()));
-
-  chartRows = computed<ChartRow[]>(() => {
-    const trades = this.filteredTrades().filter(trade => this.selectedSymbols().includes(trade.ticker) && this.matchesScope(trade));
-    return this.groupRows(trades).slice(-12);
+  private readonly sessions = computed(() => {
+    const snapshot = this.snapshot();
+    return snapshot ? (snapshot.history[snapshot.instruments[0]?.ticker] ?? []).map(bar => bar.date) : [];
   });
 
-  chartSeries = computed<ChartSeries[]>(() => {
-    const dates = this.chartRows().map(row => row.date);
-    const scoped = this.filteredTrades().filter(trade => this.matchesScope(trade));
-    return this.selectedSymbols().map((symbol, index) => {
-      const byDate = new Map(this.groupRows(scoped.filter(trade => trade.ticker === symbol)).map((row): [string, ChartRow] => [row.date, row]));
-      return {
-        symbol,
-        color: this.seriesPalette[index % this.seriesPalette.length],
-        rows: dates.map(date => byDate.get(date) ?? this.emptyRow(date))
-      };
-    });
+  readonly periodTrades = computed(() => this.tradesIn(this.period()));
+
+  readonly kpis = computed<Kpi[]>(() => {
+    const period = this.period();
+    const { from, previous } = this.window(period);
+    const now = summarize(this.periodTrades());
+    const prior = previous === null ? null : summarize((this.snapshot()?.trades ?? []).filter(trade => {
+      const day = trade.executedAt.slice(0, 10);
+      return day > previous && day <= from;
+    }));
+    const span = period === '1D' ? 'session' : period;
+    const note = prior ? `vs prior ${span}` : 'All recorded activity';
+    return [
+      { label: 'Total Trading Volume', value: usdCompact.format(now.volume), delta: change(now.volume, prior?.volume), note },
+      { label: 'Total Trades', value: count.format(now.trades), delta: change(now.trades, prior?.trades), note },
+      { label: 'Active Accounts', value: count.format(now.accounts), delta: change(now.accounts, prior?.accounts), note },
+      {
+        label: 'Net P/L',
+        value: signed(now.pnl, usd),
+        tone: now.pnl >= 0 ? 'up' : 'down',
+        note: prior ? `Prior ${span}: ${signed(prior.pnl, usd)}` : 'Realized and marked to last close'
+      }
+    ];
   });
 
-  candleRows = computed<ChartRow[]>(() => {
-    const rows = this.chartSeries()[0]?.rows ?? [];
-    // Mock data has no intraday history, so each candle opens at the previous close.
-    let previousClose = rows.find(row => row.total > 0)?.open ?? 0;
-    return rows.map(row => {
-      if (row.total <= 0) return row;
-      const open = previousClose;
-      const close = row.close;
-      previousClose = close;
-      return { ...row, open, close, high: Math.max(row.high, open, close), low: Math.min(row.low, open, close) };
-    });
-  });
-
-  legendSeries = computed(() => this.chartType() === 'Candlestick' ? this.chartSeries().slice(0, 1) : this.chartSeries());
-
-  isPercent = computed(() => this.percentage() && this.metric() === 'Both' && this.chartType() !== 'Candlestick');
-
-  headline = computed(() => {
-    const values = this.chartRows().map(row => this.metricValue(row));
-    if (!values.length) return null;
-    const sum = values.reduce((total, value) => total + value, 0);
-    const first = values[0];
-    const change = first ? ((values[values.length - 1] - first) / Math.abs(first)) * 100 : 0;
-    return {
-      value: this.isPercent() ? sum / values.length : sum,
-      change: Math.abs(change),
-      up: change >= 0
+  readonly outcomes = computed(() => {
+    const accounts = new Map<string, { pnl: number; notional: number }>();
+    for (const trade of this.periodTrades()) {
+      const account = accounts.get(trade.accountId) ?? { pnl: 0, notional: 0 };
+      account.pnl += trade.pnl;
+      account.notional += trade.tradeValue;
+      accounts.set(trade.accountId, account);
+    }
+    const parts = {
+      up: { key: 'up', label: 'Profitable', count: 0, pnl: 0 },
+      down: { key: 'down', label: 'Losing', count: 0, pnl: 0 },
+      flat: { key: 'flat', label: 'Flat', count: 0, pnl: 0 }
     };
-  });
-
-  hoveredPoint = computed(() => {
-    const index = this.hoverIndex();
-    return index === null ? null : this.chartRows()[index] ?? null;
-  });
-
-  hoveredCandle = computed(() => {
-    const index = this.hoverIndex();
-    const row = index === null ? undefined : this.candleRows()[index];
-    return row && row.total > 0 ? row : null;
-  });
-
-  hoveredSeries = computed(() => {
-    const index = this.hoverIndex();
-    if (index === null) return [];
-    return this.chartSeries().map(series => {
-      const value = this.metricValue(series.rows[index]);
-      return { symbol: series.symbol, color: series.color, value, x: this.chartX(index), y: this.yPercent(value) };
+    for (const { pnl, notional } of accounts.values()) {
+      const part = Math.abs(pnl) <= notional * FLAT_BAND ? parts.flat : pnl > 0 ? parts.up : parts.down;
+      part.count++;
+      part.pnl += pnl;
+    }
+    const total = accounts.size;
+    const list = Object.values(parts);
+    const gap = list.filter(part => part.count).length > 1 ? 1.2 : 0;
+    let offset = 0;
+    const segments = list.map(part => {
+      const pct = total ? (part.count / total) * 100 : 0;
+      const length = Math.max(0, pct - gap);
+      const angle = ((offset + pct / 2) / 100) * 2 * Math.PI;
+      const segment = {
+        ...part,
+        pct,
+        dash: `${length} ${100 - length}`,
+        offset: -offset,
+        tipX: 50 + DONUT_RADIUS * Math.sin(angle),
+        tipY: 50 - DONUT_RADIUS * Math.cos(angle)
+      };
+      offset += pct;
+      return segment;
     });
+    const majority = total ? segments.reduce((best, part) => (part.count > best.count ? part : best)) : null;
+    return { total, segments, majority };
   });
 
-  tooltipFlip = computed(() => (this.hoverIndex() ?? 0) > this.chartRows().length / 2);
+  readonly hoveredOutcome = computed(() => this.outcomes().segments.find(part => part.key === this.outcomeHover()) ?? null);
 
-  endTags = computed(() => this.chartSeries().filter(series => series.rows.length).map(series => {
-    const value = this.lastValue(series);
-    return { symbol: series.symbol, color: series.color, y: Math.min(97, Math.max(3, this.yPercent(value))), label: this.formatAxis(value) };
+  readonly series = computed(() => this.selected().map((ticker, index) => {
+    const bars = this.barsFor(ticker);
+    const base = bars[0]?.close || 1;
+    const values = bars.map(bar => (bar.close / base - 1) * 100);
+    const name = this.instruments().find(item => item.ticker === ticker)?.name ?? ticker;
+    return { ticker, name, bars, values, color: `var(--s${index + 1})`, change: values[values.length - 1] ?? 0 };
   }));
 
-  volumeRows = computed<VolumeRow[]>(() => {
-    const filtered = this.trades().filter(trade =>
-      (this.volumeStock() === 'All' || trade.ticker === this.volumeStock()) &&
-      (this.volumeUser() === 'All' || this.volumeUser() === this.volumeUserForTrade(trade)) &&
-      (this.volumeAccount() === 'All' || trade.accountId === this.volumeAccount()) &&
-      this.inVolumeDateRange(trade)
-    );
-    const groups = new Map<string, VolumeRow>();
-    for (const trade of filtered) {
-      const pointDate = new Date(trade.executedAt);
-      const key = this.volumeGroupKey(pointDate);
-      const row = groups.get(key) ?? { label: this.volumeLabel(pointDate), date: pointDate.toISOString().slice(0, 10), buy: 0, sell: 0, total: 0, net: 0, trades: 0 };
-      const value = Number(trade.tradeValue) || 0;
-      if (trade.side === 'BUY') row.buy += value;
-      else row.sell += value;
-      row.total += value;
-      row.net = row.buy - row.sell;
-      row.trades += 1;
-      groups.set(key, row);
+  readonly candleSpan = computed(() => Math.max(1, Math.ceil(this.barsFor(this.selected()[0]).length / MAX_CANDLES)));
+
+  readonly candles = computed(() => groupBars(this.barsFor(this.selected()[0]), this.candleSpan()));
+
+  readonly primary = computed(() => {
+    const bars = this.candles();
+    const instrument = this.instruments().find(item => item.ticker === this.selected()[0]);
+    return bars.length && instrument
+      ? { ...instrument, close: bars[bars.length - 1].close, change: (bars[bars.length - 1].close / bars[0].open - 1) * 100 }
+      : null;
+  });
+
+  readonly dates = computed(() => (this.mode() === 'line' ? this.series()[0]?.bars ?? [] : this.candles()).map(bar => bar.date));
+
+  readonly scale = computed(() => niceScale(this.mode() === 'line'
+    ? this.series().flatMap(item => item.values)
+    : this.candles().flatMap(bar => [bar.high, bar.low])));
+
+  readonly volumeMax = computed(() => Math.max(1, ...this.candles().map(bar => bar.volume)));
+
+  readonly buckets = computed(() => {
+    const period = this.volumePeriod();
+    const buckets = new Map<string, Bucket>();
+    for (const trade of this.tradesIn(period)) {
+      const key = bucketKey(trade.executedAt, period);
+      const bucket = buckets.get(key) ?? { date: key, buy: 0, sell: 0, net: 0, trades: 0 };
+      if (trade.side === 'BUY') bucket.buy += trade.tradeValue;
+      else bucket.sell += trade.tradeValue;
+      bucket.net = bucket.buy - bucket.sell;
+      bucket.trades++;
+      buckets.set(key, bucket);
     }
-    return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, row]) => row).slice(-16);
+    return [...buckets.values()].sort((left, right) => left.date.localeCompare(right.date));
   });
 
-  totalVolume = computed(() => this.filteredTrades().reduce((sum, trade) => sum + (Number(trade.tradeValue) || 0), 0));
-  buyCount = computed(() => this.filteredTrades().filter(trade => trade.side.toUpperCase() === 'BUY').length);
-  sellCount = computed(() => this.filteredTrades().filter(trade => trade.side.toUpperCase() === 'SELL').length);
-  valueDomain = computed(() => {
-    const values = this.chartType() === 'Line'
-      ? this.chartSeries().flatMap(series => series.rows.map(row => this.metricValue(row)))
-      : this.chartRows().map(row => this.metricValue(row));
-    const low = Math.min(0, ...values);
-    const high = Math.max(0, ...values);
-    return { low, high: high > low ? high : low + 1 };
+  readonly volumeSeries = computed(() => ({
+    dates: this.buckets().map(bucket => bucket.date),
+    buy: this.buckets().map(bucket => bucket.buy),
+    sell: this.buckets().map(bucket => bucket.sell),
+    flow: this.buckets().map(bucket => this.flowValue(bucket))
+  }));
+
+  readonly volumeTotals = computed(() => {
+    const buy = this.buckets().reduce((sum, bucket) => sum + bucket.buy, 0);
+    const sell = this.buckets().reduce((sum, bucket) => sum + bucket.sell, 0);
+    return { buy, sell, net: buy - sell };
   });
 
-  priceDomain = computed(() => {
-    const rows = this.candleRows().filter(row => row.total > 0);
-    if (!rows.length) return { low: 0, high: 1 };
-    const low = Math.min(...rows.map(row => row.low));
-    const high = Math.max(...rows.map(row => row.high));
-    const pad = Math.max((high - low) * 0.08, 1);
-    return { low: low - pad, high: high + pad };
+  readonly volumeScale = computed(() => {
+    const flow = this.flow();
+    const stacked = flow === 'BOTH' && this.volumeView() === 'bars';
+    return niceScale([0, ...this.buckets().flatMap(bucket =>
+      flow === 'BOTH' ? (stacked ? [bucket.buy + bucket.sell] : [bucket.buy, bucket.sell]) : [this.flowValue(bucket)])], 4);
   });
 
-  chartDomain = computed(() => this.chartType() === 'Candlestick' ? this.priceDomain() : this.valueDomain());
+  readonly volumeViews = computed(() => [
+    { key: 'bars' as const, label: this.flow() === 'BOTH' ? 'Stacked bar' : 'Bar' },
+    { key: 'line' as const, label: 'Line' },
+    { key: 'area' as const, label: 'Area' }
+  ]);
 
-  axisLabels = computed(() => {
-    const { low, high } = this.chartDomain();
-    return [0, 1, 2, 3, 4].map(step => ({
-      top: step * 25,
-      text: this.formatAxis(high - ((high - low) / 4) * step)
-    }));
+  readonly volumeLabel = computed(() =>
+    `${this.flows.find(item => item.key === this.flow())!.label} · ${this.volumeViews().find(item => item.key === this.volumeView())!.label}`);
+
+  readonly accounts = computed(() => [...new Set(this.periodTrades().map(trade => trade.accountId))].sort());
+
+  readonly activeFilters = computed(() =>
+    [this.symbol() !== 'ALL', this.side() !== 'ALL', this.account() !== 'ALL', !!this.dateFrom(), !!this.dateTo()].filter(Boolean).length);
+
+  readonly activity = computed(() => {
+    const query = this.search().trim().toLowerCase();
+    const from = this.dateFrom();
+    const to = this.dateTo();
+    return this.periodTrades()
+      .filter(trade => {
+        const day = trade.executedAt.slice(0, 10);
+        return (this.side() === 'ALL' || trade.side === this.side()) &&
+          (this.symbol() === 'ALL' || trade.ticker === this.symbol()) &&
+          (this.account() === 'ALL' || trade.accountId === this.account()) &&
+          (!from || day >= from) && (!to || day <= to) &&
+          (!query || `${trade.ticker} ${trade.name} ${trade.accountId}`.toLowerCase().includes(query));
+      })
+      .sort(SORTS[this.sort()]);
   });
-  volumeMax = computed(() => Math.max(...this.volumeRows().map(row => this.volumeValue(row)), 1));
 
-  constructor(
-    private dataSource: AnalystDataSource,
-    private translationService: TranslationService
-  ) {
+  constructor(private dataSource: AnalystDataSource) {
+    this.load();
+  }
+
+  @HostListener('document:click')
+  @HostListener('document:keydown.escape')
+  closeMenu(): void {
+    this.menu.set(null);
+  }
+
+  load(): void {
+    this.error.set(false);
     this.dataSource.load().subscribe({
       next: snapshot => {
-        this.instruments.set(snapshot.instruments);
-        this.trades.set(snapshot.trades);
-        this.selectedSymbols.set(snapshot.instruments.slice(0, 2).map(instrument => instrument.ticker));
-        this.loading.set(false);
+        this.snapshot.set(snapshot);
+        this.selected.set(snapshot.instruments.slice(0, 2).map(item => item.ticker));
       },
-      error: () => {
-        this.error.set(true);
-        this.loading.set(false);
-      }
+      error: () => this.error.set(true)
     });
   }
 
-  text(key: string, fallback: string): string {
-    return this.translationService.translate(key, fallback);
+  toggleMenu(menu: Menu, event: Event): void {
+    event.stopPropagation();
+    this.compareQuery.set('');
+    this.menu.set(this.menu() === menu ? null : menu);
   }
 
-  toggleSymbol(symbol: string): void {
-    const selected = this.selectedSymbols();
-    this.selectedSymbols.set(selected.includes(symbol)
-      ? selected.filter(item => item !== symbol)
-      : [...selected, symbol].slice(-4));
+  toggleSeries(ticker: string): void {
+    const selected = this.selected();
+    if (this.mode() === 'candles') {
+      this.selected.set([ticker, ...selected.filter(item => item !== ticker)].slice(0, MAX_SERIES));
+      this.menu.set(null);
+    } else if (selected.includes(ticker)) {
+      if (selected.length > 1) this.selected.set(selected.filter(item => item !== ticker));
+    } else if (selected.length < MAX_SERIES) {
+      this.selected.set([...selected, ticker]);
+    }
   }
 
-  isSelected(symbol: string): boolean {
-    return this.selectedSymbols().includes(symbol);
+  clearFilters(): void {
+    this.symbol.set('ALL');
+    this.side.set('ALL');
+    this.account.set('ALL');
+    this.dateFrom.set('');
+    this.dateTo.set('');
   }
 
-  openStockDetails(symbol: string): void {
-    this.selectedStock.set(symbol);
+  flowValue(bucket: Bucket): number {
+    const flow = this.flow();
+    return flow === 'BUY' ? bucket.buy : flow === 'SELL' ? bucket.sell : flow === 'NET' ? bucket.net : bucket.buy + bucket.sell;
   }
 
-  stockDetails(): AnalystInstrument | undefined {
-    return this.instruments().find(instrument => instrument.ticker === this.selectedStock());
+  x(index: number, total: number): number {
+    return ((index + 0.5) / Math.max(total, 1)) * 100;
   }
 
-  stockTrades(): AnalystTrade[] {
-    return this.trades().filter(trade => trade.ticker === this.selectedStock()).slice(0, 4);
+  y(value: number, scale: Scale): number {
+    return 100 - ((value - scale.min) / (scale.max - scale.min)) * 100;
   }
 
-  stockBuyTotal(): number {
-    return this.stockTrades().filter(trade => trade.side === 'BUY').reduce((total, trade) => total + trade.tradeValue, 0);
+  path(values: number[], scale: Scale, fill = false): string {
+    const points = values.map((value, index): [number, number] => [this.x(index, values.length), this.y(value, scale)]);
+    const line = monotonePath(points);
+    if (!fill || !points.length) return line;
+    const base = this.y(Math.max(scale.min, 0), scale);
+    return `${line} L${points[points.length - 1][0]},${base} L${points[0][0]},${base} Z`;
   }
 
-  stockSellTotal(): number {
-    return this.stockTrades().filter(trade => trade.side === 'SELL').reduce((total, trade) => total + trade.tradeValue, 0);
+  barWidth(total: number, ratio = 0.62): number {
+    return Math.min(6, (100 / Math.max(total, 1)) * ratio);
   }
 
-  tradeProfitLoss(trade: AnalystTrade): number {
-    return trade.side === 'SELL' ? trade.tradeValue * 0.09 : -trade.tradeValue * 0.015;
+  box(from: number, to: number, scale: Scale): { y: number; height: number } {
+    const top = this.y(Math.max(from, to), scale);
+    return { y: top, height: Math.max(0.35, this.y(Math.min(from, to), scale) - top) };
   }
 
-  metricValue(row: ChartRow): number {
-    if (this.metric() === 'Buy') return row.buy;
-    if (this.metric() === 'Sell') return row.sell;
-    if (this.metric() === 'Profit/Loss') return row.profitLoss;
-    if (this.percentage()) return row.total ? (row.profitLoss / row.total) * 100 : 0;
-    return row.total;
-  }
-
-  comparisonInstruments(): AnalystInstrument[] {
-    const query = this.comparisonSearch().trim().toLowerCase();
-    return this.instruments().filter(instrument =>
-      `${instrument.ticker} ${instrument.name}`.toLowerCase().includes(query)
-    );
-  }
-
-  removeSymbol(symbol: string): void {
-    this.selectedSymbols.set(this.selectedSymbols().filter(item => item !== symbol));
-  }
-
-  scopeOptions(): string[] {
-    const values = this.trades().map(trade => this.scope() === 'Specific User' ? trade.accountId.replace('ANALYST-', 'Analyst ') : trade.accountId);
-    return [...new Set(values)];
-  }
-
-  yPercent(value: number): number {
-    const { low, high } = this.chartDomain();
-    return 100 - ((value - low) / (high - low)) * 100;
-  }
-
-  candleTop(row: ChartRow): number {
-    return Math.min(this.yPercent(row.open), this.yPercent(row.close));
-  }
-
-  candleHeight(row: ChartRow): number {
-    return Math.max(1.5, Math.abs(this.yPercent(row.open) - this.yPercent(row.close)));
-  }
-
-  candleWidth(): number {
-    return Math.min(4.2, (100 / Math.max(this.chartRows().length, 1)) * 0.5);
-  }
-
-  private matchesScope(trade: AnalystTrade): boolean {
-    if (this.scope() === 'All Users' || !this.scopeSearch().trim()) return true;
-    const query = this.scopeSearch().trim().toLowerCase();
-    const value = this.scope() === 'Specific User' ? trade.accountId.replace('ANALYST-', 'Analyst ') : trade.accountId;
-    return value.toLowerCase().includes(query);
-  }
-
-  linePoints(series: ChartSeries): string {
-    return series.rows
-      .map((row, index) => `${this.chartX(index)},${this.yPercent(this.metricValue(row))}`)
-      .join(' ');
-  }
-
-  areaPoints(series: ChartSeries): string {
-    if (!series.rows.length) return '';
-    return `${this.chartX(0)},100 ${this.linePoints(series)} ${this.chartX(series.rows.length - 1)},100`;
-  }
-
-  onPlotMove(event: MouseEvent): void {
-    const count = this.chartRows().length;
+  track(event: MouseEvent, total: number, target: WritableSignal<number | null>): void {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    if (!count || !rect.width) return;
-    const index = Math.floor(((event.clientX - rect.left) / rect.width) * count);
-    this.hoverIndex.set(Math.min(count - 1, Math.max(0, index)));
+    if (!total || !rect.width) return;
+    target.set(Math.min(total - 1, Math.max(0, Math.floor(((event.clientX - rect.left) / rect.width) * total))));
   }
 
-  seriesColor(symbol: string): string {
-    const index = Math.max(0, this.selectedSymbols().indexOf(symbol));
-    return this.seriesPalette[index % this.seriesPalette.length];
+  xTicks(dates: string[], period: Period): { x: number; label: string }[] {
+    if (dates.length < 2) return [];
+    const steps = Math.min(5, dates.length - 1);
+    return Array.from({ length: steps + 1 }, (_, step) => {
+      const index = Math.round((step / steps) * (dates.length - 1));
+      return { x: this.x(index, dates.length), label: this.when(dates[index], period, false) };
+    });
   }
 
-  formatAxis(value: number): string {
-    if (this.isPercent()) return `${value.toFixed(1)}%`;
-    return this.axisFormatter.format(value);
-  }
-
-  lastValue(series: ChartSeries): number {
-    const row = series.rows[series.rows.length - 1];
-    return row ? this.metricValue(row) : 0;
-  }
-
-  private groupRows(trades: AnalystTrade[]): ChartRow[] {
-    const groups = new Map<string, ChartRow>();
-    const chronological = [...trades].sort((left, right) => left.executedAt.localeCompare(right.executedAt));
-    for (const trade of chronological) {
-      const date = new Date(trade.executedAt).toISOString().slice(0, 10);
-      const price = Number(trade.executionPrice) || 0;
-      const value = Number(trade.tradeValue) || 0;
-      const isBuy = trade.side.toUpperCase() === 'BUY';
-      const row = groups.get(date) ?? { ...this.emptyRow(date), open: price, high: price, low: price };
-      if (isBuy) row.buy += value;
-      else row.sell += value;
-      row.total += value;
-      row.profitLoss += isBuy ? -value * 0.015 : value * 0.09;
-      row.high = Math.max(row.high, price);
-      row.low = Math.min(row.low, price);
-      row.close = price;
-      groups.set(date, row);
+  when(date: string, period: Period, detailed = true): string {
+    if (date.includes('T')) {
+      return detailed ? `${formatDate(date.slice(0, 10), { month: 'short', day: 'numeric' })}, ${this.time(date)}` : this.time(date, false);
     }
-    return [...groups.values()].map(row => ({
-      ...row,
-      high: Math.max(row.high, row.open, row.close),
-      low: Math.min(row.low, row.open, row.close)
-    }));
+    if (period === 'ALL') return formatDate(date, detailed ? { month: 'long', year: 'numeric' } : { month: 'short', year: '2-digit' });
+    if (!detailed) return formatDate(date, period === '1Y' ? { month: 'short', year: '2-digit' } : { month: 'short', day: 'numeric' });
+    return formatDate(date, { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  private emptyRow(date: string): ChartRow {
-    return { date, label: date.slice(5), buy: 0, sell: 0, total: 0, profitLoss: 0, open: 0, high: 0, low: 0, close: 0 };
+  time(iso: string, zone = true): string {
+    const time = new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+    return zone ? `${time} ET` : time;
   }
 
-  chartX(index: number): number {
-    return ((index + 0.5) / this.chartRows().length) * 100;
-  }
-
-  barHeight(value: number): number {
-    return Math.max(4, (value / this.valueDomain().high) * 100);
-  }
-
-  volumeValue(row: VolumeRow): number {
-    if (this.volumeMode() === 'Buy') return row.buy;
-    if (this.volumeMode() === 'Sell') return row.sell;
-    if (this.volumeMode() === 'Net Flow') return Math.abs(row.net);
-    return row.total;
-  }
-
-  volumeHeight(value: number): number {
-    return Math.max(3, (Math.abs(value) / this.volumeMax()) * 100);
-  }
-
-  volumeX(index: number): number {
-    const rows = this.volumeRows();
-    return rows.length === 1 ? 50 : (index / (rows.length - 1)) * 100;
-  }
-
-  volumeY(row: VolumeRow): number {
-    return 94 - (this.volumeValue(row) / this.volumeMax()) * 78;
-  }
-
-  volumeLinePoints(): string {
-    return this.volumeRows().map((row, index) => `${this.volumeX(index)},${94 - (this.volumeValue(row) / this.volumeMax()) * 78}`).join(' ');
-  }
-
-  volumeAreaPoints(): string {
-    const rows = this.volumeRows();
-    return `0,94 ${this.volumeLinePoints()} 100,94`;
-  }
-
-  volumeRangeValue(date: string): number {
-    const min = Date.parse(`${this.volumeRangeMin}T00:00:00Z`);
-    const value = Date.parse(`${date}T00:00:00Z`);
-    return Math.max(0, Math.min(this.volumeRangeDays(), Math.round((value - min) / 86400000)));
-  }
-
-  volumeRangeDays(): number {
-    const min = Date.parse(`${this.volumeRangeMin}T00:00:00Z`);
-    const max = Date.parse(`${this.volumeRangeMax}T00:00:00Z`);
-    return Math.round((max - min) / 86400000);
-  }
-
-  setVolumeStartFromRange(value: string): void {
-    const date = this.volumeDateFromRangeValue(value);
-    this.volumeStartDate.set(date);
-    if (date > this.volumeEndDate()) this.volumeEndDate.set(date);
-  }
-
-  setVolumeEndFromRange(value: string): void {
-    const date = this.volumeDateFromRangeValue(value);
-    this.volumeEndDate.set(date);
-    if (date < this.volumeStartDate()) this.volumeStartDate.set(date);
-  }
-
-  private volumeDateFromRangeValue(value: string): string {
-    const min = Date.parse(`${this.volumeRangeMin}T00:00:00Z`);
-    const date = new Date(min + Number(value) * 86400000);
-    return date.toISOString().slice(0, 10);
-  }
-
-  volumeUsers(): string[] {
-    return [...new Set(this.trades().map(trade => this.volumeUserForTrade(trade)))];
-  }
-
-  volumeAccounts(): string[] {
-    return [...new Set(this.trades().map(trade => trade.accountId))];
-  }
-
-  volumeUserForTrade(trade: AnalystTrade): string {
-    return trade.accountId.replace('ANALYST-', 'Analyst ');
-  }
-
-  resetVolumeFilters(): void {
-    this.volumeMode.set('Both');
-    this.volumeChartType.set('Stacked Bar');
-    this.volumeGrouping.set('Weekly');
-    this.volumeStock.set('All');
-    this.volumeUser.set('All');
-    this.volumeAccount.set('All');
-    this.volumePeriod.set('3M');
-    this.volumeStartDate.set('2026-09-01');
-    this.volumeEndDate.set('2026-10-16');
-  }
-
-  downloadVolumeCsv(): void {
-    const rows = this.volumeRows();
-    const csv = ['Date,Buy Value,Sell Value,Total Traded,Net Flow,Total Trades', ...rows.map(row => `${row.date},${row.buy},${row.sell},${row.total},${row.net},${row.trades}`)].join('\n');
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    link.download = 'analyst-volume-trends.csv';
-    link.click();
-    URL.revokeObjectURL(link.href);
-  }
-
-  private inVolumeDateRange(trade: AnalystTrade): boolean {
-    const date = trade.executedAt.slice(0, 10);
-    const periodDays: Record<Exclude<Period, 'ALL'>, number> = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365 };
+  bucketLabel(date: string): string {
     const period = this.volumePeriod();
-    if (period !== 'ALL' && period !== 'Custom') {
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - periodDays[period as Exclude<Period, 'ALL'>]);
-      if (new Date(`${date}T00:00:00`) < cutoff) return false;
-    }
-    if (period === 'ALL' || period === 'Custom' || period === '3M' || period === '1Y') {
-      return date >= this.volumeStartDate() && date <= this.volumeEndDate();
-    }
-    return true;
+    return period === '1Y' ? `Week of ${this.when(date, period)}` : this.when(date, period);
   }
 
-  private volumeGroupKey(date: Date): string {
-    if (this.volumeGrouping() === 'Hourly') return `${date.toISOString().slice(0, 10)}-${date.getUTCHours()}`;
-    if (this.volumeGrouping() === 'Monthly') return date.toISOString().slice(0, 7);
-    if (this.volumeGrouping() === 'Weekly') {
-      const weekStart = new Date(date);
-      weekStart.setUTCDate(date.getUTCDate() - date.getUTCDay());
-      return weekStart.toISOString().slice(0, 10);
-    }
-    return date.toISOString().slice(0, 10);
+  span(period: Period): string {
+    return period === 'ALL' ? 'all time' : period === '1D' ? 'today' : period;
   }
 
-  private volumeLabel(date: Date): string {
-    if (this.volumeGrouping() === 'Hourly') return `${date.getUTCHours()}:00`;
-    if (this.volumeGrouping() === 'Monthly') return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  axis(value: number, kind: 'percent' | 'price' | 'money'): string {
+    if (kind === 'percent') return `${value > 0 ? '+' : ''}${Number(value.toFixed(1))}%`;
+    return kind === 'price' ? usd.format(value) : usdCompact.format(value);
   }
 
-  private periodCutoff(): number {
-    if (this.period() === 'ALL') return 0;
-    const days: Record<Exclude<Period, 'ALL'>, number> = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365 };
-    const period = this.period() as Exclude<Period, 'ALL'>;
-    return Date.now() - days[period] * 86400000;
+  percent(value: number): string {
+    return `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(2)}%`;
   }
 
-  private compareTrades(left: AnalystTrade, right: AnalystTrade): number {
-    if (this.sortOrder() === 'Highest value') return right.tradeValue - left.tradeValue;
-    if (this.sortOrder() === 'Lowest value') return left.tradeValue - right.tradeValue;
-    const comparison = right.executedAt.localeCompare(left.executedAt);
-    return this.sortOrder() === 'Oldest' ? -comparison : comparison;
+  money(value: number): string {
+    return usdCents.format(value);
   }
+
+  whole(value: number): string {
+    return usd.format(value);
+  }
+
+  pnl(value: number): string {
+    return signed(value, usd);
+  }
+
+  volume(value: number): string {
+    return compact.format(value);
+  }
+
+  downloadCsv(): void {
+    const header = ['Date', 'Time (UTC)', 'Account', 'Symbol', 'Side', 'Quantity', 'Price', 'Notional', 'P/L'];
+    const rows = this.activity().map(trade => [
+      trade.executedAt.slice(0, 10), trade.executedAt.slice(11, 16), trade.accountId, trade.ticker,
+      trade.side, trade.quantity, trade.executionPrice, trade.tradeValue, trade.pnl
+    ]);
+    const url = URL.createObjectURL(new Blob([[header, ...rows].map(row => row.join(',')).join('\n')], { type: 'text/csv' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `trading-activity-${this.period().toLowerCase()}-${this.snapshot()?.asOf ?? 'export'}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private window(period: Period): { from: string; previous: string | null } {
+    const sessions = this.sessions();
+    const back = PERIOD_SESSIONS[period];
+    const last = sessions.length - 1;
+    if (back >= last) return { from: '', previous: null };
+    return { from: sessions[last - back], previous: sessions[last - 2 * back] ?? null };
+  }
+
+  private tradesIn(period: Period): AnalystTrade[] {
+    const { from } = this.window(period);
+    return (this.snapshot()?.trades ?? []).filter(trade => trade.executedAt.slice(0, 10) > from);
+  }
+
+  private barsFor(ticker: string | undefined): PriceBar[] {
+    const snapshot = this.snapshot();
+    if (!snapshot || !ticker) return [];
+    if (this.period() === '1D') return snapshot.intraday[ticker] ?? [];
+    const { from } = this.window(this.period());
+    return (snapshot.history[ticker] ?? []).filter(bar => bar.date > from);
+  }
+}
+
+function summarize(trades: AnalystTrade[]) {
+  return {
+    volume: trades.reduce((sum, trade) => sum + trade.tradeValue, 0),
+    trades: trades.length,
+    accounts: new Set(trades.map(trade => trade.accountId)).size,
+    pnl: trades.reduce((sum, trade) => sum + trade.pnl, 0)
+  };
+}
+
+function change(current: number, previous: number | undefined): number | undefined {
+  return previous ? ((current - previous) / previous) * 100 : undefined;
+}
+
+function signed(value: number, format: Intl.NumberFormat): string {
+  const text = format.format(Math.abs(value));
+  return value > 0 ? `+${text}` : value < 0 ? `−${text}` : text;
+}
+
+function bucketKey(executedAt: string, period: Period): string {
+  if (period === '1D') return `${executedAt.slice(0, 13)}:00:00Z`;
+  if (period === 'ALL') return `${executedAt.slice(0, 7)}-01`;
+  if (period !== '1Y') return executedAt.slice(0, 10);
+  const day = new Date(`${executedAt.slice(0, 10)}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+  return day.toISOString().slice(0, 10);
+}
+
+function groupBars(bars: PriceBar[], size: number): PriceBar[] {
+  if (size <= 1) return bars;
+  const groups: PriceBar[] = [];
+  for (let start = 0; start < bars.length; start += size) {
+    const chunk = bars.slice(start, start + size);
+    groups.push({
+      date: chunk[0].date,
+      open: chunk[0].open,
+      close: chunk[chunk.length - 1].close,
+      high: Math.max(...chunk.map(bar => bar.high)),
+      low: Math.min(...chunk.map(bar => bar.low)),
+      volume: chunk.reduce((sum, bar) => sum + bar.volume, 0)
+    });
+  }
+  return groups;
+}
+
+// Monotone cubic (Fritsch–Carlson): smooth joins without overshooting real highs and lows.
+function monotonePath(points: [number, number][]): string {
+  const n = points.length;
+  if (n < 3) return points.map((point, i) => `${i ? 'L' : 'M'}${point}`).join(' ');
+  const slopes = points.slice(1).map((point, i) => (point[1] - points[i][1]) / (point[0] - points[i][0]));
+  const tangents = points.map((_, i) => {
+    if (i === 0) return slopes[0];
+    if (i === n - 1) return slopes[n - 2];
+    return slopes[i - 1] * slopes[i] <= 0 ? 0 : (2 * slopes[i - 1] * slopes[i]) / (slopes[i - 1] + slopes[i]);
+  });
+  let path = `M${points[0]}`;
+  for (let i = 1; i < n; i++) {
+    const [x0, y0] = points[i - 1];
+    const [x1, y1] = points[i];
+    const dx = (x1 - x0) / 3;
+    path += ` C${x0 + dx},${y0 + tangents[i - 1] * dx} ${x1 - dx},${y1 - tangents[i] * dx} ${x1},${y1}`;
+  }
+  return path;
+}
+
+function niceScale(values: number[], steps = 5): Scale {
+  if (!values.length) return { min: 0, max: 1, ticks: [0, 1] };
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const raw = (high - low || Math.abs(high) || 1) / steps;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(factor => factor * magnitude).find(candidate => candidate >= raw)!;
+  const min = Math.floor(low / step) * step;
+  const max = Math.ceil(high / step) * step;
+  const ticks: number[] = [];
+  for (let value = min; value <= max + step / 2; value += step) ticks.push(Number(value.toFixed(6)));
+  return { min, max, ticks };
+}
+
+function formatDate(date: string, options: Intl.DateTimeFormatOptions): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { ...options, timeZone: 'UTC' });
 }
