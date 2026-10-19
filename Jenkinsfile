@@ -7,10 +7,10 @@ pipeline {
         DB_PORT_J = credentials("DB_PORT_J")
         DB_PASSWORD = credentials("DB_PASSWORD")
         JWT_SHARED_SECRET = credentials("JWT_SHARED_SECRET")
-        Market_port = credendtials("Market_port")
-        Kafka_port = credendtials("Kafka_port")
-        App_port = credendtials("App_port")
-        Frontend_port = credendtials("Frontend_port")
+        Market_port = credentials("Market_port")
+        Kafka_port = credentials("Kafka_port")
+        App_port = credentials("App_port")
+        Frontend_port = credentials("Frontend_port")
     }
     stages {
         stage('Checkout') {
