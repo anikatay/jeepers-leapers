@@ -1,120 +1,444 @@
-<main class="analyst-dashboard" aria-label="Analyst dashboard">
-	<section class="page-heading">
-		<div>
-			<p class="eyebrow">Bull Exchange Intelligence</p>
-			<h1>{{ text('analyst.title', 'Analyst Dashboard') }}</h1>
-			<p class="subtitle">{{ text('analyst.subtitle', 'Analyze trading activity, compare stocks, and monitor performance.') }}</p>
-		</div>
-		<span class="live-state"><i></i> Live</span>
-	</section>
+<main class="page" aria-label="Analytics">
+  <header class="head">
+    <h1>Analytics</h1>
+    <p class="muted">Read-only view of client trading activity and market performance{{ snapshot() ? ' · as of ' + when(snapshot()!.asOf, '1M') : '' }}</p>
+  </header>
 
-	<section class="summary-grid" aria-label="Trading summary">
-		<article class="summary-card"><span>{{ text('analyst.volume', 'Total Trading Volume') }}</span><strong>{{ totalVolume() | currency:'USD':'symbol':'1.0-0' }}</strong><small>{{ filteredTrades().length }} {{ text('analyst.trades', 'trades') }}</small></article>
-		<article class="summary-card"><span>{{ text('analyst.buys', 'Buy Orders') }}</span><strong>{{ buyCount() | number }}</strong><small class="positive">{{ text('analyst.buy', 'Buy') }}</small></article>
-		<article class="summary-card"><span>{{ text('analyst.sells', 'Sell Orders') }}</span><strong>{{ sellCount() | number }}</strong><small class="negative">{{ text('analyst.sell', 'Sell') }}</small></article>
-		<article class="summary-card"><span>{{ text('analyst.net', 'Net Flow') }}</span><strong>{{ (totalVolume()) | currency:'USD':'symbol':'1.0-0' }}</strong><small>{{ text('analyst.scoped', 'Current account scope') }}</small></article>
-	</section>
+  @if (error()) {
+    <p class="banner" role="alert">Analytics data could not be loaded. <button type="button" (click)="load()">Retry</button></p>
+  }
 
-	<section class="panel" id="analysis-chart">
-		<div class="panel-heading">
-			<div><h2>{{ text('analyst.performance', 'Trading Performance') }}</h2><p>{{ text('analyst.activitySummary', 'Authorized trading activity over time') }}</p></div>
-			<div class="control-row">
-				<select [ngModel]="scope()" (ngModelChange)="scope.set($event)" aria-label="Scope"><option *ngFor="let item of scopes" [value]="item">{{ item }}</option></select>
-				<input *ngIf="scope() !== 'All Users'" class="scope-search" [ngModel]="scopeSearch()" (ngModelChange)="scopeSearch.set($event)" [placeholder]="scope() === 'Specific User' ? 'Search user' : 'Search account'" [attr.list]="'scope-options'">
-				<datalist id="scope-options"><option *ngFor="let option of scopeOptions()" [value]="option"></option></datalist>
-				<div class="comparison-control">
-					<button class="comparison-button" (click)="comparisonOpen.set(!comparisonOpen())">+ Compare</button>
-					<div *ngIf="comparisonOpen()" class="comparison-menu">
-						<input [ngModel]="comparisonSearch()" (ngModelChange)="comparisonSearch.set($event)" placeholder="Search stocks">
-						<label *ngFor="let instrument of comparisonInstruments()"><input type="checkbox" [checked]="isSelected(instrument.ticker)" (change)="toggleSymbol(instrument.ticker)"><span><b>{{ instrument.ticker }}</b><small>{{ instrument.name }}</small></span></label>
-						<label class="percentage-toggle"><span>Percentage comparison</span><input type="checkbox" [ngModel]="percentage()" (ngModelChange)="percentage.set($event)"></label>
-					</div>
-				</div>
-				<div class="range-tabs" role="group" aria-label="Period"><button *ngFor="let item of periods" type="button" [class.active]="period() === item" (click)="period.set(item)">{{ item }}</button></div>
-				<select [ngModel]="metric()" (ngModelChange)="metric.set($event)" aria-label="Metric"><option *ngFor="let item of metrics" [value]="item">{{ item }}</option></select>
-				<select [ngModel]="chartType()" (ngModelChange)="chartType.set($event)" aria-label="Chart type"><option *ngFor="let item of chartTypes" [value]="item">{{ item }}</option></select>
-			</div>
-		</div>
-		<div class="symbol-row">
-			<div *ngFor="let symbol of selectedSymbols()" class="selected-chip"><i class="chip-dot" [style.background]="seriesColor(symbol)"></i><button class="chip-label" (click)="openStockDetails(symbol)">{{ symbol }}</button><button class="chip-remove" (click)="removeSymbol(symbol)" aria-label="Remove selected stock">&times;</button></div>
-			<span *ngIf="percentage()" class="percentage-chip">Percentage</span>
-		</div>
-		<div class="chart-headline" *ngIf="headline() as h">
-			<strong>{{ formatAxis(h.value) }}</strong>
-			<span [class.positive]="h.up" [class.negative]="!h.up">{{ h.up ? '▲' : '▼' }} {{ h.change | number:'1.1-1' }}%</span>
-			<small>{{ period() }} total · change vs first day</small>
-		</div>
-		<div class="chart" *ngIf="chartRows().length; else noChart">
-			<div class="chart-axis-labels" aria-hidden="true"><span *ngFor="let label of axisLabels()" [style.top.%]="label.top">{{ label.text }}</span></div>
-			<div class="plot" (mousemove)="onPlotMove($event)" (mouseleave)="hoverIndex.set(null)" (click)="openStockDetails(selectedSymbols()[0])">
-				<svg *ngIf="chartType() !== 'Bar'" viewBox="0 0 100 100" preserveAspectRatio="none" [class.candlestick-chart]="chartType() === 'Candlestick'" role="img" [attr.aria-label]="chartType() === 'Line' ? 'Trading performance line chart' : 'Trading performance candlestick chart'">
-					<line *ngFor="let level of gridLevels" x1="0" [attr.y1]="level" x2="100" [attr.y2]="level" class="grid-line" />
-					<line x1="0" y1="100" x2="100" y2="100" class="axis-line" />
-					<line *ngIf="chartType() === 'Line' && metric() === 'Profit/Loss'" x1="0" [attr.y1]="yPercent(0)" x2="100" [attr.y2]="yPercent(0)" class="zero-line" />
-					<ng-container *ngIf="chartType() === 'Line'">
-						<defs><linearGradient *ngFor="let series of chartSeries(); let i = index" [attr.id]="'analystArea' + i" x1="0" x2="0" y1="0" y2="1"><stop offset="0" [attr.stop-color]="series.color" stop-opacity=".22"></stop><stop offset="1" [attr.stop-color]="series.color" stop-opacity="0"></stop></linearGradient></defs><polygon *ngFor="let series of chartSeries(); let i = index" [attr.points]="areaPoints(series)" class="series-area" [attr.fill]="'url(#analystArea' + i + ')'"></polygon>
-						<polyline *ngFor="let series of chartSeries()" [attr.points]="linePoints(series)" class="chart-line" [style.stroke]="series.color"></polyline>
-					</ng-container>
-					<g *ngIf="chartType() === 'Candlestick'">
-						<g *ngFor="let row of candleRows(); let index = index" class="candle" [class.down-candle]="row.close < row.open" [attr.transform]="'translate(' + chartX(index) + ',0)'">
-							<ng-container *ngIf="row.total > 0">
-								<line x1="0" [attr.y1]="yPercent(row.high)" x2="0" [attr.y2]="yPercent(row.low)"></line>
-								<rect [attr.x]="-candleWidth() / 2" [attr.y]="candleTop(row)" [attr.width]="candleWidth()" [attr.height]="candleHeight(row)"></rect>
-							</ng-container>
-						</g>
-					</g>
-				</svg>
-				
-				<div *ngIf="chartType() === 'Line' && hoverIndex() !== null" class="chart-dots"><span *ngFor="let point of hoveredSeries()" class="chart-dot" [style.left.%]="point.x" [style.top.%]="point.y" [style.border-color]="point.color"></span></div>
-				<div *ngIf="chartType() === 'Line'" class="end-tags"><span *ngFor="let tag of endTags()" class="end-tag" [style.top.%]="tag.y" [style.background]="tag.color">{{ tag.label }}</span></div>
-				<div *ngIf="hoverIndex() !== null" class="crosshair" [style.left.%]="chartX(hoverIndex() ?? 0)"></div>
-				<div *ngIf="chartType() === 'Bar'" class="bar-chart"><div *ngFor="let row of chartRows()" class="bar-group"><div class="bar" [class.loss-bar]="metric() === 'Profit/Loss' && metricValue(row) < 0" [style.height.%]="barHeight(metricValue(row))"></div></div></div>
-				<div *ngIf="hoveredPoint() as point" class="chart-tooltip" [class.flip]="tooltipFlip()" [style.left.%]="chartX(hoverIndex() ?? 0)"><strong>{{ point.label }}</strong><span *ngFor="let item of hoveredSeries()" class="series-value"><i [style.background]="item.color"></i>{{ item.symbol }} {{ formatAxis(item.value) }}</span><span *ngIf="chartType() === 'Candlestick' && hoveredCandle() as candle" class="ohlc">O {{ candle.open | currency:'USD' }} · H {{ candle.high | currency:'USD' }} · L {{ candle.low | currency:'USD' }} · C {{ candle.close | currency:'USD' }}</span><span class="buy-value"><i class="legend-buy"></i>Buy {{ point.buy | currency:'USD':'symbol':'0.0-0' }}</span><span class="sell-value"><i class="legend-sell"></i>Sell {{ point.sell | currency:'USD':'symbol':'0.0-0' }}</span><span>Net {{ point.profitLoss | currency:'USD':'symbol':'0.0-0' }}</span></div>
-			</div>
-			<div class="chart-labels" [style.grid-template-columns]="'repeat(' + chartRows().length + ', minmax(0, 1fr))'"><span *ngFor="let row of chartRows()">{{ row.label }}</span></div>
-		</div>
-		<div class="chart-legend"><button *ngFor="let series of legendSeries()" (click)="openStockDetails(series.symbol)"><i [style.background]="series.color"></i>{{ series.symbol }}<b *ngIf="chartType() === 'Line' && series.rows.length">{{ formatAxis(lastValue(series)) }}</b></button></div>
-		<ng-template #noChart><div class="empty-state">{{ loading() ? 'Loading trades...' : 'No trades match this period.' }}</div></ng-template>
-	</section>
+  <section class="kpis" aria-label="Key metrics">
+    @for (kpi of kpis(); track kpi.label) {
+      <article class="card kpi">
+        <span class="label">{{ kpi.label }}</span>
+        <strong class="num" [class.up]="kpi.tone === 'up'" [class.down]="kpi.tone === 'down'">{{ snapshot() ? kpi.value : '—' }}</strong>
+        <small>
+          @if (kpi.delta !== undefined) {
+            <b [class.up]="kpi.delta >= 0" [class.down]="kpi.delta < 0">{{ percent(kpi.delta) }}</b>
+          }
+          {{ kpi.note }}
+        </small>
+      </article>
+    }
+  </section>
 
-	<aside *ngIf="selectedStock() && stockDetails()" class="stock-panel" role="dialog" aria-modal="true">
-		<button class="stock-panel-backdrop" (click)="selectedStock.set(null)" aria-label="Close stock details"></button>
-		<div class="stock-panel-content">
-			<div class="stock-panel-heading"><div><h2>Stock Details</h2><p>{{ stockDetails()?.name }} · {{ stockDetails()?.ticker }}</p></div><button class="panel-close" (click)="selectedStock.set(null)" aria-label="Close">&times;</button></div>
-			<div class="stock-price"><small>Current price</small><strong>{{ stockDetails()?.currentPrice | currency:'USD' }}</strong></div>
-			<div class="stock-stats"><div><small>Buy volume</small><b>{{ stockBuyTotal() | currency:'USD':'symbol':'0.0-0' }}</b></div><div><small>Sell volume</small><b>{{ stockSellTotal() | currency:'USD':'symbol':'0.0-0' }}</b></div><div><small>Trade count</small><b>{{ stockTrades().length }}</b></div><div><small>Profit/Loss</small><b>{{ (stockSellTotal() * .09 - stockBuyTotal() * .015) | currency:'USD':'symbol':'0.0-0' }}</b></div></div>
-			<h3>Recent trading activity</h3><div class="recent-trades"><div *ngFor="let trade of stockTrades()"><span>{{ trade.side }} · {{ trade.quantity }}<small>{{ trade.executedAt | date:'mediumDate' }} · {{ trade.accountId }}</small></span><b>{{ trade.tradeValue | currency:'USD':'symbol':'0.0-0' }}</b></div></div>
-		</div>
-	</aside>
+  <div class="split">
+    <section class="card" aria-labelledby="performance-title">
+      <div class="card-head">
+        <div>
+          <h2 id="performance-title">Trading Performance</h2>
+          <p class="muted">
+            @if (mode() === 'line') {
+              Cumulative return since {{ dates()[0] ? when(dates()[0], period()) : '—' }}
+            } @else {
+              {{ primary()?.name }} · {{ period() === '1D' ? '5-minute' : candleSpan() === 1 ? 'daily' : candleSpan() + '-session' }} candles
+            }
+          </p>
+        </div>
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Period">
+            @for (item of periods; track item) {
+              <button type="button" [class.on]="period() === item" [attr.aria-pressed]="period() === item" (click)="period.set(item)">{{ item === 'ALL' ? 'All' : item }}</button>
+            }
+          </div>
+          <div class="seg" role="group" aria-label="Chart type">
+            <button type="button" [class.on]="mode() === 'line'" (click)="mode.set('line')">Line</button>
+            <button type="button" [class.on]="mode() === 'candles'" (click)="mode.set('candles')">Candlestick</button>
+          </div>
+        </div>
+      </div>
 
-	<section class="panel" id="trading-activity">
-		<div class="panel-heading"><div><h2>{{ text('analyst.table', 'Trading Activity') }}</h2><p>{{ activityTrades().length }} {{ text('analyst.trades', 'trades') }}</p></div><div class="filters"><input [ngModel]="search()" (ngModelChange)="search.set($event)" placeholder="Search trades, stocks, or accounts"><input type="date" [ngModel]="activityDate()" (ngModelChange)="activityDate.set($event)" aria-label="Filter by date"><select [ngModel]="instrumentFilter()" (ngModelChange)="instrumentFilter.set($event)"><option value="All">All stocks</option><option *ngFor="let instrument of instruments()" [value]="instrument.ticker">{{ instrument.ticker }}</option></select><select [ngModel]="sideFilter()" (ngModelChange)="sideFilter.set($event)"><option value="All">All types</option><option value="BUY">Buy</option><option value="SELL">Sell</option></select><select [ngModel]="sortOrder()" (ngModelChange)="sortOrder.set($event)"><option>Newest</option><option>Oldest</option><option>Highest value</option><option>Lowest value</option></select></div></div>
-		<div class="table-wrap"><table><thead><tr><th>Date</th><th>Stock</th><th>Account</th><th>Type</th><th>Quantity</th><th>Price</th><th>Total Value</th><th>Profit/Loss</th></tr></thead><tbody><tr *ngFor="let trade of activityTrades()" class="trade-row" (click)="selectedTrade.set(trade)"><td>{{ trade.executedAt | date:'mediumDate' }}</td><td><b>{{ trade.ticker }}</b><small>{{ trade.name }}</small></td><td class="mono">{{ trade.accountId | slice:0:8 }}</td><td><span class="side" [class.buy]="trade.side.toUpperCase() === 'BUY'" [class.sell]="trade.side.toUpperCase() === 'SELL'">{{ trade.side }}</span></td><td class="mono">{{ trade.quantity }}</td><td class="mono">{{ trade.executionPrice | currency:'USD' }}</td><td class="mono strong">{{ trade.tradeValue | currency:'USD' }}</td><td class="mono" [class.positive]="tradeProfitLoss(trade) >= 0" [class.negative]="tradeProfitLoss(trade) < 0">{{ tradeProfitLoss(trade) | currency:'USD':'symbol':'0.0-0' }}</td></tr></tbody></table><div *ngIf="!activityTrades().length" class="empty-state">No trades match these filters.</div></div>
-	</section>
+      <div class="toolbar">
+        @if (mode() === 'line') {
+          @for (s of series(); track s.ticker) {
+            <span class="chip">
+              <i [style.background]="s.color"></i>{{ s.ticker }}
+              <b class="num" [class.up]="s.change >= 0" [class.down]="s.change < 0">{{ percent(s.change) }}</b>
+              @if (series().length > 1) {
+                <button type="button" [attr.aria-label]="'Remove ' + s.ticker" (click)="toggleSeries(s.ticker)">×</button>
+              }
+            </span>
+          }
+        } @else if (primary(); as stock) {
+          <span class="chip">
+            {{ stock.ticker }}
+            <span class="num">{{ money(stock.close) }}</span>
+            <b class="num" [class.up]="stock.change >= 0" [class.down]="stock.change < 0">{{ percent(stock.change) }}</b>
+          </span>
+        }
+        <div class="anchor">
+          <button type="button" class="ghost" [attr.aria-expanded]="menu() === 'compare'" (click)="toggleMenu('compare', $event)">
+            {{ mode() === 'line' ? '+ Compare' : 'Change instrument' }}
+          </button>
+          @if (menu() === 'compare') {
+            <div class="popover" (click)="$event.stopPropagation()">
+              <input type="search" [ngModel]="compareQuery()" (ngModelChange)="compareQuery.set($event)" placeholder="Search instruments" aria-label="Search instruments">
+              <ul class="options">
+                @for (item of compareOptions(); track item.ticker) {
+                  @let index = selected().indexOf(item.ticker);
+                  @let on = mode() === 'line' ? index >= 0 : index === 0;
+                  <li>
+                    <button type="button" [class.on]="on" [disabled]="mode() === 'line' && !on && selected().length >= maxSeries" (click)="toggleSeries(item.ticker)">
+                      <i [style.background]="on && mode() === 'line' ? 'var(--s' + (index + 1) + ')' : 'transparent'"></i>
+                      <b>{{ item.ticker }}</b><span>{{ item.name }}</span>
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="none">No matching instruments</li>
+                }
+              </ul>
+              @if (mode() === 'line') {
+                <small>{{ selected().length }} of {{ maxSeries }} selected</small>
+              }
+            </div>
+          }
+        </div>
+      </div>
 
-	<aside *ngIf="selectedTrade()" class="trade-modal" role="dialog" aria-modal="true" aria-label="Trade details">
-		<button class="trade-modal-backdrop" (click)="selectedTrade.set(null)" aria-label="Close trade details"></button>
-		<div class="trade-modal-content"><div class="trade-modal-heading"><h2>Trade Details</h2><button class="panel-close" (click)="selectedTrade.set(null)" aria-label="Close">&times;</button></div><div class="trade-detail-grid"><div><small>Stock</small><b>{{ selectedTrade()?.ticker }}</b></div><div><small>Company</small><b>{{ selectedTrade()?.name }}</b></div><div><small>Account</small><b>{{ selectedTrade()?.accountId }}</b></div><div><small>Type</small><b>{{ selectedTrade()?.side }}</b></div><div><small>Date</small><b>{{ selectedTrade()?.executedAt | date:'medium' }}</b></div><div><small>Quantity</small><b>{{ selectedTrade()?.quantity }}</b></div><div><small>Price</small><b>{{ selectedTrade()?.executionPrice | currency:'USD' }}</b></div><div><small>Total Value</small><b>{{ selectedTrade()?.tradeValue | currency:'USD' }}</b></div><div><small>Profit/Loss</small><b>{{ tradeProfitLoss(selectedTrade()!) | currency:'USD' }}</b></div></div></div>
-	</aside>
+      @if (dates().length) {
+        @for (key of [period() + mode() + selected().join()]; track key) {
+          <div class="chart">
+            <div class="y-axis" aria-hidden="true">
+              @for (tick of scale().ticks; track tick) {
+                <span [style.top.%]="y(tick, scale())">{{ axis(tick, mode() === 'line' ? 'percent' : 'price') }}</span>
+              }
+            </div>
+            <div class="plot" (mousemove)="track($event, dates().length, hover)" (mouseleave)="hover.set(null)">
+              <svg class="layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                @for (tick of scale().ticks; track tick) {
+                  <line class="grid" [class.zero]="mode() === 'line' && tick === 0" x1="0" x2="100" [attr.y1]="y(tick, scale())" [attr.y2]="y(tick, scale())" />
+                }
+              </svg>
 
-	<section class="panel volume-panel">
-		<div class="panel-heading volume-heading"><div><h2>{{ text('analyst.volumeTrends', 'Trading Volume & Trends') }}</h2><p>{{ text('analyst.volumeSubtitle', 'Buying and selling activity by period') }}</p></div><div class="volume-actions"><button class="volume-button" (click)="resetVolumeFilters()">Reset Filters</button><button class="volume-button primary" (click)="downloadVolumeCsv()">Download CSV</button></div></div>
-		<div class="volume-filters">
-			<select [ngModel]="volumeStock()" (ngModelChange)="volumeStock.set($event)" aria-label="Stock filter"><option value="All">All Stocks</option><option *ngFor="let instrument of instruments()" [value]="instrument.ticker">{{ instrument.ticker }} - {{ instrument.name }}</option></select>
-			<select [ngModel]="volumeUser()" (ngModelChange)="volumeUser.set($event)" aria-label="User filter"><option value="All">All Users</option><option *ngFor="let user of volumeUsers()" [value]="user">{{ user }}</option></select>
-			<select [ngModel]="volumeAccount()" (ngModelChange)="volumeAccount.set($event)" aria-label="Account filter"><option value="All">All Accounts</option><option *ngFor="let account of volumeAccounts()" [value]="account">{{ account }}</option></select>
-			<select [ngModel]="volumePeriod()" (ngModelChange)="volumePeriod.set($event)" aria-label="Volume period"><option *ngFor="let item of periods" [value]="item">{{ item }}</option><option value="Custom">Custom Date Range</option></select>
-		</div>
-		<div *ngIf="volumePeriod() === 'Custom' || volumePeriod() === '3M' || volumePeriod() === '1Y'" class="volume-date-range"><label>Start date<input type="date" [min]="volumeRangeMin" [max]="volumeRangeMax" [ngModel]="volumeStartDate()" (ngModelChange)="volumeStartDate.set($event)"></label><label>End date<input type="date" [min]="volumeRangeMin" [max]="volumeRangeMax" [ngModel]="volumeEndDate()" (ngModelChange)="volumeEndDate.set($event)"></label><div class="volume-range-control"><div class="volume-range-heading"><strong>Inspect a specific period</strong><span>{{ volumeStartDate() }} - {{ volumeEndDate() }}</span></div><div class="volume-range-track"><div class="volume-range-selection" [style.left.%]="volumeRangeValue(volumeStartDate()) / volumeRangeDays() * 100" [style.right.%]="100 - volumeRangeValue(volumeEndDate()) / volumeRangeDays() * 100"></div><input class="volume-range-input volume-range-start" type="range" [min]="0" [max]="volumeRangeDays()" [value]="volumeRangeValue(volumeStartDate())" (input)="setVolumeStartFromRange($any($event.target).value)" aria-label="Volume range start"><input class="volume-range-input volume-range-end" type="range" [min]="0" [max]="volumeRangeDays()" [value]="volumeRangeValue(volumeEndDate())" (input)="setVolumeEndFromRange($any($event.target).value)" aria-label="Volume range end"></div><div class="volume-range-labels"><span>{{ volumeRangeMin }}</span><span>{{ volumeRangeMax }}</span></div><p>Drag the handles to inspect a specific period.</p></div></div>
-		<div class="volume-controls"><div class="volume-control-group"><button *ngFor="let item of ['Buy', 'Sell', 'Both', 'Net Flow']" [class.active]="volumeMode() === item" [class.buy-control]="item === 'Buy'" [class.sell-control]="item === 'Sell'" (click)="volumeMode.set($any(item))">{{ item }}</button></div><div class="volume-control-group"><button *ngFor="let item of ['Hourly', 'Daily', 'Weekly', 'Monthly']" [class.active]="volumeGrouping() === item" (click)="volumeGrouping.set($any(item))">{{ item }}</button></div><div class="volume-control-group"><button *ngFor="let item of ['Area', 'Line', 'Bar', 'Stacked Bar']" [class.active]="volumeChartType() === item" (click)="volumeChartType.set($any(item))">{{ item }}</button></div></div>
-		<div class="volume-summary"><div><small>Total Value Traded</small><strong>{{ volumeRows().length ? (volumeRows()[0].total + (volumeRows().length > 1 ? volumeRows()[volumeRows().length - 1].total : 0) | currency:'USD':'symbol':'0.0-0') : '$0' }}</strong></div><div><small>Buy Volume</small><strong>{{ volumeRows().reduce((sum, row) => sum + row.buy, 0) | currency:'USD':'symbol':'0.0-0' }}</strong></div><div><small>Sell Volume</small><strong>{{ volumeRows().reduce((sum, row) => sum + row.sell, 0) | currency:'USD':'symbol':'0.0-0' }}</strong></div><div><small>Net Flow</small><strong>{{ volumeRows().reduce((sum, row) => sum + row.net, 0) | currency:'USD':'symbol':'0.0-0' }}</strong></div></div>
-		<div *ngIf="volumeRows().length; else emptyVolume" class="volume-chart volume-chart-enhanced">
-			<div class="volume-y-axis"><span>{{ volumeMax() | currency:'USD':'symbol':'0.0a' }}</span><span>{{ (volumeMax() * .5) | currency:'USD':'symbol':'0.0a' }}</span><span>$0</span></div><svg *ngIf="volumeChartType() === 'Line' || volumeChartType() === 'Area'" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Trading volume chart"><defs><pattern id="volumeAreaPattern" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M-1,1 L1,-1 M0,6 L6,0 M5,7 L7,5" class="area-pattern-line"></path></pattern></defs><line x1="0" y1="16" x2="100" y2="16" class="grid-line"></line><line x1="0" y1="55" x2="100" y2="55" class="grid-line"></line><line x1="0" y1="94" x2="100" y2="94" class="axis-line"></line><polygon *ngIf="volumeChartType() === 'Area'" [attr.points]="volumeAreaPoints()" class="volume-area"></polygon><polyline *ngIf="volumeChartType() === 'Line'" [attr.points]="volumeLinePoints()" class="volume-line"></polyline><circle *ngFor="let row of volumeRows(); let index = index" [attr.cx]="volumeX(index)" [attr.cy]="volumeY(row)" r="1.5" class="volume-point" (mouseenter)="volumeTooltip.set(row)" (mouseleave)="volumeTooltip.set(null)" (click)="selectedVolumePoint.set(row)"></circle></svg>
-			<div *ngIf="volumeChartType() === 'Bar' || volumeChartType() === 'Stacked Bar'" class="volume-bar-chart" [class.plain-bar-chart]="volumeChartType() === 'Bar'"><div *ngFor="let row of volumeRows()" class="volume-column" (mouseenter)="volumeTooltip.set(row)" (mouseleave)="volumeTooltip.set(null)" (click)="selectedVolumePoint.set(row)"><div class="volume-bars" [class.stacked]="volumeChartType() === 'Stacked Bar'"><i *ngIf="volumeMode() !== 'Sell'" [style.height.%]="volumeChartType() === 'Bar' ? volumeHeight(volumeValue(row)) : volumeHeight(row.buy)"></i><b *ngIf="volumeChartType() !== 'Bar' && volumeMode() !== 'Buy'" [style.height.%]="volumeHeight(row.sell)"></b></div><small>{{ row.label }}</small></div></div>
-			<div class="volume-labels"><span *ngFor="let row of volumeRows()">{{ row.label }}</span></div>
-			<div class="volume-legend"><span><i class="legend-buy"></i>Buy Volume</span><span><i class="legend-sell"></i>Sell Volume</span><span><i class="legend-net"></i>Net Flow</span></div><div *ngIf="volumeTooltip()" class="volume-tooltip"><strong>{{ volumeTooltip()?.label }}</strong><span><i class="legend-buy"></i>Buy {{ volumeTooltip()?.buy | currency:'USD':'symbol':'0.0-0' }}</span><span><i class="legend-sell"></i>Sell {{ volumeTooltip()?.sell | currency:'USD':'symbol':'0.0-0' }}</span><span><i class="legend-net"></i>Net {{ volumeTooltip()?.net | currency:'USD':'symbol':'0.0-0' }}</span><span>{{ volumeTooltip()?.trades }} trades · Total {{ volumeTooltip()?.total | currency:'USD':'symbol':'0.0-0' }}</span></div>
-		</div>
-		<ng-template #emptyVolume><div class="empty-state volume-empty">No trades match the selected filters.</div></ng-template>
-		<aside *ngIf="selectedVolumePoint()" class="volume-detail-modal" role="dialog" aria-modal="true"><button class="trade-modal-backdrop" (click)="selectedVolumePoint.set(null)" aria-label="Close period details"></button><div class="trade-modal-content"><div class="trade-modal-heading"><h2>Period Trade Details</h2><button class="panel-close" (click)="selectedVolumePoint.set(null)" aria-label="Close">&times;</button></div><div class="trade-detail-grid"><div><small>Period</small><b>{{ selectedVolumePoint()?.label }}</b></div><div><small>Total trades</small><b>{{ selectedVolumePoint()?.trades }}</b></div><div><small>Buy volume</small><b>{{ selectedVolumePoint()?.buy | currency:'USD' }}</b></div><div><small>Sell volume</small><b>{{ selectedVolumePoint()?.sell | currency:'USD' }}</b></div><div><small>Total traded</small><b>{{ selectedVolumePoint()?.total | currency:'USD' }}</b></div><div><small>Net flow</small><b>{{ selectedVolumePoint()?.net | currency:'USD' }}</b></div></div></div></aside>
-	</section>
+              @if (mode() === 'line') {
+                <svg class="layer reveal" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Instrument return comparison">
+                  @if (series().length === 1) {
+                    <defs>
+                      <linearGradient id="perf-fill" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0" style="stop-color: var(--s1); stop-opacity: .16" />
+                        <stop offset="1" style="stop-color: var(--s1); stop-opacity: 0" />
+                      </linearGradient>
+                    </defs>
+                    <path [attr.d]="path(series()[0].values, scale(), true)" fill="url(#perf-fill)" />
+                  }
+                  @for (s of series(); track s.ticker) {
+                    <path class="trace" [attr.d]="path(s.values, scale())" [style.stroke]="s.color" />
+                  }
+                </svg>
+              } @else {
+                <svg class="layer reveal" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Candlestick chart">
+                  @for (bar of candles(); track bar.date; let i = $index) {
+                    @let body = box(bar.open, bar.close, scale());
+                    <g [class.down]="bar.close < bar.open">
+                      <line class="wick" [attr.x1]="x(i, candles().length)" [attr.x2]="x(i, candles().length)" [attr.y1]="y(bar.high, scale())" [attr.y2]="y(bar.low, scale())" />
+                      <rect [attr.x]="x(i, candles().length) - barWidth(candles().length) / 2" [attr.width]="barWidth(candles().length)" [attr.y]="body.y" [attr.height]="body.height" />
+                    </g>
+                  }
+                </svg>
+              }
+
+              @if (hover() !== null && hover()! < dates().length) {
+                @let i = hover()!;
+                <div class="crosshair" [style.left.%]="x(i, dates().length)"></div>
+                @if (mode() === 'line') {
+                  @for (s of series(); track s.ticker) {
+                    <span class="dot" [style.left.%]="x(i, dates().length)" [style.top.%]="y(s.values[i], scale())" [style.border-color]="s.color"></span>
+                  }
+                }
+                <div class="tip" [class.flip]="i > dates().length / 2" [style.left.%]="x(i, dates().length)">
+                  <strong>{{ when(dates()[i], period()) }}</strong>
+                  @if (mode() === 'line') {
+                    @for (s of series(); track s.ticker) {
+                      <span class="row"><i [style.background]="s.color"></i>{{ s.ticker }}<em class="num">{{ money(s.bars[i].close) }}</em><b class="num" [class.up]="s.values[i] >= 0" [class.down]="s.values[i] < 0">{{ percent(s.values[i]) }}</b></span>
+                    }
+                  } @else {
+                    @let bar = candles()[i];
+                    <span class="ohlc num"><span>O</span>{{ money(bar.open) }}<span>H</span>{{ money(bar.high) }}<span>L</span>{{ money(bar.low) }}<span>C</span>{{ money(bar.close) }}</span>
+                    <span class="row">Change<b class="num" [class.up]="bar.close >= bar.open" [class.down]="bar.close < bar.open">{{ percent((bar.close / bar.open - 1) * 100) }}</b></span>
+                    <span class="row">Volume<b class="num">{{ volume(bar.volume) }}</b></span>
+                  }
+                </div>
+              }
+            </div>
+
+            @if (mode() === 'candles') {
+              <div class="strip" aria-hidden="true">
+                @for (bar of candles(); track bar.date; let i = $index) {
+                  <i [class.down]="bar.close < bar.open" [style.left.%]="x(i, candles().length)" [style.width.%]="barWidth(candles().length)" [style.height.%]="(bar.volume / volumeMax()) * 100"></i>
+                }
+              </div>
+            }
+
+            <div class="x-axis" aria-hidden="true">
+              @for (tick of xTicks(dates(), period()); track $index) {
+                <span [style.left.%]="tick.x">{{ tick.label }}</span>
+              }
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="empty">{{ snapshot() ? 'No market data for this period.' : 'Loading market data…' }}</div>
+      }
+    </section>
+
+    <section class="card outcomes" aria-labelledby="outcomes-title">
+      <h2 id="outcomes-title">Account Outcomes</h2>
+      <p class="muted">Net P/L by account · {{ span(period()) }}</p>
+      @for (key of [period()]; track key) {
+        <div class="donut">
+          <svg viewBox="0 0 120 120" role="img" [attr.aria-label]="outcomes().majority ? (outcomes().majority!.pct | number:'1.0-0') + ' percent ' + outcomes().majority!.label : 'No accounts'">
+            <circle class="ring" cx="60" cy="60" r="46" />
+            @for (part of outcomes().segments; track part.key) {
+              @if (part.count) {
+                <circle [attr.class]="'arc ' + part.key + (outcomeHover() && outcomeHover() !== part.key ? ' dim' : '')" cx="60" cy="60" r="46" pathLength="100"
+                        [attr.stroke-dasharray]="part.dash" [attr.stroke-dashoffset]="part.offset"
+                        (mouseenter)="outcomeHover.set(part.key)" (mouseleave)="outcomeHover.set(null)" />
+              }
+            }
+          </svg>
+          @if (outcomes().majority; as top) {
+            <div class="donut-center">
+              <strong class="num" [class]="top.key">{{ top.pct | number:'1.0-0' }}%</strong>
+              <span>{{ top.label }}</span>
+              <small>{{ outcomes().total }} active accounts</small>
+            </div>
+          }
+          @if (hoveredOutcome(); as part) {
+            <div class="donut-tip" [style.left.%]="part.tipX" [style.top.%]="part.tipY">
+              <span class="row"><i [class]="part.key"></i><strong>{{ part.label }}</strong></span>
+              <span class="row">Share<b class="num">{{ part.pct | number:'1.1-1' }}%</b></span>
+              <span class="row">Accounts<b class="num">{{ part.count }}</b></span>
+              <span class="row">Net P/L<b class="num" [class.up]="part.pnl > 0" [class.down]="part.pnl < 0">{{ pnl(part.pnl) }}</b></span>
+            </div>
+          }
+        </div>
+      }
+      <ul class="breakdown">
+        @for (part of outcomes().segments; track part.key) {
+          <li [class.dim]="outcomeHover() && outcomeHover() !== part.key" (mouseenter)="outcomeHover.set(part.key)" (mouseleave)="outcomeHover.set(null)">
+            <i [class]="part.key"></i>
+            <span>{{ part.label }}</span>
+            <small>{{ part.count }}</small>
+            <b class="num">{{ part.pct | number:'1.0-0' }}%</b>
+          </li>
+        }
+      </ul>
+      <p class="footnote">Flat: net P/L within ±0.5% of traded notional.</p>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="volume-title">
+    <div class="card-head">
+      <div>
+        <h2 id="volume-title">Trading Volume</h2>
+        <p class="muted">Client notional traded · {{ volumePeriod() === '1D' ? 'hourly' : volumePeriod() === '1Y' ? 'weekly' : volumePeriod() === 'ALL' ? 'monthly' : 'daily' }}</p>
+      </div>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Volume period">
+          @for (item of periods; track item) {
+            <button type="button" [class.on]="volumePeriod() === item" (click)="volumePeriod.set(item)">{{ item === 'ALL' ? 'All' : item }}</button>
+          }
+        </div>
+        <div class="anchor">
+          <button type="button" class="ghost caret" [attr.aria-expanded]="menu() === 'volume'" (click)="toggleMenu('volume', $event)">{{ volumeLabel() }}</button>
+          @if (menu() === 'volume') {
+            <div class="popover right" (click)="$event.stopPropagation()">
+              <span class="group">Show</span>
+              <ul class="options">
+                @for (item of flows; track item.key) {
+                  <li><button type="button" [class.on]="flow() === item.key" (click)="flow.set(item.key)"><b>{{ item.label }}</b></button></li>
+                }
+              </ul>
+              <span class="group">Chart</span>
+              <ul class="options">
+                @for (item of volumeViews(); track item.key) {
+                  <li><button type="button" [class.on]="volumeView() === item.key" (click)="volumeView.set(item.key)"><b>{{ item.label }}</b></button></li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      @if (flow() !== 'SELL' && flow() !== 'NET') {
+        <span><i class="up"></i>Buy <b class="num">{{ whole(volumeTotals().buy) }}</b></span>
+      }
+      @if (flow() !== 'BUY' && flow() !== 'NET') {
+        <span><i class="down"></i>Sell <b class="num">{{ whole(volumeTotals().sell) }}</b></span>
+      }
+      <span><i class="ink"></i>Net flow <b class="num" [class.up]="volumeTotals().net >= 0" [class.down]="volumeTotals().net < 0">{{ pnl(volumeTotals().net) }}</b></span>
+    </div>
+
+    @let n = buckets().length;
+    @let vs = volumeScale();
+    @if (n) {
+      @for (key of [volumePeriod() + flow() + volumeView()]; track key) {
+        <div class="chart compact">
+          <div class="y-axis" aria-hidden="true">
+            @for (tick of vs.ticks; track tick) {
+              <span [style.top.%]="y(tick, vs)">{{ axis(tick, 'money') }}</span>
+            }
+          </div>
+          <div class="plot" (mousemove)="track($event, n, volumeHover)" (mouseleave)="volumeHover.set(null)">
+            <svg class="layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              @for (tick of vs.ticks; track tick) {
+                <line class="grid" [class.zero]="tick === 0 && flow() === 'NET'" x1="0" x2="100" [attr.y1]="y(tick, vs)" [attr.y2]="y(tick, vs)" />
+              }
+            </svg>
+            <svg class="layer" [class.reveal]="volumeView() !== 'bars'" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Trading volume chart">
+              @if (volumeView() === 'bars') {
+                @for (b of buckets(); track b.date; let i = $index) {
+                  @let left = x(i, n) - barWidth(n, 0.66) / 2;
+                  @if (flow() === 'BOTH') {
+                    @let buy = box(0, b.buy, vs);
+                    @let sell = box(b.buy, b.buy + b.sell, vs);
+                    <rect class="bar up" [attr.x]="left" [attr.width]="barWidth(n, 0.66)" [attr.y]="buy.y" [attr.height]="buy.height" />
+                    <rect class="bar down" [attr.x]="left" [attr.width]="barWidth(n, 0.66)" [attr.y]="sell.y" [attr.height]="sell.height" />
+                  } @else {
+                    @let v = flowValue(b);
+                    @let bar = box(0, v, vs);
+                    <rect class="bar" [class.up]="flow() === 'BUY' || (flow() === 'NET' && v >= 0)" [class.down]="flow() === 'SELL' || (flow() === 'NET' && v < 0)" [class.neg]="v < 0" [attr.x]="left" [attr.width]="barWidth(n, 0.66)" [attr.y]="bar.y" [attr.height]="bar.height" />
+                  }
+                }
+              } @else {
+                <defs>
+                  <linearGradient id="vol-up" x1="0" x2="0" y1="0" y2="1"><stop offset="0" style="stop-color: var(--up); stop-opacity: .22" /><stop offset="1" style="stop-color: var(--up); stop-opacity: 0" /></linearGradient>
+                  <linearGradient id="vol-down" x1="0" x2="0" y1="0" y2="1"><stop offset="0" style="stop-color: var(--down); stop-opacity: .2" /><stop offset="1" style="stop-color: var(--down); stop-opacity: 0" /></linearGradient>
+                </defs>
+                @let line = volumeSeries();
+                @if (flow() === 'BOTH') {
+                  @if (volumeView() === 'area') {
+                    <path [attr.d]="path(line.buy, vs, true)" fill="url(#vol-up)" />
+                    <path [attr.d]="path(line.sell, vs, true)" fill="url(#vol-down)" />
+                  }
+                  <path class="trace buy" [attr.d]="path(line.buy, vs)" />
+                  <path class="trace sell" [attr.d]="path(line.sell, vs)" />
+                } @else {
+                  @if (volumeView() === 'area' && flow() !== 'NET') {
+                    <path [attr.d]="path(line.flow, vs, true)" [attr.fill]="flow() === 'SELL' ? 'url(#vol-down)' : 'url(#vol-up)'" />
+                  }
+                  <path class="trace" [class.buy]="flow() === 'BUY'" [class.sell]="flow() === 'SELL'" [class.net]="flow() === 'NET'" [attr.d]="path(line.flow, vs)" />
+                }
+              }
+            </svg>
+
+            @if (buckets()[volumeHover() ?? -1]; as b) {
+              <div class="crosshair" [style.left.%]="x(volumeHover()!, n)"></div>
+              <div class="tip" [class.flip]="volumeHover()! > n / 2" [style.left.%]="x(volumeHover()!, n)">
+                <strong>{{ bucketLabel(b.date) }}</strong>
+                <span class="row"><i class="up"></i>Buy<b class="num">{{ whole(b.buy) }}</b></span>
+                <span class="row"><i class="down"></i>Sell<b class="num">{{ whole(b.sell) }}</b></span>
+                <span class="row"><i class="ink"></i>Net flow<b class="num" [class.up]="b.net >= 0" [class.down]="b.net < 0">{{ pnl(b.net) }}</b></span>
+                <span class="row">Trades<b class="num">{{ b.trades }}</b></span>
+              </div>
+            }
+          </div>
+          <div class="x-axis" aria-hidden="true">
+            @for (tick of xTicks(volumeSeries().dates, volumePeriod()); track $index) {
+              <span [style.left.%]="tick.x">{{ tick.label }}</span>
+            }
+          </div>
+        </div>
+      }
+    } @else {
+      <div class="empty">{{ snapshot() ? 'No trades in this period.' : 'Loading activity…' }}</div>
+    }
+  </section>
+
+  <section class="card" aria-labelledby="activity-title">
+    <div class="card-head">
+      <div>
+        <h2 id="activity-title">Trading Activity</h2>
+        <p class="muted">{{ activity().length | number }} trades · {{ span(period()) }}{{ activity().length > tableLimit ? ' · showing first ' + tableLimit : '' }}</p>
+      </div>
+      <div class="filters">
+        <input type="search" [ngModel]="search()" (ngModelChange)="search.set($event)" placeholder="Search symbol or account" aria-label="Search trades">
+        <select [ngModel]="sort()" (ngModelChange)="sort.set($event)" aria-label="Sort">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="value">Largest notional</option>
+          <option value="pnl">Highest P/L</option>
+        </select>
+        <div class="anchor">
+          <button type="button" class="ghost" [attr.aria-expanded]="menu() === 'filters'" (click)="toggleMenu('filters', $event)">
+            Filters
+            @if (activeFilters()) {
+              <span class="badge">{{ activeFilters() }}</span>
+            }
+          </button>
+          @if (menu() === 'filters') {
+            <div class="popover right form" (click)="$event.stopPropagation()">
+              <label>Instrument
+                <select [ngModel]="symbol()" (ngModelChange)="symbol.set($event)">
+                  <option value="ALL">All instruments</option>
+                  @for (item of instruments(); track item.ticker) {
+                    <option [value]="item.ticker">{{ item.ticker }} · {{ item.name }}</option>
+                  }
+                </select>
+              </label>
+              <label>Account
+                <select [ngModel]="account()" (ngModelChange)="account.set($event)">
+                  <option value="ALL">All accounts</option>
+                  @for (item of accounts(); track item) {
+                    <option [value]="item">{{ item }}</option>
+                  }
+                </select>
+              </label>
+              <label>Side
+                <select [ngModel]="side()" (ngModelChange)="side.set($event)">
+                  <option value="ALL">Buy and sell</option>
+                  <option value="BUY">Buy</option>
+                  <option value="SELL">Sell</option>
+                </select>
+              </label>
+              <div class="dates">
+                <label>From<input type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)"></label>
+                <label>To<input type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)"></label>
+              </div>
+              <button type="button" class="link" [disabled]="!activeFilters()" (click)="clearFilters()">Clear filters</button>
+            </div>
+          }
+        </div>
+        <button type="button" class="ghost" [disabled]="!activity().length" (click)="downloadCsv()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>
+          Download CSV
+        </button>
+      </div>
+    </div>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Account</th>
+            <th>Instrument</th>
+            <th>Side</th>
+            <th class="r">Quantity</th>
+            <th class="r">Price</th>
+            <th class="r">Value</th>
+            <th class="r">P/L</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (trade of activity().slice(0, tableLimit); track trade.tradeId) {
+            <tr>
+              <td>{{ when(trade.executedAt.slice(0, 10), '1M') }}<small>{{ time(trade.executedAt) }}</small></td>
+              <td class="num">{{ trade.accountId }}</td>
+              <td><b>{{ trade.ticker }}</b><small>{{ trade.name }}</small></td>
+              <td><span class="side" [class.sell]="trade.side === 'SELL'">{{ trade.side === 'BUY' ? 'Buy' : 'Sell' }}</span></td>
+              <td class="r num">{{ trade.quantity | number }}</td>
+              <td class="r num">{{ money(trade.executionPrice) }}</td>
+              <td class="r num">{{ money(trade.tradeValue) }}</td>
+              <td class="r num" [class.up]="trade.pnl >= 0" [class.down]="trade.pnl < 0">{{ pnl(trade.pnl) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="empty">No trades match these filters.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
 </main>
