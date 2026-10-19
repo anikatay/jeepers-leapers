@@ -1,9 +1,11 @@
 package com.neueda.leap.service;
 
+import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.InstrumentResponse;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
+import com.neueda.leap.mapper.ExchangeMapper;
 import com.neueda.leap.mapper.InstrumentMapper;
 import com.neueda.leap.model.Instrument;
 import org.junit.jupiter.api.Test;
@@ -34,10 +36,18 @@ class InstrumentServiceTest {
     private InstrumentMapper instrumentMapper;
 
     @Mock
+    private MarketDataClient marketDataClient;
+    
+    @Mock
+    private ExchangeMapper exchangeMapper;
+
+    @Mock
     private StringRedisTemplate redis;
 
     @Mock
     private MarketDataService marketDataService;
+    
+
 
     private InstrumentService instrumentService;
 
@@ -45,6 +55,8 @@ class InstrumentServiceTest {
     void setUp() {
         instrumentService = new InstrumentService(
                 instrumentMapper,
+                marketDataClient,
+                exchangeMapper,
                 redis,
                 marketDataService,
                 120,
