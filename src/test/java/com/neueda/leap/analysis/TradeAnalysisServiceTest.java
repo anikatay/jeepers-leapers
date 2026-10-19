@@ -30,10 +30,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class TradeAnalysisServiceTest {
 
+    private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID ACCOUNT_ID = UUID.randomUUID();
     private static final UUID TRADE_ID = UUID.randomUUID();
     private static final UUID AAPL = UUID.randomUUID();
@@ -56,6 +58,7 @@ class TradeAnalysisServiceTest {
         account.setAccountId(ACCOUNT_ID);
         account.setBalance(new BigDecimal("5000.0000"));
         when(accountMapper.findByAccountId(ACCOUNT_ID)).thenReturn(account);
+        when(accountMapper.findAccountIdByUserId(USER_ID)).thenReturn(ACCOUNT_ID);
 
         when(instrumentMapper.findAll()).thenReturn(List.of(
                 instrument(AAPL, "AAPL", "229.0000"),
@@ -75,13 +78,13 @@ class TradeAnalysisServiceTest {
     void buildsContextForACostedSell() {
         TradeResponse sell = trade("SELL", 20, "229.0000", OffsetDateTime.now().minusDays(3).minusHours(1));
         TrackRecord trackRecord = new TrackRecord(bd("1840.00"), bd("-75.00"), bd("66.67"));
-        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID)).thenReturn(sell);
-        when(tradeMapper.findRecentTradesForAccountWithInstrument(eq(ACCOUNT_ID), eq(10))).thenReturn(List.of(sell));
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID)).thenReturn(sell);
+        when(tradeMapper.findAllTradesForAccountWithInstrument(eq(ACCOUNT_ID), eq(10), eq(0))).thenReturn(List.of(sell));
         when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
                 bd("198.5000"), bd("229.0000"), bd("610.0000"), bd("0.0000"), "MATCHED", PNL_AS_OF)));
         when(pnlReader.findTrackRecord(ACCOUNT_ID)).thenReturn(Optional.of(trackRecord));
 
-        TradeAnalysisContext context = service.buildContext(TRADE_ID);
+        TradeAnalysisContext context = service.buildContext(TRADE_ID, USER_ID);
 
         assertEquals(new TradeAnalysisContext.Trade("AAPL", "AAPL Inc.", "NASDAQ", "SELL", bd("20"),
                 bd("229.00"), bd("4580.00"), sell.getExecutedAt(), 3), context.trade());
@@ -101,10 +104,10 @@ class TradeAnalysisServiceTest {
 
     @Test
     void leavesOutcomeAndTrackRecordEmptyWhenAnalyticsHasNothing() {
-        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID))
                 .thenReturn(trade("BUY", 5, "220.0000", OffsetDateTime.now()));
 
-        TradeAnalysisContext context = service.buildContext(TRADE_ID);
+        TradeAnalysisContext context = service.buildContext(TRADE_ID, USER_ID);
 
         assertNull(context.outcome());
         assertNull(context.trackRecord());
@@ -113,12 +116,12 @@ class TradeAnalysisServiceTest {
 
     @Test
     void valuesAnOpenBuyAtTheCurrentPrice() {
-        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID))
                 .thenReturn(trade("BUY", 5, "250.0000", OffsetDateTime.now()));
         when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
                 bd("250.0000"), null, bd("0.0000"), bd("-105.0000"), "UNMATCHED", PNL_AS_OF)));
 
-        TradeAnalysisContext.Outcome outcome = service.buildContext(TRADE_ID).outcome();
+        TradeAnalysisContext.Outcome outcome = service.buildContext(TRADE_ID, USER_ID).outcome();
 
         assertEquals(bd("-8.40"), outcome.returnPct());
         assertEquals(bd("-105.00"), outcome.unrealizedPnl());
@@ -128,64 +131,83 @@ class TradeAnalysisServiceTest {
 
     @Test
     void givesNoReturnForAFullySoldBuyOrAnUncostedSell() {
-        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID))
                 .thenReturn(trade("BUY", 5, "250.0000", OffsetDateTime.now()));
         when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
                 bd("250.0000"), null, bd("0.0000"), bd("0.0000"), "MATCHED", PNL_AS_OF)));
-        TradeAnalysisContext.Outcome fullySoldBuy = service.buildContext(TRADE_ID).outcome();
+        TradeAnalysisContext.Outcome fullySoldBuy = service.buildContext(TRADE_ID, USER_ID).outcome();
         assertNull(fullySoldBuy.returnPct());
         assertNull(fullySoldBuy.unrealizedPnl());
 
-        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID))
                 .thenReturn(trade("SELL", 5, "250.0000", OffsetDateTime.now()));
         when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
                 null, bd("250.0000"), bd("0.0000"), bd("0.0000"), "UNMATCHED", PNL_AS_OF)));
-        TradeAnalysisContext.Outcome uncostedSell = service.buildContext(TRADE_ID).outcome();
+        TradeAnalysisContext.Outcome uncostedSell = service.buildContext(TRADE_ID, USER_ID).outcome();
         assertNull(uncostedSell.returnPct());
         assertNull(uncostedSell.realizedPnl());
     }
 
     @Test
     void rejectsAnUnknownTrade() {
-        assertThrows(ObjectNotFoundException.class, () -> service.buildContext(TRADE_ID));
+        assertThrows(ObjectNotFoundException.class, () -> service.buildContext(TRADE_ID, USER_ID));
+    }
+
+    @Test
+    void treatsAnotherAccountsTradeAsNotFound() {
+        UUID otherUser = UUID.randomUUID();
+        UUID otherAccount = UUID.randomUUID();
+        when(accountMapper.findAccountIdByUserId(otherUser)).thenReturn(otherAccount);
+        // The trade exists, but only under ACCOUNT_ID; the lookup is scoped to the caller's account
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID))
+                .thenReturn(trade("BUY", 5, "220.0000", OffsetDateTime.now()));
+
+        assertThrows(ObjectNotFoundException.class, () -> service.buildContext(TRADE_ID, otherUser));
+        assertThrows(ObjectNotFoundException.class, () -> service.analyze(TRADE_ID, otherUser));
+        verifyNoInteractions(analyzer);
+    }
+
+    @Test
+    void treatsAUserWithoutAnAccountAsNotFound() {
+        assertThrows(ObjectNotFoundException.class, () -> service.buildContext(TRADE_ID, UUID.randomUUID()));
     }
 
     @Test
     void analysesTheContextItBuilt() {
-        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID))
                 .thenReturn(trade("BUY", 5, "220.0000", OffsetDateTime.now()));
         TradeAnalysisResult result = result("Too early to say.");
-        when(analyzer.analyzeWithUsage(service.buildContext(TRADE_ID))).thenReturn(analysis(result));
+        when(analyzer.analyzeWithUsage(service.buildContext(TRADE_ID, USER_ID))).thenReturn(analysis(result));
 
-        assertSame(result, service.analyze(TRADE_ID));
+        assertSame(result, service.analyze(TRADE_ID, USER_ID));
     }
 
     @Test
     void reusesTheAnalysisWhileTheContextIsUnchanged() {
-        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID))
                 .thenReturn(trade("BUY", 5, "220.0000", OffsetDateTime.now()));
         when(analyzer.analyzeWithUsage(any())).thenReturn(analysis(result("First.")));
 
-        service.analyze(TRADE_ID);
-        service.analyze(TRADE_ID);
+        service.analyze(TRADE_ID, USER_ID);
+        service.analyze(TRADE_ID, USER_ID);
 
         verify(analyzer, times(1)).analyzeWithUsage(any());
     }
 
     @Test
     void analysesAgainWhenANewPnlRunChangesTheContext() {
-        when(tradeMapper.findTradeWithInstrumentById(TRADE_ID))
+        when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID))
                 .thenReturn(trade("BUY", 5, "250.0000", OffsetDateTime.now()));
         when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
                 bd("250.0000"), null, bd("0.0000"), bd("-105.0000"), "UNMATCHED", PNL_AS_OF)));
         when(analyzer.analyzeWithUsage(any()))
                 .thenReturn(analysis(result("Before the run.")), analysis(result("After the run.")));
 
-        assertEquals("Before the run.", service.analyze(TRADE_ID).summary());
+        assertEquals("Before the run.", service.analyze(TRADE_ID, USER_ID).summary());
         when(pnlReader.findTradePnl(TRADE_ID)).thenReturn(Optional.of(new TradePnl(
                 bd("250.0000"), null, bd("0.0000"), bd("-105.0000"), "UNMATCHED", PNL_AS_OF.plusMinutes(10))));
 
-        assertEquals("After the run.", service.analyze(TRADE_ID).summary());
+        assertEquals("After the run.", service.analyze(TRADE_ID, USER_ID).summary());
     }
 
     @Test
@@ -196,8 +218,8 @@ class TradeAnalysisServiceTest {
         TradeResponse third = trade("BUY", 3, "220.0000", OffsetDateTime.now());
 
         for (TradeResponse trade : List.of(first, second, third, first)) {
-            when(tradeMapper.findTradeWithInstrumentById(TRADE_ID)).thenReturn(trade);
-            service.analyze(TRADE_ID);
+            when(tradeMapper.findTradeWithInstrumentByIdForAccount(TRADE_ID, ACCOUNT_ID)).thenReturn(trade);
+            service.analyze(TRADE_ID, USER_ID);
         }
 
         // The cache holds two entries, so the first trade was evicted by the third and analysed again.

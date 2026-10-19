@@ -84,10 +84,14 @@ pipeline {
                         curl -fsS http://localhost:8090/ >/dev/null 2>&1
                     }
 
-                    # Builds a trade analysis context from both databases; does not call OpenAI
+                    # Logs in as a seeded user and builds the analysis context for one of
+                    # their trades, covering auth and both databases; does not call OpenAI
                     analysis_context_ready() {
-                        curl -fsS -o /dev/null \
-                            http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000006/analysis/context
+                        token="$(curl -fsS -X POST -H 'Content-Type: application/json' \
+                            -d '{"email":"bob@example.com","password":"123"}' \
+                            http://localhost:8095/api/auth/login | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
+                        [ -n "$token" ] && curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
+                            http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context
                     }
 
                     backend_ready() {

@@ -17,14 +17,15 @@ It is an automated review, not financial advice, and the UI must say so.
 ## 2. Scope
 
 **In scope**
-- Reviewing any stored trade on demand, by trade ID.
+- Reviewing one of your own trades on demand, by trade ID, after logging in.
 - Showing exactly what the model is told about a trade, without calling the model.
 - Refreshing P&L automatically so reviews of recent trades include it.
 - Cost controls: a rate limit, a cache, and a usage log.
 
 **Out of scope (follow-ups)**
-- **Trade ownership check:** a caller can review any trade ID. This is blocked until login works end
-  to end (the frontend sends no token).
+- **Admin and analyst access:** only a trade's owner can review it.
+- **The rest of the API:** other `/api` endpoints, such as `GET /api/trades/account/{accountId}`,
+  still need no login and do not check ownership. That is app-wide auth work.
 - **Storing reviews:** reviews are not stored, and each request is answered fresh or from the
   in-memory cache.
 - **Missing context:** price history, market data, and a note on why the trader made the trade.
@@ -32,6 +33,10 @@ It is an automated review, not financial advice, and the UI must say so.
 - **Model upgrade:** `gpt-5.4-mini` scored higher in evaluation but costs more (see section 7).
 
 ## 3. API contract
+
+Both endpoints require a login token, `Authorization: Bearer <token>` from `POST /api/auth/login`.
+They only find trades on the logged-in user's account. Another account's trade gets the same 404 as a
+trade that doesn't exist, so responses don't reveal which trade IDs exist.
 
 ### `POST /api/trades/{tradeId}/analysis`
 
@@ -50,7 +55,8 @@ No request body. A successful response:
 | Status | When | Body |
 |---|---|---|
 | 200 | Analysis returned, possibly from the cache | As above |
-| 404 | No trade with that ID | `ErrorResponse`, code `RESOURCE_NOT_FOUND` |
+| 401 | No token, or a token that doesn't verify | Empty |
+| 404 | No trade with that ID on the caller's account | `ErrorResponse`, code `RESOURCE_NOT_FOUND` |
 | 429 | Rate limit reached | `ErrorResponse`, code `TOO_MANY_ANALYSES`; header `Retry-After` in seconds |
 | 502 | OpenAI unreachable, refused, misconfigured or returned unusable output | `ErrorResponse`, code `ANALYSIS_UNAVAILABLE`; the cause is logged, never returned |
 
@@ -59,7 +65,8 @@ No request body. A successful response:
 ### `GET /api/trades/{tradeId}/analysis/context`
 
 Returns the exact JSON the model would receive (section 4). It does not call OpenAI and does not
-count against the rate limit. Status 200, or 404 for an unknown trade.
+count against the rate limit. Status 200, 401 without a valid token, or 404 for a trade not on the
+caller's account.
 
 ## 4. Context sent to the model
 
@@ -110,7 +117,7 @@ If the analytics database is missing or being refreshed, reviews still work, wit
 | Requirement | Value |
 |---|---|
 | Latency | 2–4 s for an OpenAI call; about 10 ms from the cache |
-| Rate limit | 20 requests a minute overall and 5 per client, in-memory per app instance; client = `X-Real-IP` set by nginx, else the remote address |
+| Rate limit | 20 requests a minute overall and 5 per logged-in user, in-memory per app instance |
 | Cache | Keyed by the full context, so any change to what the model would see is a miss; most recent 500 entries |
 | Usage log | One line per request: tradeId, cache hit or miss, verdict, model, prompt and completion tokens, latency |
 | Configuration | `OPENAI_API_KEY` (required for reviews), `OPENAI_MODEL` (default `gpt-4o-mini`), `ETL_INTERVAL_SECONDS`, `analysis.*` in `application.properties` |
@@ -140,9 +147,9 @@ Results vary from run to run, so compare models over several runs.
 | # | Given / When / Then | Covered by |
 |---|---|---|
 | B1 | Given a stored trade, when a review is requested, then 200 with a verdict, a summary and the three lists | `TradeAnalysisEndpointTest.returnsTheAnalysis` |
-| B2 | Given an unknown trade ID, when a review or its context is requested, then 404 | `returns404ForAnUnknownTrade`, `TradeAnalysisServiceTest.rejectsAnUnknownTrade` |
+| B2 | Given an unknown trade ID, when a review or its context is requested, then 404 | `returns404ForAnUnknownTradeOrSomeoneElses`, `TradeAnalysisServiceTest.rejectsAnUnknownTrade` |
 | B3 | Given OpenAI fails, when a review is requested, then 502 and the upstream error is not in the response | `returns502WithoutLeakingTheUpstreamError` |
-| B4 | Given a client has made 5 requests this minute, when it makes another, then 429 with `Retry-After` and no analysis runs | `returns429WithRetryAfterAndSkipsTheAnalysis`, `AnalysisRateLimiterTest` |
+| B4 | Given a user has made 5 requests this minute, when it makes another, then 429 with `Retry-After` and no analysis runs | `returns429WithRetryAfterAndSkipsTheAnalysis`, `AnalysisRateLimiterTest` |
 | B5 | Given the context is unchanged, when the same trade is reviewed again, then OpenAI is not called again | `reusesTheAnalysisWhileTheContextIsUnchanged` |
 | B6 | Given a new ETL run changed the P&L, when the trade is reviewed, then OpenAI is called again | `analysesAgainWhenANewPnlRunChangesTheContext` |
 | B7 | Given a trade the ETL has not processed, when its context is built, then `outcome` and `trackRecord` are null and the review still succeeds | `leavesOutcomeAndTrackRecordEmptyWhenAnalyticsHasNothing` |
@@ -152,6 +159,8 @@ Results vary from run to run, so compare models over several runs.
 | B11 | Given no OpenAI key, when the app starts, then it runs and reviews return 502 | Manual check, 2026-10-13 |
 | B12 | Given the evaluation set, when run against the configured model, then every case passes in every run | `TradeAnalysisEvalTest` (opt-in; 30 of 30 on 2026-10-19) |
 | B13 | Given main's live market service, when a subscribed ticker's price changes, then that trade's context shows the new `priceNow` | Manual check, 2026-10-19: NVDA 138.25 to 218.57 after subscribing |
+| B14 | Given no token, or a token not signed by this app, when a review or its context is requested, then 401 and nothing runs | `requiresALoginToken`, `rejectsATokenSignedWithAnotherKey` |
+| B15 | Given a trade on another account, when a logged-in user requests its review or context, then 404, the same as an unknown trade | `TradeAnalysisServiceTest.treatsAnotherAccountsTradeAsNotFound`, `returns404ForAnUnknownTradeOrSomeoneElses`; manual check 2026-10-19: Bob gets 404 for Alice's trade and 200 for his own |
 
 ## 9. UI
 

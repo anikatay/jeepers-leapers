@@ -40,11 +40,16 @@ Reviews any trade on request with OpenAI and returns a verdict (`GOOD`, `MIXED`,
 `TOO_EARLY`) with reasons. The spec, covering the API contract, the data sent to the model, limits
 and acceptance criteria, is in [docs/specs/trade-analysis.md](docs/specs/trade-analysis.md).
 
+Both endpoints need a login token and only work on the logged-in user's own trades. The seeded user
+`bob@example.com` (password `123`) owns trade `c3000000-0000-0000-0000-000000000007`:
+
 ```bash
+TOKEN=$(curl -s -X POST http://localhost:8095/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"bob@example.com","password":"123"}' | jq -r .token)
 # What the model would be told (no OpenAI call)
-curl http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000006/analysis/context
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context
 # The review (about 2 to 4 seconds)
-curl -X POST http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000006/analysis
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000007/analysis
 ```
 
 ### Configuration
