@@ -12,7 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
+import com.neueda.leap.util.JwtSecret;
 
 @Configuration
 public class SecurityConfig {
@@ -22,8 +22,8 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        SecretKeySpec key = new SecretKeySpec(
-                sharedSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        // Must match how JwtUtil signs, or no issued token verifies
+        SecretKeySpec key = new SecretKeySpec(JwtSecret.keyBytes(sharedSecret), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 
@@ -47,6 +47,10 @@ public class SecurityConfig {
                         // Analyst endpoints - ANALYST or ADMIN
                         .requestMatchers("/analyst/**").hasAnyRole("ANALYST", "ADMIN")
                         
+                        // Trade analysis exposes an account's positions and spends OpenAI credit:
+                        // callers must log in and may only analyse their own trades
+                        .requestMatchers("/api/trades/*/analysis", "/api/trades/*/analysis/**").authenticated()
+
                         // API endpoints - all authenticated users
                         .requestMatchers("/api/**").permitAll()
                         

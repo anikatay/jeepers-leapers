@@ -11,11 +11,13 @@ import com.neueda.leap.model.Trade;
 import com.neueda.leap.service.InstrumentService;
 import com.neueda.leap.service.TradeService;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -89,21 +91,27 @@ public class TradeController {
     }
 
     @PostMapping("/{tradeId}/analysis")
-    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable UUID tradeId, HttpServletRequest request) {
-        analysisRateLimiter.acquire(clientOf(request));
-        return ResponseEntity.ok(tradeAnalysisService.analyze(tradeId));
+    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable UUID tradeId,
+            @AuthenticationPrincipal Jwt jwt) {
+        UUID userId = userIdOf(jwt);
+        analysisRateLimiter.acquire(userId.toString());
+        return ResponseEntity.ok(tradeAnalysisService.analyze(tradeId, userId));
     }
 
     /** What the model would be told about the trade, without calling it. */
     @GetMapping("/{tradeId}/analysis/context")
-    public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable UUID tradeId) {
-        return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId));
+    public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable UUID tradeId,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId, userIdOf(jwt)));
     }
 
-    // nginx sets X-Real-IP; a caller reaching the app directly can fake it, which the global cap covers.
-    private static String clientOf(HttpServletRequest request) {
-        String realIp = request.getHeader("X-Real-IP");
-        return realIp == null || realIp.isBlank() ? request.getRemoteAddr() : realIp;
+    // JwtUtil puts the user's ID in every token it issues
+    private static UUID userIdOf(Jwt jwt) {
+        String userId = jwt.getClaimAsString("userId");
+        if (userId == null) {
+            throw new BadCredentialsException("Token has no userId claim");
+        }
+        return UUID.fromString(userId);
     }
 
 }

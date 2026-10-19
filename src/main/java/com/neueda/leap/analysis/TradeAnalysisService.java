@@ -69,8 +69,8 @@ public class TradeAnalysisService {
         });
     }
 
-    public TradeAnalysisResult analyze(UUID tradeId) {
-        TradeAnalysisContext context = buildContext(tradeId);
+    public TradeAnalysisResult analyze(UUID tradeId, UUID userId) {
+        TradeAnalysisContext context = buildContext(tradeId, userId);
         TradeAnalysisResult cached = cache.get(context);
         if (cached != null) {
             log.info("analysis tradeId={} cache=hit verdict={}", tradeId, cached.verdict());
@@ -84,8 +84,11 @@ public class TradeAnalysisService {
         return analysis.result();
     }
 
-    public TradeAnalysisContext buildContext(UUID tradeId) {
-        TradeResponse trade = tradeMapper.findTradeWithInstrumentById(tradeId);
+    /** Someone else's trade is reported as not found, so callers cannot probe which trade IDs exist. */
+    public TradeAnalysisContext buildContext(UUID tradeId, UUID userId) {
+        UUID accountId = accountMapper.findAccountIdByUserId(userId);
+        TradeResponse trade = accountId == null ? null
+                : tradeMapper.findTradeWithInstrumentByIdForAccount(tradeId, accountId);
         if (trade == null) {
             throw new ObjectNotFoundException("Trade not found: " + tradeId);
         }
@@ -109,7 +112,7 @@ public class TradeAnalysisService {
                 new PriceNow(price(currentPrice), pct(currentPrice.subtract(executionPrice), executionPrice)),
                 portfolio(account, tradeValue, instruments),
                 pnlReader.findTrackRecord(trade.getAccountId()).orElse(null),
-                tradeMapper.findRecentTradesForAccountWithInstrument(trade.getAccountId(), RECENT_TRADES).stream()
+                tradeMapper.findAllTradesForAccountWithInstrument(trade.getAccountId(), RECENT_TRADES, 0).stream()
                         .map(recent -> new RecentTrade(recent.getExecutedAt().toLocalDate(), recent.getTicker(),
                                 recent.getSide(), quantity(recent.getQuantity()),
                                 price(recent.getExecutionPrice())))
