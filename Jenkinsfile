@@ -23,7 +23,7 @@ pipeline {
                     node --version
                     npm --version
                     docker --version
-                    docker compose version
+                    docker-compose version
                 '''
             }
         }
@@ -50,8 +50,8 @@ pipeline {
             steps {
                 sh '''
                     set -eu
-                    docker compose config --quiet
-                    docker compose up -d --build
+                    docker-compose config --quiet
+                    docker-compose up -d --build
                 '''
             }
         }
@@ -76,7 +76,7 @@ pipeline {
         //             }
 
         //             postgres_ready() {
-        //                 docker compose exec -T db \
+        //                 docker-compose exec -T db \
         //                     pg_isready -U paysprint -d paysprint >/dev/null 2>&1
         //             }
 
