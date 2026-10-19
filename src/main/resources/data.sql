@@ -24,7 +24,7 @@ INSERT INTO users (user_id, role) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO user_pii (user_id, first_name, last_name, date_of_birth, ssn, email) VALUES
-    ('a1000000-0000-0000-0000-000000000001', 'Alice', 'Anderson', '1990-01-01', '111-11-1111', 'joanna@example.com'),
+    ('a1000000-0000-0000-0000-000000000001', 'Joanna', 'Anderson', '1990-01-01', '111-11-1111', 'joanna@example.com'),
     ('a1000000-0000-0000-0000-000000000002', 'Bob', 'Brown', '1988-05-12', '222-22-2222', 'bob@example.com'),
     ('a1000000-0000-0000-0000-000000000003', 'Charlie', 'Clark', '1995-09-23', '333-33-3333', 'charlie@example.com'),
     ('a1000000-0000-0000-0000-000000000004', 'Admin', 'User', '1985-03-15', '444-44-4444', 'admin@platform.com'),
@@ -33,11 +33,11 @@ ON CONFLICT DO NOTHING;
 
 -- Demo credentials: password is 123 for local development only.
 INSERT INTO user_credentials (user_id, password_hash) VALUES
-    ('a1000000-0000-0000-0000-000000000001', '$2a$10$Y3EOki3i/dU27xb3MarsveGu0C/TtZGQa5PAKE4VRq8NvrLeyCCHO'),
-    ('a1000000-0000-0000-0000-000000000002', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
-    ('a1000000-0000-0000-0000-000000000003', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
-    ('a1000000-0000-0000-0000-000000000004', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
-    ('a1000000-0000-0000-0000-000000000005', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.')
+    ('a1000000-0000-0000-0000-000000000001', '$2a$10$L2FJMdQFHym5WD7CabaMdOIY4ZpRocmlIWTZ3epF83XJtX1Y9lkfW'),
+    ('a1000000-0000-0000-0000-000000000002', '$2a$10$L2FJMdQFHym5WD7CabaMdOIY4ZpRocmlIWTZ3epF83XJtX1Y9lkfW'),
+    ('a1000000-0000-0000-0000-000000000003', '$2a$10$L2FJMdQFHym5WD7CabaMdOIY4ZpRocmlIWTZ3epF83XJtX1Y9lkfW'),
+    ('a1000000-0000-0000-0000-000000000004', '$2a$10$uZZ/jRAsfk7gnSpnAg2BeOTVL84LhTx02a.h9CpZsHTK3.OakI8iy'),
+    ('a1000000-0000-0000-0000-000000000005', '$2a$10$LJSZnaPrORx92EWm2xvyd.2Y17OFr/mdlZ.qixtSmHMYV0x3X882y')
 ON CONFLICT DO NOTHING;
 
 -- ── Accounts ─────────────────────────────────────────────────────────────────
