@@ -55,50 +55,50 @@ pipeline {
                 '''
             }
         }
-        // stage('Smoke Test') {
-        //     steps {
-        //         sh '''
-        //             set -eu
+        stage('Smoke Test') {
+            steps {
+                sh '''
+                    set -eu
 
-        //             wait_for() {
-        //                 name="$1"
-        //                 shift
+                    wait_for() {
+                        name="$1"
+                        shift
 
-        //                 for attempt in $(seq 1 60); do
-        //                     if "$@"; then
-        //                         return 0
-        //                     fi
-        //                     sleep 2
-        //                 done
+                        for attempt in $(seq 1 60); do
+                            if "$@"; then
+                                return 0
+                            fi
+                            sleep 2
+                        done
 
-        //                 echo "$name did not become ready" >&2
-        //                 return 1
-        //             }
+                        echo "$name did not become ready" >&2
+                        return 1
+                    }
 
-        //             postgres_ready() {
-        //                 docker-compose exec -T db \
-        //                     pg_isready -U paysprint -d paysprint >/dev/null 2>&1
-        //             }
+                    postgres_ready() {
+                        docker-compose exec -T db \
+                            pg_isready -U paysprint -d paysprint >/dev/null 2>&1
+                    }
 
-        //             frontend_ready() {
-        //                 curl -fsS http://localhost:8090/ >/dev/null 2>&1
-        //             }
+                    frontend_ready() {
+                        curl -fsS http://localhost:8090/ >/dev/null 2>&1
+                    }
 
-        //             backend_ready() {
-        //                 status="$(curl -sS -o /dev/null -w '%{http_code}' \
-        //                     http://localhost:8095/api/instruments)"
+                    backend_ready() {
+                        status="$(curl -sS -o /dev/null -w '%{http_code}' \
+                            http://localhost:8095/api/instruments)"
 
-        //                 case "$status" in
-        //                     2*|3*|4*) return 0 ;;
-        //                     *) return 1 ;;
-        //                 esac
-        //             }
+                        case "$status" in
+                            2*|3*|4*) return 0 ;;
+                            *) return 1 ;;
+                        esac
+                    }
 
-        //             wait_for "PostgreSQL" postgres_ready
-        //             wait_for "Frontend" frontend_ready
-        //             wait_for "Backend" backend_ready
-        //         '''
-        //     }
-        // }
+                    wait_for "PostgreSQL" postgres_ready
+                    wait_for "Frontend" frontend_ready
+                    wait_for "Backend" backend_ready
+                '''
+            }
+        }
     }
 }
