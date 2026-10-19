@@ -61,10 +61,11 @@ class TradeAnalysisServiceTest {
                 instrument(AAPL, "AAPL", "229.0000"),
                 instrument(MSFT, "MSFT", "430.2500")));
 
-        // AAPL 10 x 229.00 = 2290.00, MSFT 20 x 430.25 = 8605.00, cash 5000.00: total 15895.00
+        // AAPL 10 x 229.00 = 2290.00, MSFT 20 x 430.25 = 8605.00, cash 5000.00: total 15895.00.
+        // Quantities come back from NUMERIC(18, 8) with eight decimal places.
         when(holdingMapper.getHoldingsByAccountId(ACCOUNT_ID)).thenReturn(List.of(
-                new Holding(ACCOUNT_ID, AAPL, 10),
-                new Holding(ACCOUNT_ID, MSFT, 20)));
+                new Holding(ACCOUNT_ID, AAPL, bd("10.00000000")),
+                new Holding(ACCOUNT_ID, MSFT, bd("20.00000000"))));
 
         when(pnlReader.findTradePnl(any())).thenReturn(Optional.empty());
         when(pnlReader.findTrackRecord(any())).thenReturn(Optional.empty());
@@ -213,8 +214,9 @@ class TradeAnalysisServiceTest {
 
     private static TradeResponse trade(String side, int quantity, String price, OffsetDateTime executedAt) {
         BigDecimal executionPrice = bd(price);
-        return new TradeResponse(TRADE_ID, ACCOUNT_ID, AAPL, "AAPL", "AAPL Inc.", side, quantity, executionPrice,
-                executionPrice.multiply(BigDecimal.valueOf(quantity)), executedAt);
+        BigDecimal storedQuantity = BigDecimal.valueOf(quantity).setScale(8);
+        return new TradeResponse(TRADE_ID, ACCOUNT_ID, AAPL, "AAPL", "AAPL Inc.", side, storedQuantity, executionPrice,
+                executionPrice.multiply(storedQuantity), executedAt);
     }
 
     private static Instrument instrument(UUID id, String ticker, String currentPrice) {

@@ -94,7 +94,7 @@ public class TradeAnalysisService {
         Instrument instrument = instruments.get(trade.getInstrumentId());
         Account account = accountMapper.findByAccountId(trade.getAccountId());
 
-        BigDecimal quantity = BigDecimal.valueOf(trade.getQuantity());
+        BigDecimal quantity = quantity(trade.getQuantity());
         BigDecimal executionPrice = trade.getExecutionPrice();
         BigDecimal currentPrice = instrument.getCurrentPrice();
         BigDecimal tradeValue = money(trade.getTradeValue());
@@ -111,7 +111,7 @@ public class TradeAnalysisService {
                 pnlReader.findTrackRecord(trade.getAccountId()).orElse(null),
                 tradeMapper.findRecentTradesForAccountWithInstrument(trade.getAccountId(), RECENT_TRADES).stream()
                         .map(recent -> new RecentTrade(recent.getExecutedAt().toLocalDate(), recent.getTicker(),
-                                recent.getSide(), BigDecimal.valueOf(recent.getQuantity()),
+                                recent.getSide(), quantity(recent.getQuantity()),
                                 price(recent.getExecutionPrice())))
                         .toList());
     }
@@ -138,7 +138,7 @@ public class TradeAnalysisService {
         List<Position> positions = holdingMapper.getHoldingsByAccountId(account.getAccountId()).stream()
                 .map(holding -> {
                     Instrument held = instruments.get(holding.getInstrumentId());
-                    BigDecimal quantity = BigDecimal.valueOf(holding.getQuantity());
+                    BigDecimal quantity = quantity(holding.getQuantity());
                     return new Position(held.getTicker(), quantity, money(held.getCurrentPrice().multiply(quantity)));
                 })
                 .sorted(Comparator.comparing(Position::marketValue).reversed())
@@ -160,6 +160,13 @@ public class TradeAnalysisService {
 
     private static BigDecimal money(BigDecimal value) {
         return value == null ? null : value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /** Quantities are stored to eight places; 14.00000000 is sent as 14. */
+    private static BigDecimal quantity(BigDecimal value) {
+        BigDecimal stripped = value.stripTrailingZeros();
+        // stripTrailingZeros turns 140 into 1.4E+2, which Jackson writes in exponent form
+        return stripped.scale() < 0 ? stripped.setScale(0) : stripped;
     }
 
     /** Prices are stored to four places; drop trailing zeros but keep at least cents. */

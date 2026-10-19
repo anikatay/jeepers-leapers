@@ -29,6 +29,10 @@ public class UserService {
         return userMapper.getUserById(userId);
     }
 
+    public String getPasswordHash(UUID userId) {
+        return userMapper.getPasswordHashByUserId(userId);
+    }
+
     public String getUserRole(UUID userId) {
         User user = userMapper.getUserById(userId);
         if (user == null) {

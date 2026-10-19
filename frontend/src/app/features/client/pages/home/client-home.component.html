@@ -7,10 +7,10 @@
       <div class="profile-stats-section">
         <!-- Profile Card -->
         <button class="profile-card" (click)="goToProfile()">
-          <div class="profile-avatar">{{ userInitial }}</div>
+          <div class="profile-avatar">{{ user.userInitial }}</div>
           <div class="profile-info">
             <p class="profile-label">{{ 'home.your_profile' | translate }}</p>
-            <p class="profile-name font-display">{{ userName }}</p>
+            <p class="profile-name font-display">{{ user.userName }}</p>
           </div>
           <svg class="profile-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -43,7 +43,7 @@
             </div>
             <div class="stat-content">
               <p class="stat-label">{{ 'home.todays_gain' | translate }}</p>
-              <p class="stat-value font-mono-data positive">{{ todaysGain() }}</p>
+              <p class="stat-value font-mono-data" [class.positive]="!todaysGain().startsWith('-')" [class.negative]="todaysGain().startsWith('-')">{{ todaysGain() }}</p>
             </div>
           </div>
 
@@ -58,7 +58,7 @@
             </div>
             <div class="stat-content">
               <p class="stat-label">{{ 'home.overall_gain' | translate }}</p>
-              <p class="stat-value font-mono-data positive">{{ overallGain() }}</p>
+              <p class="stat-value font-mono-data" [class.positive]="!overallGain().startsWith('-')" [class.negative]="overallGain().startsWith('-')">{{ overallGain() }}</p>
             </div>
           </div>
           <!-- Cash Remaining -->
@@ -137,6 +137,7 @@
           </svg>
         </button>
         <h2 class="section-title font-display">{{ 'home.portfolio_performance' | translate }}</h2>
+        <app-connection-status></app-connection-status>
 
         <!-- Period Buttons -->
         <div class="period-buttons">
@@ -148,39 +149,35 @@
           </button>
         </div>
 
-        <!-- Simple Area Chart Placeholder (SVG) -->
+        <!-- Portfolio performance chart, driven by /api/market/{ticker}/history -->
         <div class="chart-container">
-          <svg class="area-chart" viewBox="0 0 800 220" preserveAspectRatio="none" aria-label="Portfolio performance chart">
+          <svg *ngIf="chartLinePath()" class="area-chart" viewBox="0 0 800 220" preserveAspectRatio="none" aria-label="Portfolio performance chart">
             <defs>
               <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stop-color="var(--primary)" stop-opacity="0.3" />
                 <stop offset="95%" stop-color="var(--primary)" stop-opacity="0.02" />
               </linearGradient>
             </defs>
-            <!-- Background grid lines -->
             <line x1="0" y1="50" x2="800" y2="50" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" />
             <line x1="0" y1="110" x2="800" y2="110" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" />
             <line x1="0" y1="170" x2="800" y2="170" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" />
-            <!-- Area -->
-            <path d="M0,180 Q100,160 200,140 T400,80 T600,40 T800,20 L800,220 L0,220 Z"
-                  fill="url(#chartGrad)" stroke="none" />
-            <!-- Line -->
-            <path d="M0,180 Q100,160 200,140 T400,80 T600,40 T800,20"
-                  fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <path [attr.d]="chartAreaPath()" fill="url(#chartGrad)" stroke="none" />
+            <path [attr.d]="chartLinePath()" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <!-- Y-axis labels -->
-          <div class="chart-y-axis">
-            <span>$60k</span>
-            <span>$52k</span>
-            <span>$44k</span>
+          <p *ngIf="chartLoading()" class="chart-empty-state">Loading chart…</p>
+          <p *ngIf="!chartLoading() && !chartLinePath()" class="chart-empty-state">No holdings yet — buy a stock to see your performance here.</p>
+          <div class="chart-y-axis" *ngIf="chartLinePath()">
+            <span>{{ chartYAxisLabels()[0] }}</span>
+            <span>{{ chartYAxisLabels()[1] }}</span>
+            <span>{{ chartYAxisLabels()[2] }}</span>
           </div>
-          <!-- X-axis labels -->
-          <div class="chart-x-axis">
-            <span>Start</span>
-            <span>Mid</span>
-            <span>Now</span>
+          <div class="chart-x-axis" *ngIf="chartLinePath()">
+            <span>{{ chartXAxisLabels()[0] }}</span>
+            <span>{{ chartXAxisLabels()[1] }}</span>
+            <span>{{ chartXAxisLabels()[2] }}</span>
           </div>
         </div>
+
       </div>
 
       <!-- Trading History -->

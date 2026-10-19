@@ -7,7 +7,6 @@ import com.neueda.leap.analysis.TradeAnalysisException;
 import com.neueda.leap.analysis.TradeAnalysisResult;
 import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.exception.ObjectNotFoundException;
-import com.neueda.leap.service.InstrumentService;
 import com.neueda.leap.service.TradeService;
 
 import org.junit.jupiter.api.Test;
@@ -51,8 +50,6 @@ class TradeAnalysisEndpointTest {
 
     @MockBean
     private TradeService tradeService;
-    @MockBean
-    private InstrumentService instrumentService;
     @MockBean
     private TradeAnalysisService tradeAnalysisService;
     @MockBean

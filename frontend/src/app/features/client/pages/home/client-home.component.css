@@ -194,6 +194,11 @@ button {
   color: #22c55e;
 }
 
+.stat-value.negative {
+  color: #dc2626;
+}
+
+
 /* Allocation Section */
 .allocation-section {
   display: flex;
@@ -620,4 +625,13 @@ button {
   .section-title {
     font-size: 0.8rem;
   }
+
+  .chart-empty-state {
+    text-align: center;
+    color: var(--muted-foreground);
+    padding: 2rem 0;
+  }
+
+
 }
+

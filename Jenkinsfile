@@ -4,9 +4,9 @@ pipeline {
         maven 'Maven3'
     }
     environment {
-        DB_PORT_J = "${DB_PORT_J}"
-        DB_PASSWORD = "${DB_PASSWORD}"
-        DB_HOST = "${DB_HOST}"
+        DB_PORT_J = credentials("DB_PORT_J")
+        DB_PASSWORD = credentials("DB_PASSWORD")
+        JWT_SHARED_SECRET = credentials("JWT_SHARED_SECRET")
     }
     stages {
         stage('Checkout') {
@@ -16,15 +16,20 @@ pipeline {
         }
         stage('Environment check'){
             steps {
-                sh 'java -version'
-                sh 'mvn -version'
-                sh 'docker --version'
-                sh 'docker-compose --version'
+                sh '''
+                    set -eu
+                    java -version
+                    mvn -version
+                    node --version
+                    npm --version
+                    docker --version
+                    docker-compose version
+                '''
             }
         }
-        stage('Unit Tests') {
+        stage('Backend Tests') {
             steps {
-                sh 'mvn -B test'
+                sh 'mvn -B clean verify'
             }
             post {
                 always {
@@ -32,26 +37,75 @@ pipeline {
                 }
             }
         }
-        stage('Smoke Test') {
+        stage('Frontend Tests') {
             steps {
-                sh '''
-                    pg_isready -h 10.14.141.36 -p 8100 -U paysprint
-                '''
-                sh 'curl -f http://localhost:8090 || (echo "Frontend down!!!" && exit 1)'
-                // Builds a trade analysis context from both databases; does not call OpenAI
-                sh 'curl -fsS -o /dev/null http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000006/analysis/context || (echo "Trade analysis context down!!!" && exit 1)'
-            }
-            post {
-                always {
-                    sh 'docker-compose logs'
-                    sh 'docker-compose down -v'
+                dir('frontend') {
+                    sh 'npm ci'
+                    sh 'npm test -- --watch=false'
+                    sh 'npm run build -- --configuration production'
                 }
             }
         }
-    }
-    post {
-        always {
-            chuckNorris()
+        stage('Start Application Stack') {
+            steps {
+                sh '''
+                    set -eu
+                    docker-compose config --quiet
+                    docker-compose up -d --build
+                '''
+            }
+        }
+        stage('Smoke Test') {
+            steps {
+                sh '''
+                    set -eu
+
+                    wait_for() {
+                        name="$1"
+                        shift
+
+                        for attempt in $(seq 1 60); do
+                            if "$@"; then
+                                return 0
+                            fi
+                            sleep 2
+                        done
+
+                        echo "$name did not become ready" >&2
+                        return 1
+                    }
+
+                    postgres_ready() {
+                        docker-compose exec -T db \
+                            pg_isready -U paysprint -d paysprint >/dev/null 2>&1
+                    }
+
+                    frontend_ready() {
+                        curl -fsS http://localhost:8090/ >/dev/null 2>&1
+                    }
+
+                    # Builds a trade analysis context from both databases; does not call OpenAI
+                    analysis_context_ready() {
+                        curl -fsS -o /dev/null \
+                            http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000006/analysis/context
+                    }
+
+                    backend_ready() {
+                        status="$(curl -sS -o /dev/null -w '%{http_code}' \
+                            http://localhost:8095/api/instruments)"
+
+                        case "$status" in
+                            2*|3*|4*) return 0 ;;
+                            *) return 1 ;;
+                        esac
+                    }
+
+                    wait_for "PostgreSQL" postgres_ready
+                    wait_for "Frontend" frontend_ready
+                    wait_for "Backend" backend_ready
+                    wait_for "Trade analysis context" analysis_context_ready
+                '''
+            }
         }
     }
 }
