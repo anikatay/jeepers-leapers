@@ -1,6 +1,8 @@
 package com.neueda.leap.controller;
 
 import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.model.User;
+import com.neueda.leap.service.AccountService;
 import com.neueda.leap.service.AuthService;
 import com.neueda.leap.util.JwtUtil;
 import org.junit.jupiter.api.Test;
@@ -9,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
@@ -31,6 +34,9 @@ class AuthControllerTest {
     private AuthService authService;
 
     @MockBean
+    private AccountService accountService;
+
+    @MockBean
     private JwtUtil jwtUtil;
 
     @Test
@@ -38,9 +44,9 @@ class AuthControllerTest {
         String email = "alex@example.com";
         UUID userId = UUID.randomUUID();
         UUID accountId = UUID.randomUUID();
-        when(authService.login(email, "password")).thenReturn("ROLE_CUSTOMER");
-        when(authService.getUserIdByEmail(email)).thenReturn(userId);
-        when(authService.getAccountIdByUserId(userId)).thenReturn(accountId);
+        when(authService.login(email, "password"))
+            .thenReturn(new User(userId, "ROLE_CUSTOMER", "ACTIVE"));
+        when(accountService.getAccountIdByUserId(userId)).thenReturn(accountId);
         when(jwtUtil.generateToken(email, "ROLE_CUSTOMER", userId, accountId)).thenReturn("jwt-token");
 
         mockMvc.perform(post("/api/auth/login")
@@ -57,7 +63,8 @@ class AuthControllerTest {
 
     @Test
     void loginReturnsUnauthorizedWhenCredentialsAreRejected() throws Exception {
-        when(authService.login("alex@example.com", "wrong-password")).thenReturn(null);
+        when(authService.login("alex@example.com", "wrong-password"))
+            .thenThrow(new BadCredentialsException("Invalid password"));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,8 +75,8 @@ class AuthControllerTest {
     @Test
     void loginReturnsNotFoundWhenUserIdIsMissing() throws Exception {
         String email = "alex@example.com";
-        when(authService.login(email, "password")).thenReturn("ROLE_CUSTOMER");
-        when(authService.getUserIdByEmail(email)).thenReturn(null);
+        when(authService.login(email, "password"))
+            .thenThrow(new ObjectNotFoundException("User ID not found for email: " + email));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

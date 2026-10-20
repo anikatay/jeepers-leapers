@@ -6,9 +6,9 @@ import com.neueda.leap.service.UserService;
 import com.neueda.leap.service.UserPiiService;
 import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.model.User;
-import com.neueda.leap.model.UserPii;
 import com.neueda.leap.dto.request.CreateUserRequest;
 import com.neueda.leap.dto.response.UserDetailsResponse;
+import com.neueda.leap.model.UserPii;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import java.util.UUID;
 import java.util.List;
@@ -31,7 +31,9 @@ public class UserController {
     public UserDetailsResponse getUserById(@PathVariable UUID userId, @AuthenticationPrincipal Jwt jwt) {
         authorizationService.requireUser(userId, authorizationService.getAuthenticatedUserId(jwt));
 
-        return userService.getUserDetails(userId);
+        User user = userService.getUserById(userId);
+        UserPii pii = userPiiService.getUserPiiById(userId);
+        return UserDetailsResponse.from(user, pii);
     }
 
     @GetMapping
@@ -46,17 +48,7 @@ public class UserController {
             createUserRequest.role(),
             createUserRequest.status()
         );
-        UserPii userPii = new UserPii(
-            createUserRequest.userId(),
-            createUserRequest.firstName(),
-            createUserRequest.lastName(),
-            createUserRequest.dateOfBirth(),
-            createUserRequest.ssn(),
-            createUserRequest.address(),
-            createUserRequest.phoneNumber(),
-            createUserRequest.email()
-        );
-        return userService.createUser(user, userPii);
+        return userService.createUser(user);
     }
 
     @PutMapping("/{userId}/status")

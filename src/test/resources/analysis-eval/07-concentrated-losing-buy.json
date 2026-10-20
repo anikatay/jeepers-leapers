@@ -1,0 +1,108 @@
+{
+  "name": "Oversized buy at a loss that dominates the portfolio",
+  "source": "hand-built from MockTradeContexts.concentratedLosingBuy (no real trade is this large)",
+  "expect": {
+    "verdicts": [
+      "POOR",
+      "MIXED"
+    ],
+    "mustMention": [
+      "concentrat"
+    ]
+  },
+  "context": {
+    "trade": {
+      "ticker": "TSLA",
+      "name": "Tesla Inc.",
+      "exchange": "NASDAQ",
+      "side": "BUY",
+      "quantity": 60,
+      "executionPrice": 285.0,
+      "tradeValue": 17100.0,
+      "executedAt": "2026-09-22T15:05:00Z",
+      "daysAgo": 21
+    },
+    "outcome": {
+      "entryPrice": 285.0,
+      "exitPrice": null,
+      "realizedPnl": null,
+      "unrealizedPnl": -1815.0,
+      "returnPct": -10.61,
+      "pnlStatus": "UNMATCHED",
+      "asOf": "2026-10-13T06:00:00Z"
+    },
+    "priceNow": {
+      "currentPrice": 254.75,
+      "movePctSinceExecution": -10.61
+    },
+    "portfolio": {
+      "currency": "USD",
+      "cash": 1200.0,
+      "cashPct": 4.76,
+      "totalValue": 25236.5,
+      "tradeValuePctOfTotal": 67.76,
+      "holdings": [
+        {
+          "ticker": "TSLA",
+          "quantity": 60,
+          "marketValue": 15285.0,
+          "weightPct": 60.57
+        },
+        {
+          "ticker": "META",
+          "quantity": 8,
+          "marketValue": 4604.0,
+          "weightPct": 18.24
+        },
+        {
+          "ticker": "NVDA",
+          "quantity": 30,
+          "marketValue": 4147.5,
+          "weightPct": 16.43
+        }
+      ]
+    },
+    "trackRecord": {
+      "totalRealizedPnl": -420.0,
+      "totalUnrealizedPnl": -1473.5,
+      "winRatePct": 33.33
+    },
+    "recentTrades": [
+      {
+        "date": "2026-09-22",
+        "ticker": "TSLA",
+        "side": "BUY",
+        "quantity": 60,
+        "price": 285.0
+      },
+      {
+        "date": "2026-09-22",
+        "ticker": "MSFT",
+        "side": "SELL",
+        "quantity": 20,
+        "price": 428.0
+      },
+      {
+        "date": "2026-09-21",
+        "ticker": "GOOGL",
+        "side": "SELL",
+        "quantity": 45,
+        "price": 175.0
+      },
+      {
+        "date": "2026-08-30",
+        "ticker": "NVDA",
+        "side": "BUY",
+        "quantity": 30,
+        "price": 131.0
+      },
+      {
+        "date": "2026-08-05",
+        "ticker": "META",
+        "side": "BUY",
+        "quantity": 8,
+        "price": 560.0
+      }
+    ]
+  }
+}

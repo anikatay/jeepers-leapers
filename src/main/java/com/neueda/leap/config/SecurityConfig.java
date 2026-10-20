@@ -13,6 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
+import com.neueda.leap.util.JwtSecret;
 
 @Configuration
 public class SecurityConfig {
@@ -22,8 +23,8 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        SecretKeySpec key = new SecretKeySpec(
-            Base64.getDecoder().decode(sharedSecret), "HmacSHA256");
+        // Must match how JwtUtil signs, or no issued token verifies
+        SecretKeySpec key = new SecretKeySpec(JwtSecret.keyBytes(sharedSecret), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 
@@ -39,6 +40,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints - no auth required
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/register").permitAll()
                         .requestMatchers("/public/**").permitAll()
                         
                         // Admin endpoints - ADMIN role only

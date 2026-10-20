@@ -56,15 +56,27 @@ class UserControllerTest {
     @Test
     void getUserByIdReturnsUser() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(userService.getUserDetails(userId))
-                .thenReturn(new UserDetailsResponse(
-                        userId, "ROLE_CUSTOMER", "ACTIVE", null, null, null, null, null, null, null));
+        UserPii pii = new UserPii(
+                userId,
+                "Alex",
+                "Smith",
+                LocalDate.of(1990, 1, 1),
+                "111-22-3333",
+                "123 Main St",
+                "555-0100",
+                "alex@example.com");
+        when(userService.getUserById(userId))
+                .thenReturn(new User(
+                        userId, "ROLE_CUSTOMER", "ACTIVE"));
+        when(userPiiService.getUserPiiById(userId)).thenReturn(pii);
 
         mockMvc.perform(get("/api/users/{userId}", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.role").value("ROLE_CUSTOMER"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.firstName").value("Alex"))
+                .andExpect(jsonPath("$.lastName").value("Smith"));
     }
 
     @Test
@@ -84,7 +96,7 @@ class UserControllerTest {
         UUID userId = UUID.randomUUID();
         CreateUserRequest request = validRequest(userId);
         User createdUser = new User(userId, "ROLE_CUSTOMER", "ACTIVE");
-        when(userService.createUser(any(User.class), any(UserPii.class))).thenReturn(createdUser);
+        when(userService.createUser(any(User.class))).thenReturn(createdUser);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -93,7 +105,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.role").value("ROLE_CUSTOMER"));
 
-        verify(userService).createUser(any(User.class), any(UserPii.class));
+        verify(userService).createUser(any(User.class));
     }
 
     @Test
@@ -124,7 +136,7 @@ class UserControllerTest {
     @Test
     void getUserByIdReturnsNotFoundErrorWhenServiceCannotFindUser() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(userService.getUserDetails(userId))
+        when(userService.getUserById(userId))
                 .thenThrow(new ObjectNotFoundException("User not found"));
 
         mockMvc.perform(get("/api/users/{userId}", userId))
@@ -158,13 +170,6 @@ class UserControllerTest {
         return new CreateUserRequest(
                 userId,
                 "ROLE_CUSTOMER",
-                "ACTIVE",
-                "Alex",
-                "Smith",
-                LocalDate.now().minusYears(30),
-                "111-22-3333",
-                "123 Main St",
-                "5550100",
-                "alex@example.com");
+                "ACTIVE");
     }
 }

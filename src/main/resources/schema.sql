@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- CREATE TABLE IF NOT EXISTS never adds columns; databases created before updated_at need it
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 -- PII
 CREATE TABLE IF NOT EXISTS user_pii (

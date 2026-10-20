@@ -88,6 +88,16 @@ pipeline {
                         curl -fsS "http://localhost:${frontend_host_port}/" >/dev/null 2>&1
                     }
 
+                    # Logs in as a seeded user and builds the analysis context for one of
+                    # their trades, covering auth and both databases; does not call OpenAI
+                    analysis_context_ready() {
+                        token="$(curl -fsS -X POST -H 'Content-Type: application/json' \
+                            -d '{"email":"bob@example.com","password":"123"}' \
+                            "http://localhost:${app_host_port}/api/auth/login" | sed -n 's/.*"token":"\\([^"]*\\)".*/\\1/p')""
+                        [ -n "$token" ] && curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
+                            "http://localhost:${app_host_port}/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context"
+                    }
+
                     backend_ready() {
                         status="$(curl -sS -o /dev/null -w '%{http_code}' \
                             "http://localhost:${app_host_port}/api/instruments")"
@@ -104,6 +114,7 @@ pipeline {
                     wait_for "PostgreSQL" postgres_ready
                     wait_for "Frontend" frontend_ready
                     wait_for "Backend" backend_ready
+                    wait_for "Trade analysis context" analysis_context_ready
                 '''
             }
         }

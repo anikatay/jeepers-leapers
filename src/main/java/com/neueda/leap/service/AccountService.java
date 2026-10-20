@@ -33,10 +33,6 @@ public class AccountService implements IService {
         this.holdingService = holdingService;
     }
 
-    public UUID getAccountIdByUserId(UUID userId){
-        return accountMapper.findAccountIdByUserId(userId);
-    }
-
     @Transactional 
     public Account createAccount(Account account){
         if(account == null){
@@ -77,6 +73,18 @@ public class AccountService implements IService {
             throw new ObjectNotFoundException("Account not found with ID: " + accountId);
         }
         return account;
+    }
+
+    public UUID getAccountIdByUserId(UUID userId) {
+        if (userId == null) {
+            throw new ObjectNotFoundException("User ID cannot be null");
+        }
+
+        UUID accountId = accountMapper.findAccountIdByUserId(userId);
+        if (accountId == null) {
+            throw new ObjectNotFoundException("Account not found for user ID: " + userId);
+        }
+        return accountId;
     }
 
     @Transactional 

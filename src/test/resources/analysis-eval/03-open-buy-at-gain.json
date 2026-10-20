@@ -1,0 +1,159 @@
+{
+  "name": "Buy still held, at a gain",
+  "source": "trade 91932fce-e088-42f9-be98-91a516b46434 in the dev database, exported 2026-10-15",
+  "expect": {
+    "verdicts": [
+      "GOOD",
+      "MIXED",
+      "TOO_EARLY"
+    ]
+  },
+  "context": {
+    "trade": {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "exchange": "NASDAQ",
+      "side": "BUY",
+      "quantity": 29,
+      "executionPrice": 129.0,
+      "tradeValue": 3741.0,
+      "executedAt": "2026-09-15T09:00:00Z",
+      "daysAgo": 30
+    },
+    "outcome": {
+      "entryPrice": 129.0,
+      "exitPrice": null,
+      "realizedPnl": null,
+      "unrealizedPnl": 268.25,
+      "returnPct": 7.17,
+      "pnlStatus": "UNMATCHED",
+      "asOf": "2026-10-15T21:00:21.552894Z"
+    },
+    "priceNow": {
+      "currentPrice": 138.25,
+      "movePctSinceExecution": 7.17
+    },
+    "portfolio": {
+      "currency": "USD",
+      "cash": 35428.0,
+      "cashPct": 60.99,
+      "totalValue": 58089.75,
+      "tradeValuePctOfTotal": 6.44,
+      "holdings": [
+        {
+          "ticker": "NVDA",
+          "quantity": 49,
+          "marketValue": 6774.25,
+          "weightPct": 11.66
+        },
+        {
+          "ticker": "MSFT",
+          "quantity": 14,
+          "marketValue": 6023.5,
+          "weightPct": 10.37
+        },
+        {
+          "ticker": "TSLA",
+          "quantity": 16,
+          "marketValue": 4076.0,
+          "weightPct": 7.02
+        },
+        {
+          "ticker": "AAPL",
+          "quantity": 15,
+          "marketValue": 3435.0,
+          "weightPct": 5.91
+        },
+        {
+          "ticker": "GOOGL",
+          "quantity": 10,
+          "marketValue": 1765.0,
+          "weightPct": 3.04
+        },
+        {
+          "ticker": "AMZN",
+          "quantity": 3,
+          "marketValue": 588.0,
+          "weightPct": 1.01
+        }
+      ]
+    },
+    "trackRecord": {
+      "totalRealizedPnl": 495.5,
+      "totalUnrealizedPnl": 341.25,
+      "winRatePct": 83.87
+    },
+    "recentTrades": [
+      {
+        "date": "2026-10-02",
+        "ticker": "TSLA",
+        "side": "SELL",
+        "quantity": 3,
+        "price": 256.5
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "AAPL",
+        "side": "BUY",
+        "quantity": 10,
+        "price": 225.5
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "TSLA",
+        "side": "BUY",
+        "quantity": 3,
+        "price": 250.0
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "AAPL",
+        "side": "BUY",
+        "quantity": 5,
+        "price": 227.0
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "MSFT",
+        "side": "BUY",
+        "quantity": 5,
+        "price": 428.0
+      },
+      {
+        "date": "2026-10-01",
+        "ticker": "GOOGL",
+        "side": "BUY",
+        "quantity": 10,
+        "price": 174.25
+      },
+      {
+        "date": "2026-09-19",
+        "ticker": "MSFT",
+        "side": "BUY",
+        "quantity": 9,
+        "price": 436.5
+      },
+      {
+        "date": "2026-09-18",
+        "ticker": "META",
+        "side": "SELL",
+        "quantity": 6,
+        "price": 574.0
+      },
+      {
+        "date": "2026-09-18",
+        "ticker": "TSLA",
+        "side": "BUY",
+        "quantity": 16,
+        "price": 246.0
+      },
+      {
+        "date": "2026-09-17",
+        "ticker": "AAPL",
+        "side": "SELL",
+        "quantity": 14,
+        "price": 234.5
+      }
+    ]
+  }
+}
