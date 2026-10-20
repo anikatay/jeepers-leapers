@@ -23,13 +23,14 @@ public class JwtUtil {
     }
 
     /**
-     * Generate a JWT token for a user with a role and userId
+     * Generate a JWT token for a user with a role, userId, and accountId
      */
-    public String generateToken(String username, String role, UUID userId) {
+    public String generateToken(String username, String role, UUID userId, UUID accountId) {
         return Jwts.builder()
                 .subject(username)
                 .claim("role", role)
                 .claim("userId", userId.toString())
+                .claim("accountId", accountId.toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)

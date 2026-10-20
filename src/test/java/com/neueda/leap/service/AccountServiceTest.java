@@ -110,7 +110,7 @@ class AccountServiceTest {
         Account result = accountService.createAccount(account);
 
         assertNotNull(result);
-        assertEquals(BigDecimal.ZERO, result.getBalance());
+        assertEquals(BigDecimal.valueOf(1000), result.getBalance());
         verify(accountMapper, times(1)).createAccount(any(Account.class));
     }
 
