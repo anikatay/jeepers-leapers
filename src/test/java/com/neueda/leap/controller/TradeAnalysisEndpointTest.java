@@ -49,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TradeAnalysisEndpointTest {
 
     private static final UUID USER_ID = UUID.fromString("a1000000-0000-0000-0000-000000000001");
+    private static final UUID ACCOUNT_ID = UUID.fromString("d4000000-0000-0000-0000-000000000001");
     private static final UUID TRADE_ID = UUID.fromString("c3000000-0000-0000-0000-000000000006");
     private static final String ANALYSIS_URL = "/api/trades/" + TRADE_ID + "/analysis";
     private static final String CONTEXT_URL = ANALYSIS_URL + "/context";
