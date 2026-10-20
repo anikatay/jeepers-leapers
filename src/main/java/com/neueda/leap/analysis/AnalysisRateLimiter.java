@@ -51,7 +51,9 @@ public class AnalysisRateLimiter {
         int clientCount = clientCounts.getOrDefault(client, 0);
         if (globalCount >= globalPerMinute || clientCount >= perClientPerMinute) {
             long secondsToNextMinute = ((minute + 1) * MINUTE_MS - now + 999) / 1000;
-            throw new TooManyAnalysesException(secondsToNextMinute);
+            throw new TooManyAnalysesException(
+                "Too many trade analyses; try again in " + secondsToNextMinute + " seconds",
+                secondsToNextMinute);
         }
         globalCount++;
         clientCounts.put(client, clientCount + 1);
