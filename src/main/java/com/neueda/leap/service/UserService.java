@@ -2,6 +2,8 @@ package com.neueda.leap.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.neueda.leap.dto.response.UserDetailsResponse;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.exception.ObjectNotFoundException;

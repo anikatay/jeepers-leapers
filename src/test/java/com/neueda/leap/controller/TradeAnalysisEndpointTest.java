@@ -78,7 +78,7 @@ class TradeAnalysisEndpointTest {
     void rejectsATokenSignedWithAnotherKey() throws Exception {
         JwtUtil otherIssuer = new JwtUtil();
         ReflectionTestUtils.setField(otherIssuer, "secret", "YW5vdGhlci1zZWNyZXQtdGhhdC1pcy1hbHNvLTMyLWJ5dGVzLWxvbmc=");
-        String forged = otherIssuer.generateToken("mallory@example.com", "ROLE_CUSTOMER", USER_ID, ACCOUNT_ID);
+        String forged = otherIssuer.generateToken("mallory@example.com", "ROLE_CUSTOMER", USER_ID, UUID.randomUUID());
 
         mvc.perform(post(ANALYSIS_URL).header("Authorization", "Bearer " + forged))
                 .andExpect(status().isUnauthorized());
@@ -178,6 +178,6 @@ class TradeAnalysisEndpointTest {
 
     private MockHttpServletRequestBuilder withToken(MockHttpServletRequestBuilder request) {
         return request.header("Authorization",
-                "Bearer " + jwtUtil.generateToken("joanna@example.com", "ROLE_CUSTOMER", USER_ID, ACCOUNT_ID));
+                "Bearer " + jwtUtil.generateToken("joanna@example.com", "ROLE_CUSTOMER", USER_ID, UUID.randomUUID()));
     }
 }

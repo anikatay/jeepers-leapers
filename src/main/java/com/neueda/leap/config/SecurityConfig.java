@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 import com.neueda.leap.util.JwtSecret;
 
 @Configuration
@@ -48,21 +49,15 @@ public class SecurityConfig {
                         // Analyst endpoints - ANALYST or ADMIN
                         .requestMatchers("/analyst/**").hasAnyRole("ANALYST", "ADMIN")
                         
-                        // Trade analysis exposes an account's positions and spends OpenAI credit:
-                        // callers must log in and may only analyse their own trades
-                        .requestMatchers("/api/trades/*/analysis", "/api/trades/*/analysis/**").authenticated()
-
-                        // API endpoints - all authenticated users
-                        .requestMatchers("/api/**").permitAll()
-                        
                         // Live market quotes over websockets -public, same as /api/market
                         .requestMatchers("/ws/**").permitAll()
 
                         .requestMatchers("/internal/**").permitAll()
 
                         // Portfolio endpoints - authenticated users (CLIENT, ANALYST, ADMIN)
-                        .requestMatchers("/holdings/**").authenticated()
-                        .requestMatchers("/trades/**").authenticated()
+                        .requestMatchers("/api/holdings/**").authenticated()
+                        .requestMatchers("/api/trades/**").authenticated()
+                        .requestMatchers("/api/**").authenticated()
 
                 
                         

@@ -14,4 +14,5 @@ public record CreateUserRequest(
 
     @NotEmpty (message = "Status is required")
     String status
+
 ) {}
