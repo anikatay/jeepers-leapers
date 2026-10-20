@@ -152,6 +152,7 @@
             <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Quantity</th>
             <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Price</th>
             <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Total</th>
+            <th class="pb-2 text-left text-xs font-medium whitespace-nowrap" style="color: var(--muted-foreground);">{{ 'trades.analysis.column' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -188,12 +189,21 @@
             </td>
             <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ trade.qty }}</td>
             <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ formatCurrency(trade.price, trade.currency) }}</td>
-            <td class="py-3 font-mono font-semibold" style="color: var(--foreground);">{{ formatCurrency(trade.total, trade.currency) }}</td>
+            <td class="py-3 pr-4 font-mono font-semibold" style="color: var(--foreground);">{{ formatCurrency(trade.total, trade.currency) }}</td>
+            <td class="py-3">
+              <!-- aria-disabled rather than disabled, so focus can return here when the dialog closes mid-request -->
+              <button #analyzeButton type="button" class="analyze-button"
+                [attr.aria-disabled]="isAnalysing(trade) ? 'true' : null"
+                [attr.aria-label]="analyzeLabel(trade)"
+                (click)="analyze(trade, analyzeButton)">
+                {{ 'trades.analysis.analyze' | translate }}
+              </button>
+            </td>
           </tr>
 
           <!-- Empty State -->
           <tr *ngIf="filteredTrades.length === 0">
-            <td [attr.colspan]="7" class="py-10 text-center text-sm" style="color: var(--muted-foreground);">
+            <td [attr.colspan]="8" class="py-10 text-center text-sm" style="color: var(--muted-foreground);">
               <p>No trades match your filters</p>
               <button (click)="clearFilters()" class="mt-2 text-xs font-semibold underline underline-offset-2" style="color: var(--primary);">
                 Clear Filters
@@ -205,3 +215,7 @@
     </div>
   </div>
 </div>
+
+@if (analysisDialog(); as dialog) {
+  <app-trade-analysis-dialog [trade]="dialog.trade" [state]="dialog.state" (closed)="closeAnalysis()" />
+}
