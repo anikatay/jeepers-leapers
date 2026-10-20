@@ -140,7 +140,7 @@ class TradeAnalysisEndpointTest {
 
     @Test
     void returns429WithRetryAfterAndSkipsTheAnalysis() throws Exception {
-        doThrow(new TooManyAnalysesException(30)).when(rateLimiter).acquire(anyString());
+        doThrow(new TooManyAnalysesException("Too many trade analyses; try again in 30 seconds", 30)).when(rateLimiter).acquire(anyString());
 
         mvc.perform(withToken(post(ANALYSIS_URL)))
                 .andExpect(status().isTooManyRequests())
