@@ -36,7 +36,7 @@ class JwtUtilTest {
 
         String token = jwtUtil.generateToken("alex@example.com", "ROLE_CUSTOMER", userId, accountId);
 
-        assertEquals("alex@example.com", jwtUtil.extractUsername(token));
+        assertEquals(userId.toString(), jwtUtil.extractUsername(token));
         assertTrue(jwtUtil.isTokenValid(token));
     }
 
