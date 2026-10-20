@@ -3,8 +3,11 @@ package com.neueda.leap.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.dto.request.CreateUserRequest;
 import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.dto.response.UserDetailsResponse;
 import com.neueda.leap.model.User;
 import com.neueda.leap.model.UserPii;
+import com.neueda.leap.service.AuthorizationService;
+import com.neueda.leap.service.UserPiiService;
 import com.neueda.leap.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +18,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,11 +47,18 @@ class UserControllerTest {
     @MockBean
     private UserService userService;
 
+        @MockBean
+        private UserPiiService userPiiService;
+
+        @MockBean
+        private AuthorizationService authorizationService;
+
     @Test
     void getUserByIdReturnsUser() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(userService.getUserById(userId))
-                .thenReturn(new User(userId, "ROLE_CUSTOMER", "ACTIVE"));
+        when(userService.getUserDetails(userId))
+                .thenReturn(new UserDetailsResponse(
+                        userId, "ROLE_CUSTOMER", "ACTIVE", null, null, null, null, null, null, null));
 
         mockMvc.perform(get("/api/users/{userId}", userId))
                 .andExpect(status().isOk())
@@ -115,7 +124,7 @@ class UserControllerTest {
     @Test
     void getUserByIdReturnsNotFoundErrorWhenServiceCannotFindUser() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(userService.getUserById(userId))
+        when(userService.getUserDetails(userId))
                 .thenThrow(new ObjectNotFoundException("User not found"));
 
         mockMvc.perform(get("/api/users/{userId}", userId))

@@ -49,7 +49,7 @@ public class TradeController {
         trade.setQuantity(request.quantity());
         
         // Service will calculate tradeValue and update account balance
-        UUID authenticatedUserId = UUID.fromString(jwt.getSubject());
+        UUID authenticatedUserId = authorizationService.getAuthenticatedUserId(jwt);
         Trade created = tradeService.createTrade(trade, authenticatedUserId);
         
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
