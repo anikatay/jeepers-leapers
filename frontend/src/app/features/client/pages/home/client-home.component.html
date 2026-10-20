@@ -118,7 +118,7 @@
               </div>
               <div class="holding-right">
                 <span class="holding-pct">{{ holding.pct }}%</span>
-                <span class="holding-value font-mono-data">{{ '$' + holding.value.toLocaleString() }}</span>
+                <span class="holding-value font-mono-data">{{ formatCurrency(holding.value, holding.currency) }}</span>
               </div>
             </div>
           </div>
@@ -211,8 +211,8 @@
                   {{ trade.type }}
                 </td>
                 <td class="qty-cell font-mono-data">{{ trade.qty }}</td>
-                <td class="price-cell font-mono-data">${{ trade.price.toFixed(2) }}</td>
-                <td class="total-cell font-mono-data">${{ trade.total.toFixed(2) }}</td>
+                <td class="price-cell font-mono-data">{{ formatCurrency(trade.price, trade.currency) }}</td>
+                <td class="total-cell font-mono-data">{{ formatCurrency(trade.total, trade.currency) }}</td>
               </tr>
             </tbody>
           </table>

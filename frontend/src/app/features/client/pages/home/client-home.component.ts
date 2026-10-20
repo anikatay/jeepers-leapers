@@ -21,6 +21,7 @@ import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../sha
 export interface StockHolding {
   symbol: string;
   name: string;
+  currency: string;
   pct: number;
   value: number;
   price: number;
@@ -34,6 +35,7 @@ export interface Trade {
   qty: number;
   price: number;
   total: number;
+  currency: string;
 }
 
 type Period = '1D' | '1W' | '1M' | '3M' | '1Y' | 'All';
@@ -224,6 +226,7 @@ export class ClientHomeComponent implements OnInit {
         computedHoldings.push({
           symbol: instrument.ticker,
           name: instrument.name,
+          currency: instrument.currency || 'USD',
           pct: 0, // Will recalculate below
           value: value,
           price: instrument.currentPrice ?? 0,
@@ -341,9 +344,19 @@ export class ClientHomeComponent implements OnInit {
       type: t.side === 'BUY' ? 'Buy' : 'Sell',
       qty: t.quantity ?? 0,
       price: t.executionPrice ?? 0,
-      total: t.tradeValue ?? 0
+      total: t.tradeValue ?? 0,
+      currency: t.instrumentCurrency || 'USD'
     }));
     this.completedTrades.set(trades);
+  }
+
+  formatCurrency(value: number, currency: string): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4
+    }).format(value);
   }
 
   getStockIcon(symbol: string) {

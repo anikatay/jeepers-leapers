@@ -4,13 +4,13 @@ services:
   market:
     build: ./market
     ports:
-      - "8093:8093"  
+      - ${Market_port}
     environment:
       BACKEND_QUOTE_URL: http://app:8080/internal/market/quotes
   kafka:
     image: apache/kafka:latest
     ports: 
-      - "8092:8092"
+      - ${Kafka_port}
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -26,7 +26,7 @@ services:
   app:
     build: .
     ports:
-      - "8095:8080"
+      - ${App_port}
     depends_on:
       - db
       - market
@@ -53,7 +53,7 @@ services:
       # Only db is reachable from the host. app is not. This mirrors a real
       # deployment where the database is internal but needs to be accessible
       # to DBA tooling running on the developer's machine during development.
-      - "8100:5432"
+      - ${DB_PORT_J}
     volumes:
       - db_data:/var/lib/postgresql/data
   etl:
@@ -74,7 +74,7 @@ services:
     depends_on:
       - app
     ports:
-      - "8090:80"
+      - ${Frontend_port}
 
 volumes:
   db_data:

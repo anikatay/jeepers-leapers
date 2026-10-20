@@ -10,16 +10,19 @@ public class InstrumentResponse {
     private String name;
     private BigDecimal currentPrice;
     private String exchangeId;
+    private String currency;
 
     public InstrumentResponse() {
     }
 
-    public InstrumentResponse(UUID instrumentId, String ticker, String name, BigDecimal currentPrice, String exchangeId) {
+    public InstrumentResponse(UUID instrumentId, String ticker, String name, BigDecimal currentPrice,
+                              String exchangeId, String currency) {
         this.instrumentId = instrumentId;
         this.ticker = ticker;
         this.name = name;
         this.currentPrice = currentPrice;
         this.exchangeId = exchangeId;
+        this.currency = currency;
     }
 
     public UUID getInstrumentId() { return instrumentId; }
@@ -36,4 +39,7 @@ public class InstrumentResponse {
 
     public String getExchange() { return exchangeId; }
     public void setExchange(String exchangeId) { this.exchangeId = exchangeId; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
 }

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS accounts (
     account_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR')),
+    currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR', 'GBP')),
     balance NUMERIC(18, 4) NOT NULL DEFAULT 0.00 CHECK (balance >= 0),
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS instruments (
     ticker VARCHAR(32) UNIQUE NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     exchange_id VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL DEFAULT 'USD',
+    price_scale NUMERIC(12, 8) NOT NULL DEFAULT 1.00000000,
     current_price NUMERIC(18, 4) NOT NULL DEFAULT 0.00,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -52,7 +54,7 @@ CREATE TABLE IF NOT EXISTS exchanges (
     "name" VARCHAR(255) NOT NULL,
     region VARCHAR(64) NOT NULL,
     timezone VARCHAR(32) NOT NULL,
-    currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR'))
+    currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR', 'GBP'))
 );
 
 -- 3. Customer Portfolio Holdings 
@@ -72,5 +74,39 @@ CREATE TABLE IF NOT EXISTS trades (
     quantity NUMERIC(18, 8) NOT NULL,
     execution_price NUMERIC(18, 4) NOT NULL,
     trade_value NUMERIC(18, 4) GENERATED ALWAYS AS (quantity * execution_price) STORED,
+    settlement_value NUMERIC(18, 4),
+    settlement_currency VARCHAR(8),
+    fx_rate NUMERIC(18, 8),
     executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent additions for databases created before multi-currency support.
+ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_currency_check;
+ALTER TABLE accounts
+    ADD CONSTRAINT accounts_currency_check
+    CHECK (currency IN ('USD', 'EUR', 'INR', 'GBP'));
+
+ALTER TABLE exchanges DROP CONSTRAINT IF EXISTS exchanges_currency_check;
+ALTER TABLE exchanges
+    ADD CONSTRAINT exchanges_currency_check
+    CHECK (currency IN ('USD', 'EUR', 'INR', 'GBP'));
+
+ALTER TABLE instruments
+    ADD COLUMN IF NOT EXISTS currency VARCHAR(8) NOT NULL DEFAULT 'USD';
+ALTER TABLE instruments
+    ADD COLUMN IF NOT EXISTS price_scale NUMERIC(12, 8) NOT NULL DEFAULT 1.00000000;
+
+ALTER TABLE trades
+    ADD COLUMN IF NOT EXISTS settlement_value NUMERIC(18, 4);
+ALTER TABLE trades
+    ADD COLUMN IF NOT EXISTS settlement_currency VARCHAR(8);
+ALTER TABLE trades
+    ADD COLUMN IF NOT EXISTS fx_rate NUMERIC(18, 8);
+
+UPDATE trades t
+SET settlement_currency = a.currency,
+    settlement_value = t.trade_value,
+    fx_rate = 1
+FROM accounts a
+WHERE t.account_id = a.account_id
+  AND t.settlement_currency IS NULL;

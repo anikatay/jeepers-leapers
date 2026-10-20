@@ -20,6 +20,12 @@ public class Trade {
 
     private BigDecimal tradeValue;
 
+    private BigDecimal settlementValue;
+
+    private String settlementCurrency;
+
+    private BigDecimal fxRate;
+
     private OffsetDateTime executedAt;
 
     public Trade() {
@@ -45,6 +51,15 @@ public class Trade {
 
     public BigDecimal getTradeValue() { return tradeValue; }
     public void setTradeValue(BigDecimal tradeValue ){this.tradeValue = tradeValue;}
+
+    public BigDecimal getSettlementValue() { return settlementValue; }
+    public void setSettlementValue(BigDecimal settlementValue) { this.settlementValue = settlementValue; }
+
+    public String getSettlementCurrency() { return settlementCurrency; }
+    public void setSettlementCurrency(String settlementCurrency) { this.settlementCurrency = settlementCurrency; }
+
+    public BigDecimal getFxRate() { return fxRate; }
+    public void setFxRate(BigDecimal fxRate) { this.fxRate = fxRate; }
     
     public OffsetDateTime getExecutedAt() { return executedAt; }
     public void setExecutedAt(OffsetDateTime executedAt) { this.executedAt = executedAt; }

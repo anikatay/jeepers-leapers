@@ -120,10 +120,10 @@
               <td class="col-numeric font-mono-data">{{ holding.shares }}</td>
 
               <!-- Current Price -->
-              <td class="col-numeric font-mono-data">${{ holding.currentPrice.toFixed(2) }}</td>
+              <td class="col-numeric font-mono-data">{{ formatCurrency(holding.currentPrice, holding.currency) }}</td>
 
               <!-- Current Value -->
-              <td class="col-numeric font-mono-data">{{ '$' + holding.currentValue.toLocaleString() }}</td>
+              <td class="col-numeric font-mono-data">{{ formatCurrency(holding.currentValue, holding.currency) }}</td>
 
               <!-- Gain/Loss: sparkline by default, numbers on hover -->
               <td class="col-gain">
@@ -177,7 +177,9 @@
               <span class="symbol-name font-mono-data">{{ selectedHolding()?.symbol }}</span>
               <span class="company-name">{{ selectedHolding()?.name }}</span>
             </div>
-            <p class="current-price font-mono-data">${{ selectedHolding()?.currentPrice?.toFixed(2) }}</p>
+            <p class="current-price font-mono-data">
+              {{ formatCurrency(selectedHolding()?.currentPrice, selectedHolding()?.currency) }}
+            </p>
           </div>
           <button class="close-button" (click)="closeModal()">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -233,7 +235,7 @@
 
         <!-- Cash Amount Input -->
         <div class="input-section" *ngIf="orderInputMode() === 'cash'">
-          <p class="section-label">Amount ($)</p>
+          <p class="section-label">Amount ({{ account()?.currency || 'USD' }})</p>
           <input
             type="number"
             min="0"
@@ -251,8 +253,24 @@
         <div class="estimated-total">
           <span class="total-label">{{ 'portfolio.estimated_total' | translate }}</span>
           <span class="total-value font-mono-data">
-            ${{ (resolvedQuantity() * (selectedHolding()?.currentPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+            {{ formatCurrency(
+              resolvedQuantity() * (selectedHolding()?.currentPrice || 0),
+              selectedHolding()?.currency
+            ) }}
+            <small *ngIf="selectedHolding()?.currency !== (account()?.currency || 'USD')">
+              ≈ {{ formatCurrency(
+                resolvedQuantity() * (selectedHolding()?.currentPrice || 0) * settlementFxRate(),
+                account()?.currency
+              ) }}
+            </small>
           </span>
+        </div>
+
+        <div *ngIf="settlementRateLoading()" class="section-label">
+          Loading currency conversion rate…
+        </div>
+        <div *ngIf="settlementRateError()" class="error-message">
+          {{ settlementRateError() }}
         </div>
 
         <!-- Error Message -->

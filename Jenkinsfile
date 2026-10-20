@@ -7,6 +7,10 @@ pipeline {
         DB_PORT_J = credentials("DB_PORT_J")
         DB_PASSWORD = credentials("DB_PASSWORD")
         JWT_SHARED_SECRET = credentials("JWT_SHARED_SECRET")
+        Market_port = credentials("Market_port")
+        Kafka_port = credentials("Kafka_port")
+        App_port = credentials("App_port")
+        Frontend_port = credentials("Frontend_port")
     }
     stages {
         stage('Checkout') {
@@ -81,7 +85,7 @@ pipeline {
                     }
 
                     frontend_ready() {
-                        curl -fsS http://localhost:8090/ >/dev/null 2>&1
+                        curl -fsS "http://localhost:${frontend_host_port}/" >/dev/null 2>&1
                     }
 
                     # Logs in as a seeded user and builds the analysis context for one of
@@ -89,20 +93,23 @@ pipeline {
                     analysis_context_ready() {
                         token="$(curl -fsS -X POST -H 'Content-Type: application/json' \
                             -d '{"email":"bob@example.com","password":"123"}' \
-                            http://localhost:8095/api/auth/login | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
+                            "http://localhost:${app_host_port}/api/auth/login" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')"
                         [ -n "$token" ] && curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
-                            http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context
+                            "http://localhost:${app_host_port}/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context"
                     }
 
                     backend_ready() {
                         status="$(curl -sS -o /dev/null -w '%{http_code}' \
-                            http://localhost:8095/api/instruments)"
+                            "http://localhost:${app_host_port}/api/instruments")"
 
                         case "$status" in
                             2*|3*|4*) return 0 ;;
                             *) return 1 ;;
                         esac
                     }
+
+                    frontend_host_port="${Frontend_port%%:*}"
+                    app_host_port="${App_port%%:*}"
 
                     wait_for "PostgreSQL" postgres_ready
                     wait_for "Frontend" frontend_ready

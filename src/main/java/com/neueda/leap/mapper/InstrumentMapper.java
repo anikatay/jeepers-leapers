@@ -15,9 +15,42 @@ import com.neueda.leap.model.Instrument;
 @Mapper
 public interface InstrumentMapper {
     // Add new Instrument 
-    @Insert ("INSERT INTO instruments (instrument_id, ticker, name, exchange_id, current_price, updated_at) " +
-        "VALUES (#{instrumentId}, #{ticker}, #{name}, #{exchangeId}, #{currentPrice}, #{updatedAt})")
+    @Insert ("INSERT INTO instruments (instrument_id, ticker, name, exchange_id, currency, price_scale, current_price, updated_at) " +
+        "VALUES (#{instrumentId}, #{ticker}, #{name}, #{exchangeId}, #{currency}, #{priceScale}, #{currentPrice}, #{updatedAt})")
     int addInstrument(Instrument instrument);
+
+    @Insert("""
+            INSERT INTO instruments (
+                instrument_id,
+                ticker,
+                name,
+                exchange_id,
+                currency,
+                price_scale,
+                current_price,
+                updated_at
+            )
+            VALUES (
+                #{instrumentId},
+                #{ticker},
+                #{name},
+                #{exchangeId},
+                #{currency},
+                #{priceScale},
+                #{currentPrice},
+                #{updatedAt}
+            )
+            ON CONFLICT (ticker) DO NOTHING
+            """)
+    int insertIfAbsent(
+            @Param("instrumentId") UUID instrumentId,
+            @Param("ticker") String ticker,
+            @Param("name") String name,
+            @Param("exchangeId") String exchangeId,
+            @Param("currency") String currency,
+            @Param("priceScale") java.math.BigDecimal priceScale,
+            @Param("currentPrice") java.math.BigDecimal currentPrice,
+            @Param("updatedAt") java.time.OffsetDateTime updatedAt);
     
     // Read a single instrument
     @Select("SELECT * FROM instruments WHERE instrument_id = #{instrumentId}")
