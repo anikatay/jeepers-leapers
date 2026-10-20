@@ -1,6 +1,8 @@
 package com.neueda.leap.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.neueda.leap.analysis.AnalysisRateLimiter;
+import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.dto.request.TradeRequest;
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.exception.ObjectInvalidException;
@@ -53,10 +55,18 @@ class TradeControllerTest {
         @MockBean
         private AuthorizationService authorizationService;
 
-        private final UUID authenticatedUserId = UUID.randomUUID();
+    // Covered by TradeAnalysisEndpointTest; mocked here so the controller can be created
+    @MockBean
+    private TradeAnalysisService tradeAnalysisService;
+
+    @MockBean
+    private AnalysisRateLimiter analysisRateLimiter;
+
+        private UUID authenticatedUserId;
 
         @BeforeEach
         void setUp() {
+                authenticatedUserId = UUID.randomUUID();
                 when(authorizationService.getAuthenticatedUserId(nullable(Jwt.class)))
                                 .thenReturn(authenticatedUserId);
         }

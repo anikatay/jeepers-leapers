@@ -47,6 +47,16 @@ INSERT INTO accounts (account_id, user_id, currency, balance) VALUES
     ('d4000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000003', 'USD', 60000.00)
 ON CONFLICT DO NOTHING;
 
+-- ── User Credentials ─────────────────────────────────────────────────────────
+
+INSERT INTO user_credentials (user_id, password_hash) VALUES
+    ('a1000000-0000-0000-0000-000000000001', '$2a$10$Y3EOki3i/dU27xb3MarsveGu0C/TtZGQa5PAKE4VRq8NvrLeyCCHO'),
+    ('a1000000-0000-0000-0000-000000000002', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000003', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000004', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000005', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.')
+ON CONFLICT DO NOTHING;
+
 -- ── Instruments ──────────────────────────────────────────────────────────────
 INSERT INTO instruments (instrument_id, ticker, "name", exchange_id, current_price) VALUES
     ('b2000000-0000-0000-0000-000000000001', 'AAPL',  'Apple Inc.',          'NASDAQ', 229.0000),
@@ -61,24 +71,26 @@ INSERT INTO instruments (instrument_id, ticker, "name", exchange_id, current_pri
 ON CONFLICT DO NOTHING;
 
 -- ── Holdings (portfolio holdings) ────────────────────────────────────────────
--- Alice holds AAPL, GOOGL, MSFT
-INSERT INTO holdings (account_id, instrument_id, quantity) VALUES
+-- These are the net positions of the seed trades below. They are loaded only into a
+-- database with no trades yet: once trading starts, a holding that has been sold out is
+-- deleted, and reloading it on the next restart would bring the shares back.
+INSERT INTO holdings (account_id, instrument_id, quantity)
+SELECT seed.account_id::uuid, seed.instrument_id::uuid, seed.quantity
+FROM (VALUES
+    -- Alice holds AAPL, GOOGL, MSFT
     ('d4000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 15.00000000),
     ('d4000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000002', 10.00000000),
-    ('d4000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000003',  5.00000000)
-ON CONFLICT DO NOTHING;
-
--- Bob holds TSLA, AMZN, NVDA
-INSERT INTO holdings (account_id, instrument_id, quantity) VALUES
+    ('d4000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000003',  5.00000000),
+    -- Bob holds TSLA, AMZN, NVDA, MSFT
     ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000004', 20.00000000),
     ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000005', 12.00000000),
-    ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000006', 30.00000000)
-ON CONFLICT DO NOTHING;
-
--- Charlie holds META, AAPL
-INSERT INTO holdings (account_id, instrument_id, quantity) VALUES
+    ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000006', 30.00000000),
+    ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000003',  4.00000000),
+    -- Charlie holds META, AAPL
     ('d4000000-0000-0000-0000-000000000003', 'b2000000-0000-0000-0000-000000000007',  8.00000000),
     ('d4000000-0000-0000-0000-000000000003', 'b2000000-0000-0000-0000-000000000001', 25.00000000)
+) AS seed(account_id, instrument_id, quantity)
+WHERE NOT EXISTS (SELECT 1 FROM trades)
 ON CONFLICT DO NOTHING;
 
 -- ── Trades ───────────────────────────────────────────────────────────────────

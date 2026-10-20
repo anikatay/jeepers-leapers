@@ -34,6 +34,60 @@ cd jeepers-leapers
    "your-ip":8090
    ```
 
+## AI Trade Analysis
+
+Reviews any trade on request with OpenAI and returns a verdict (`GOOD`, `MIXED`, `POOR` or
+`TOO_EARLY`) with reasons. The spec, covering the API contract, the data sent to the model, limits
+and acceptance criteria, is in [docs/specs/trade-analysis.md](docs/specs/trade-analysis.md).
+
+Both endpoints need a login token and only work on the logged-in user's own trades. The seeded user
+`bob@example.com` (password `123`) owns trade `c3000000-0000-0000-0000-000000000007`:
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8095/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"bob@example.com","password":"123"}' | jq -r .token)
+# What the model would be told (no OpenAI call)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context
+# The review (about 2 to 4 seconds)
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000007/analysis
+```
+
+### Configuration
+
+Set these in `.env` (see `.env.example`); `docker-compose` passes them on.
+
+| Variable | Default | Purpose |
+| -------- | ------- | ------- |
+| `OPENAI_API_KEY` | none | Required for reviews; without it the app starts and reviews return 502 |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Model used for reviews |
+| `ETL_INTERVAL_SECONDS` | `600` | How often the `etl` service refreshes P&L |
+
+### Usage log
+
+```bash
+docker-compose logs app | grep "analysis tradeId"
+```
+
+### Testing
+
+```bash
+mvn test                                                                         # offline, no key needed
+env $(grep -E '^OPENAI_' .env | xargs) mvn test -Dtest=OpenAiTradeAnalyzerLiveTest   # 3 real calls
+env $(grep -E '^OPENAI_' .env | xargs) mvn test -Dtest=TradeAnalysisEvalTest        # about 30 real calls
+```
+
+Run the evaluation after changing the prompt or model (`OPENAI_MODEL=...` to try another).
+
+### Resetting inconsistent dev data
+
+Databases seeded before the seeder fix have trades that never moved holdings or cash. To start clean:
+
+```bash
+docker-compose down -v
+docker-compose up -d --build
+python3 analytics/etl/run_pipeline.py --seed --trades 200 --start-date 2026-08-01
+```
+
 ## Running the Frontend
 
 1. Go into the frontend directory:

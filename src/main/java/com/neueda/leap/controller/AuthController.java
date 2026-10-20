@@ -1,85 +1,61 @@
 package com.neueda.leap.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import com.neueda.leap.util.JwtUtil;
-import com.neueda.leap.service.UserService;
-import com.neueda.leap.model.User;
-import com.neueda.leap.service.AuthService;
-import java.util.UUID;
 
-import java.util.Arrays;
+import com.neueda.leap.model.User;
+import com.neueda.leap.model.UserPii;
+import com.neueda.leap.service.AccountService;
+import com.neueda.leap.service.AuthService;
+import com.neueda.leap.dto.response.AuthResponse;
+import com.neueda.leap.dto.request.LoginRequest;
+import com.neueda.leap.dto.request.RegisterRequest;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Autowired
-    private AuthService authService;
+    private final AuthService authService;
+    private final JwtUtil jwtUtil;
+    private final AccountService accountService;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    public AuthController(AuthService authService, JwtUtil jwtUtil, AccountService accountService) {
+        this.authService = authService;
+        this.jwtUtil = jwtUtil;
+        this.accountService = accountService;
+    }
 
     /**
      * Login endpoint - validates credentials and returns JWT
      */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        String role = authService.login(request.getEmail(), request.getPassword());
-        if (role == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        UUID userId = authService.getUserIdByEmail(request.getEmail());
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+        User user = authService.login(request.email(), request.password());
+        UUID accountId = accountService.getAccountIdByUserId(user.getUserId());
 
-        UUID accountId = authService.getAccountIdByUserId(userId);
+        String token = jwtUtil.generateToken(request.email(), user.getRole(), user.getUserId(), accountId);
 
-        // Generate JWT token with user info, role, and userId
-        String token = jwtUtil.generateToken(request.getEmail(), role, userId, accountId);
-
-        return ResponseEntity.ok(new LoginResponse(token, userId, accountId, role));
+        return ResponseEntity.ok(new AuthResponse(token, user.getUserId(), accountId, user.getRole()));
     }
 
-    // DTOs for request/response
-    public static class LoginRequest {
-        private String email;
-        private String password;
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        UserPii userPii = new UserPii(null, request.firstName(), request.lastName(), request.dateOfBirth(),
+                request.ssn(), request.address(), request.phoneNumber(), request.email());
+        User user = authService.register(new User(null, "ROLE_CUSTOMER", "ACTIVE"), userPii, request.password());
+        UUID accountId = accountService.getAccountIdByUserId(user.getUserId());
 
-        public LoginRequest() {}
+        String token = jwtUtil.generateToken(request.email(), user.getRole(), user.getUserId(), accountId);
 
-        public LoginRequest(String email, String password) {
-            this.email = email;
-            this.password = password;
-        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(new AuthResponse(token, user.getUserId(), accountId, user.getRole()));
 
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
     }
 
-    public static class LoginResponse {
-        private String token;
-        private UUID userId;
-        private String role;
-        private UUID accountId;
-
-        public LoginResponse(String token, UUID userId, UUID accountId, String role) {
-            this.token = token;
-            this.userId = userId;
-            this.role = role;
-            this.accountId = accountId;
-        }
-
-        public String getToken() { return token; }
-        public UUID getUserId() { return userId; }
-        public String getRole() { return role; }
-        public UUID getAccountId() { return accountId; }
-    }
 }

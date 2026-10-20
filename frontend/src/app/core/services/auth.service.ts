@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, map, switchMap, tap, throwError } from 'rxjs';
-import { AuthResponse, AuthRequest } from '../models/auth.model';
+import { AuthResponse, AuthRequest, RegisterRequest } from '../models/auth.model';
 import { UsersService } from './users.service';
 
 
@@ -47,6 +47,12 @@ export class AuthService{
     );
   }
 
+  register(request: RegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>('/api/auth/register', request).pipe(
+      tap(res => this.saveSession(res))
+    );
+  }
+
   get token() { return localStorage.getItem(this.TOKEN_KEY); }
   get userId() { return this._session()?.userId ?? null; }
   get role() { return this._session()?.role ?? null; }
@@ -61,6 +67,12 @@ export class AuthService{
       const raw = localStorage.getItem(this.SESSION_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
+  }
+
+  private saveSession(response: AuthResponse) {
+    localStorage.setItem(this.TOKEN_KEY, response.token);
+    localStorage.setItem(this.SESSION_KEY, JSON.stringify(response));
+    this._session.set(response);
   }
 
   logout() {

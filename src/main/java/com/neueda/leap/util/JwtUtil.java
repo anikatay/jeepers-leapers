@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
 
@@ -18,16 +17,12 @@ public class JwtUtil {
 
     private static final long EXPIRATION_TIME = 3600000; // 1 hour in milliseconds
 
-    /**
-     * Decode the Base64-encoded secret and return a SecretKey
-     */
     private SecretKey getSigningKey() {
-        byte[] decodedKey = Base64.getDecoder().decode(secret);
-        return Keys.hmacShaKeyFor(decodedKey);
+        return Keys.hmacShaKeyFor(JwtSecret.keyBytes(secret));
     }
 
     /**
-     * Generate a JWT token for a user with a role and userId
+     * Generate a JWT token for a user with a role, userId, and accountId
      */
     public String generateToken(String username, String role, UUID userId, UUID accountId) {
         var builder = Jwts.builder()

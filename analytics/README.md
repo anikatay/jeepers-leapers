@@ -43,6 +43,11 @@ python3 analytics/etl/run_pipeline.py --seed               # insert 50 test trad
 python3 analytics/etl/run_pipeline.py --seed --trades 100  # insert 100
 ```
 
+Seeded trades move cash and holdings the way trades placed in the app do. Each quantity is cut
+down to what the account can afford or sell and a trade it cannot make is skipped, so fewer
+trades than requested may be inserted. Use a `--start-date` after the trades already in the
+database so the seeded sells have purchases behind them.
+
 ### Triggering a Refresh from an API (e.g. an admin "P&L analytics" button)
 
 The intended flow is: trigger the pipeline, wait for it to return, then read the admin views.
