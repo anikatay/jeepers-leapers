@@ -1,6 +1,8 @@
 package com.neueda.leap.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.neueda.leap.analysis.AnalysisRateLimiter;
+import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.dto.request.TradeRequest;
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.exception.ObjectInvalidException;
@@ -44,6 +46,13 @@ class TradeControllerTest {
 
     @MockBean
     private InstrumentService instrumentService;
+
+    // Covered by TradeAnalysisEndpointTest; mocked here so the controller can be created
+    @MockBean
+    private TradeAnalysisService tradeAnalysisService;
+
+    @MockBean
+    private AnalysisRateLimiter analysisRateLimiter;
 
     // Verifies creating a trade returns 201 with created trade fields.
     @Test
