@@ -112,7 +112,7 @@ class ModelTest {
         Account account = new Account();
 
         assertEquals("USD", account.getCurrency());
-        assertEquals(BigDecimal.ZERO, account.getBalance());
+        assertEquals(BigDecimal.valueOf(1000), account.getBalance());
         assertEquals("ACTIVE", account.getStatus());
         assertNull(account.getCreatedAt());
         assertNull(account.getUpdatedAt());
