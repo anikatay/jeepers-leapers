@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Backend merged (#74); UI specified, not built (`analytics/ai_wrapper_UI`) |
+| Status | Backend merged (#74); UI built on `analytics/ai_wrapper_UI`, not yet merged |
 | Last updated | 2026-10-20 |
 
 ## 1. Goal
@@ -191,11 +191,11 @@ login, so sending it everywhere would break other pages.
 
 | State | Dialog shows |
 |---|---|
-| Loading | A spinner and "Analysing your trade…"; the row's Analyze button is disabled |
+| Loading | A spinner and "Analyzing your trade…"; the row's Analyze button is disabled (`aria-disabled`, so it stays focusable and focus can return to it) |
 | Success | Verdict badge, summary, strengths, concerns and suggestions (an empty list is hidden), the P&L line, the disclaimer |
 | 401 | "Your session has expired. Please log in again." |
 | 404 | "This trade could not be found." |
-| 429 | "Too many analyses. Try again in N seconds.", with N from the `Retry-After` header, or 60 if it is missing |
+| 429 | "Too many analyses. Try again in 41 seconds.", with the wait from the `Retry-After` header, or 60 seconds if it is missing. The duration is worded by `Intl.NumberFormat` for the selected language, so the plural is right ("1 second", "41 segundos") |
 | 502 | "Analysis is unavailable right now. Please try again later." |
 | Network error or any other status | "Something went wrong. Please try again." |
 
@@ -244,17 +244,22 @@ replies in the UI language are already listed as out of scope.
 
 ### 9.8 Acceptance criteria (UI)
 
+Manual checks were run on 2026-10-20 in headless Chromium against the full docker-compose stack,
+logged in as `bob@example.com`, with live OpenAI calls.
+
 | # | Given / When / Then | Covered by |
 |---|---|---|
-| U1 | Given a logged-in client on the Trades page, when the trades load, then each row has an Analyze button whose accessible name names the trade | `client-trades.component.spec.ts` |
-| U2 | Given a row, when its Analyze button is pressed, then the dialog opens in the loading state and that button is disabled until the request finishes | `client-trades.component.spec.ts`, `trade-analysis-dialog.component.spec.ts` |
-| U3 | Given an analysis request, when it is sent, then both the review and the context requests carry `Authorization: Bearer <stored token>` | `trade-analysis.service.spec.ts` |
-| U4 | Given the review succeeds, when the dialog shows it, then it has the verdict badge with its translated label and colour, the summary, the non-empty lists, and the disclaimer | `trade-analysis-dialog.component.spec.ts`, manual check |
-| U5 | Given the context has an `outcome`, when the review is shown, then the dialog says "P&L as of" with that time | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts` |
-| U6 | Given the context's `outcome` is null, or the context request fails, when the review is shown, then the dialog says P&L is not calculated yet, or shows no P&L line if the context failed | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`, manual check |
-| U7 | Given a trade was reviewed earlier on this page, when its Analyze button is pressed again, then the stored result is shown and no request is sent | `client-trades.component.spec.ts`, manual check |
-| U8 | Given the review returns 401, when the dialog updates, then it shows the session-expired message | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`, manual check |
-| U9 | Given the review returns 429, when the dialog updates, then it shows the rate-limit message with the seconds from `Retry-After`, or 60 without the header | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`, manual check |
+| U1 | Given a logged-in client on the Trades page, when the trades load, then each row has an Analyze button whose accessible name names the trade | `client-trades.component.spec.ts`; manual: 8 rows, e.g. "Analyze MSFT Buy from Oct 20, 2026" |
+| U2 | Given a row, when its Analyze button is pressed, then the dialog opens in the loading state and that button is disabled until the request finishes | `client-trades.component.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual |
+| U3 | Given an analysis request, when it is sent, then both the review and the context requests carry `Authorization: Bearer <stored token>` | `trade-analysis.service.spec.ts`; manual: the review request carried the token |
+| U4 | Given the review succeeds, when the dialog shows it, then it has the verdict badge with its translated label and colour, the summary, the non-empty lists, and the disclaimer | `trade-analysis-dialog.component.spec.ts`; manual |
+| U5 | Given the context has an `outcome`, when the review is shown, then the dialog says "P&L as of" with that time | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual: "P&L as of Oct 20, 2026, 7:44 PM" |
+| U6 | Given the context's `outcome` is null, or the context request fails, when the review is shown, then the dialog says P&L is not calculated yet, or shows no P&L line if the context failed | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual: a buy placed seconds before showed "P&L not calculated yet" |
+| U7 | Given a trade was reviewed earlier on this page, when its Analyze button is pressed again, then the stored result is shown and no request is sent | `client-trades.component.spec.ts`; manual: no new POST on reopening |
+| U8 | Given the review returns 401, when the dialog updates, then it shows the session-expired message | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual: token removed from Local Storage |
+| U9 | Given the review returns 429, when the dialog updates, then it shows the rate-limit message with the wait from `Retry-After`, or 60 seconds without the header | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual: sixth review in a minute showed "Try again in 46 seconds." |
 | U10 | Given the review returns 404, 502, or fails without a response, when the dialog updates, then it shows the matching message from section 9.3, and pressing Analyze again sends a new request | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`, `client-trades.component.spec.ts` |
-| U11 | Given the dialog is open, when Esc, the close button or the backdrop is used, then it closes and focus returns to the Analyze button that opened it; on open, focus is on the close button | `trade-analysis-dialog.component.spec.ts`, manual check |
-| U12 | Given any of the 10 languages is selected, when the dialog is shown, then its labels and messages are in that language | `translation.service` key check in `trade-analysis-dialog.component.spec.ts`, manual check |
+| U11 | Given the dialog is open, when Esc, the close button or the backdrop is used, then it closes and focus returns to the Analyze button that opened it; on open, focus is on the close button | `trade-analysis-dialog.component.spec.ts`, `client-trades.component.spec.ts`; manual |
+| U12 | Given any of the 10 languages is selected, when the dialog is shown, then its labels and messages are in that language | `trade-analysis-dialog.component.spec.ts` (every key in all 10 languages, with matching placeholders); manual: Spanish |
+
+The translations other than English were machine-written and need a check by native speakers.
