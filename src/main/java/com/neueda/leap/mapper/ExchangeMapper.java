@@ -19,6 +19,13 @@ public interface ExchangeMapper {
             "VALUES (#{exchangeId}, #{name}, #{region}, #{timezone}, #{currency})")
     int insert(Exchange exchange);
 
+    @Insert("""
+            INSERT INTO exchanges (exchange_id, name, region, timezone, currency)
+            VALUES (#{exchangeId}, #{name}, #{region}, #{timezone}, #{currency})
+            ON CONFLICT (exchange_id) DO NOTHING
+            """)
+    int insertIfAbsent(Exchange exchange);
+
     @Update("UPDATE exchanges SET name = #{name}, region = #{region}, timezone = #{timezone}, currency = #{currency} " +
             "WHERE exchange_id = #{exchangeId}")
     int update(Exchange exchange);
