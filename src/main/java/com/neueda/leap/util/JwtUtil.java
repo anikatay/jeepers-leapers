@@ -30,13 +30,18 @@ public class JwtUtil {
      * Generate a JWT token for a user with a role and userId
      */
     public String generateToken(String username, String role, UUID userId, UUID accountId) {
-        return Jwts.builder()
-                .subject(userId.toString())
-                .claim("role", role)
-                .claim("email", username)
-                .claim("accountId", accountId.toString())
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+        var builder = Jwts.builder()
+            .subject(userId.toString())
+            .claim("role", role)
+            .claim("email", username)
+            .issuedAt(new Date())
+            .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME));
+
+        if (accountId != null) {
+            builder.claim("accountId", accountId.toString());
+        }
+
+        return builder
                 .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();
     }
