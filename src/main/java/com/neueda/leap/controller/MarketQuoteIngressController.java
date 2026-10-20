@@ -25,8 +25,8 @@ public class MarketQuoteIngressController {
 
     @PostMapping("/quotes")
     public ResponseEntity<Void> receiveQuote(@RequestBody MarketQuote quote) {
-        marketDataService.cacheLatestQuote(quote);
-        webSocketHandler.broadcast(quote);
+        MarketQuote normalized = marketDataService.cacheLatestQuote(quote);
+        webSocketHandler.broadcast(normalized);
         return ResponseEntity.accepted().build();
     }
 }

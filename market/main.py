@@ -306,6 +306,7 @@ class YahooStream:
             "quoteTime": quote_time.isoformat(),
             "receivedTime": datetime.now(timezone.utc).isoformat(),
             "source": "yfinance-websocket",
+            "status": "LIVE",
         }
         try:
             async with httpx.AsyncClient(timeout=3) as client:

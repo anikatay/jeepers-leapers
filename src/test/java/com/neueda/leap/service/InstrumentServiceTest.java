@@ -2,7 +2,10 @@ package com.neueda.leap.service;
 
 import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.InstrumentResponse;
+import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.QuoteStatus;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
+import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.ExchangeMapper;
@@ -15,8 +18,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -370,6 +375,35 @@ class InstrumentServiceTest {
                 () -> instrumentService.updatePrice(instrumentId, BigDecimal.valueOf(120.25)));
 
         verify(instrumentMapper, times(1)).findById(instrumentId);
+        verify(instrumentMapper, never()).updatePrice(any(Instrument.class));
+    }
+
+    @Test
+    void testRefreshPriceIfStaleRejectsLastKnownQuoteForTrading() {
+        UUID instrumentId = UUID.randomUUID();
+        Instrument instrument = new Instrument();
+        instrument.setInstrumentId(instrumentId);
+        instrument.setTicker("AAPL");
+        instrument.setCurrentPrice(BigDecimal.valueOf(180));
+        instrument.setUpdatedAt(OffsetDateTime.now());
+
+        MarketQuote staleQuote = new MarketQuote(
+                "QUOTE",
+                "AAPL",
+                BigDecimal.valueOf(181),
+                Instant.now(),
+                Instant.now(),
+                "test",
+                QuoteStatus.STALE);
+
+        when(instrumentMapper.findById(instrumentId)).thenReturn(instrument);
+        when(marketDataService.getLatestQuote("AAPL")).thenReturn(Optional.of(staleQuote));
+
+        assertThrows(
+                ObjectInvalidException.class,
+                () -> instrumentService.refreshPriceIfStale(instrumentId));
+
+        verify(marketDataService, never()).getHistory(any(), any());
         verify(instrumentMapper, never()).updatePrice(any(Instrument.class));
     }
 

@@ -1,7 +1,7 @@
 import { Injectable } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
-import { HistoryResponse } from "../models/market.model";
+import { HistoryResponse, MarketQuote } from "../models/market.model";
 
 export interface FxRateResponse {
 	baseCurrency: string;
@@ -23,6 +23,10 @@ export class MarketDataService{
 		return this.http.get<HistoryResponse>(`${this.apiUrl}/${ticker}/history`, {
 			params: {period}
 		});
+	}
+
+	getQuote(ticker: string): Observable<MarketQuote> {
+		return this.http.get<MarketQuote>(`${this.apiUrl}/${ticker}/quote`);
 	}
 
 	getExchangeRate(baseCurrency: string, quoteCurrency: string): Observable<FxRateResponse> {
