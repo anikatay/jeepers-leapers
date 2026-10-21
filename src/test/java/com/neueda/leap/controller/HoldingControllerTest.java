@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.dto.request.HoldingRequest;
 import com.neueda.leap.dto.response.HoldingResponse;
 import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.service.HoldingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,9 @@ class HoldingControllerTest {
 
     @MockBean
     private HoldingService holdingService;
+
+    @MockBean
+    private AuthorizationService authorizationService;
 
     // Verifies portfolio endpoint returns 200 with holdings.
     @Test

@@ -35,16 +35,19 @@ import java.util.UUID;
 public class TradeController {
 
     private final TradeService tradeService;
+    private final AuthorizationService authorizationService;
     private final TradeAnalysisService tradeAnalysisService;
     private final AnalysisRateLimiter analysisRateLimiter;
-
-    public TradeController(TradeService tradeService, TradeAnalysisService tradeAnalysisService,
+    
+    public TradeController(TradeService tradeService, AuthorizationService authorizationService, TradeAnalysisService tradeAnalysisService,
             AnalysisRateLimiter analysisRateLimiter) {
         this.tradeService = tradeService;
+        this.authorizationService = authorizationService;
         this.tradeAnalysisService = tradeAnalysisService;
         this.analysisRateLimiter = analysisRateLimiter;
-    private final AuthorizationService authorizationService;
+    }
 
+    
 
     @PostMapping
         public ResponseEntity<Trade> createTrade(
@@ -60,7 +63,7 @@ public class TradeController {
         trade.setQuantity(request.quantity());
         
         // Service will calculate tradeValue and update account balance
-        UUID authenticatedUserId = UUID.fromString(jwt.getSubject());
+        UUID authenticatedUserId = authorizationService.getAuthenticatedUserId(jwt);
         Trade created = tradeService.createTrade(trade, authenticatedUserId);
         
         return ResponseEntity.status(HttpStatus.CREATED).body(created);

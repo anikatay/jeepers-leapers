@@ -3,10 +3,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import com.neueda.leap.service.UserService;
+import com.neueda.leap.service.UserPiiService;
 import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.model.User;
-import com.neueda.leap.model.UserPii;
 import com.neueda.leap.dto.request.CreateUserRequest;
+import com.neueda.leap.dto.response.UserDetailsResponse;
+import com.neueda.leap.model.UserPii;
+import com.neueda.leap.exception.ObjectNotFoundException;
 import java.util.UUID;
 import java.util.List;
 @RestController
@@ -14,18 +17,23 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final UserPiiService userPiiService;
     private final AuthorizationService authorizationService;
 
-    public UserController(UserService userService, AuthorizationService authorizationService) {
+    public UserController(UserService userService, UserPiiService userPiiService,
+            AuthorizationService authorizationService) {
         this.userService = userService;
+        this.userPiiService = userPiiService;
         this.authorizationService = authorizationService;
     }
 
     @GetMapping("/{userId}")
-    public User getUserById(@PathVariable UUID userId, @AuthenticationPrincipal Jwt jwt) {
+    public UserDetailsResponse getUserById(@PathVariable UUID userId, @AuthenticationPrincipal Jwt jwt) {
         authorizationService.requireUser(userId, authorizationService.getAuthenticatedUserId(jwt));
 
-        return userService.getUserById(userId);
+        User user = userService.getUserById(userId);
+        UserPii pii = userPiiService.getUserPiiById(userId);
+        return UserDetailsResponse.from(user, pii);
     }
 
     @GetMapping
@@ -40,17 +48,7 @@ public class UserController {
             createUserRequest.role(),
             createUserRequest.status()
         );
-        UserPii userPii = new UserPii(
-            createUserRequest.userId(),
-            createUserRequest.firstName(),
-            createUserRequest.lastName(),
-            createUserRequest.dateOfBirth(),
-            createUserRequest.ssn(),
-            createUserRequest.address(),
-            createUserRequest.phoneNumber(),
-            createUserRequest.email()
-        );
-        return userService.createUser(user, userPii);
+        return userService.createUser(user);
     }
 
     @PutMapping("/{userId}/status")
@@ -68,6 +66,7 @@ public class UserController {
 
         userService.deleteUserById(userId);
     }
+
 
 
 }

@@ -516,7 +516,7 @@ export class ClientHomeComponent implements OnInit {
   }
 
   goToProfile() {
-    this.router.navigate(['/client/profile']);
+    this.router.navigate(['/client/portfolio']);
   }
 
   handleProfileOption(option: string) {

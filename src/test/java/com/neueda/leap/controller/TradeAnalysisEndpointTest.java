@@ -49,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TradeAnalysisEndpointTest {
 
     private static final UUID USER_ID = UUID.fromString("a1000000-0000-0000-0000-000000000001");
+    private static final UUID ACCOUNT_ID = UUID.fromString("d4000000-0000-0000-0000-000000000001");
     private static final UUID TRADE_ID = UUID.fromString("c3000000-0000-0000-0000-000000000006");
     private static final String ANALYSIS_URL = "/api/trades/" + TRADE_ID + "/analysis";
     private static final String CONTEXT_URL = ANALYSIS_URL + "/context";
@@ -77,7 +78,7 @@ class TradeAnalysisEndpointTest {
     void rejectsATokenSignedWithAnotherKey() throws Exception {
         JwtUtil otherIssuer = new JwtUtil();
         ReflectionTestUtils.setField(otherIssuer, "secret", "YW5vdGhlci1zZWNyZXQtdGhhdC1pcy1hbHNvLTMyLWJ5dGVzLWxvbmc=");
-        String forged = otherIssuer.generateToken("mallory@example.com", "ROLE_CUSTOMER", USER_ID);
+        String forged = otherIssuer.generateToken("mallory@example.com", "ROLE_CUSTOMER", USER_ID, UUID.randomUUID());
 
         mvc.perform(post(ANALYSIS_URL).header("Authorization", "Bearer " + forged))
                 .andExpect(status().isUnauthorized());
@@ -177,6 +178,6 @@ class TradeAnalysisEndpointTest {
 
     private MockHttpServletRequestBuilder withToken(MockHttpServletRequestBuilder request) {
         return request.header("Authorization",
-                "Bearer " + jwtUtil.generateToken("joanna@example.com", "ROLE_CUSTOMER", USER_ID));
+                "Bearer " + jwtUtil.generateToken("joanna@example.com", "ROLE_CUSTOMER", USER_ID, UUID.randomUUID()));
     }
 }
