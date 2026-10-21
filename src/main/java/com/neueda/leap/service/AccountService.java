@@ -81,10 +81,16 @@ public class AccountService implements IService {
         }
 
         UUID accountId = accountMapper.findAccountIdByUserId(userId);
-        if (accountId == null) {
-            throw new ObjectNotFoundException("Account not found for user ID: " + userId);
-        }
+
         return accountId;
+    }
+
+    /** Lenient: staff users (admin/analyst) legitimately have no account. */
+    public UUID findAccountIdByUserId(UUID userId) {
+        if (userId == null) {
+            throw new ObjectNotFoundException("User ID cannot be null");
+        }
+        return null;
     }
 
     @Transactional 
