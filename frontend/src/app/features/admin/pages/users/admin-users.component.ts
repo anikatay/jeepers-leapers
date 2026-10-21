@@ -1,10 +1,10 @@
-import { Component, OnInit, computed, effect, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule, formatDate } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AccountService } from '../../../../core/services/account.service';
+import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap, takeUntil, tap } from 'rxjs';
+import { AdminDashboardRow } from '../../../../core/models/admin-dashboard.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
-import { AccountResponse } from '../../../../core/models/account.model';
-import { TradesService } from '../../../../core/services/trades.service';
+import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
 
 @Component({
   selector: 'app-admin-users',
@@ -13,171 +13,166 @@ import { TradesService } from '../../../../core/services/trades.service';
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.css'
 })
-export class AdminUsersComponent{
-    accounts = signal<AccountResponse[]>([]);
-    tradesByAccountId = signal<Map<string, TradeResponse[]>>(new Map());
-    accountValue = signal<Map<string, number>>(new Map());
-    allTimeProfitByAccountId = signal<Map<string, number>>(new Map());
-    portfolioValueByAccountId = signal<Map<string, number>>(new Map());
-    selectedUser = signal<any>(null);
-    holdingsTableCollapsed = signal<boolean>(false);
-    tradesTableCollapsed = signal<boolean>(false);
-    searchTerm = ''; 
-    pendingUserIds = new Set<string>(); 
-    columns: { header: string }[] = [
-        { header: 'Name' },
-        { header: 'Account Value' },
-        { header: 'Balance' },
-        { header: 'Portfolio Value' },
-        { header: 'Profit' },
-        { header: 'Trades' },
-        { header: 'Created At' },
-        { header: 'Status' }
-      ];
+export class AdminUsersComponent implements OnInit, OnDestroy {
+  readonly rows = signal<AdminDashboardRow[]>([]);
+  readonly selectedUser = signal<AdminDashboardRow | null>(null);
+  readonly selectedUserTrades = signal<TradeResponse[]>([]);
+  readonly loading = signal(false);
+  readonly loadingTrades = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly tradesError = signal<string | null>(null);
+  readonly page = signal(0);
+  readonly totalPages = signal(0);
+  readonly totalItems = signal(0);
+  readonly pageSize = 25;
+  readonly holdingsTableCollapsed = signal(false);
+  readonly tradesTableCollapsed = signal(false);
 
-    userData = computed(() => {
-      const accountsData = this.accounts() || [];
+  searchTerm = '';
+  columns: { header: string }[] = [
+    { header: 'Name' },
+    { header: 'Account Value' },
+    { header: 'Balance' },
+    { header: 'Portfolio Value' },
+    { header: 'Profit' },
+    { header: 'Trades' },
+    { header: 'Created At' },
+    { header: 'Status' }
+  ];
 
-      return accountsData.map(account => ({
-        accountId: account.accountId,
-        name: this.getUserName(account.userId),
-        balance: account.balance,
-        tradeCount: this.tradesByAccountId().get(account.accountId)?.length || 0,
-        createdAt: account.createdAt,
-        status: account.status,
-        portfolioValue: this.portfolioValueByAccountId().get(account.accountId) || 0,
-        accountValue: (this.portfolioValueByAccountId().get(account.accountId) || 0) + account.balance,
-        allTimeProfit: this.allTimeProfitByAccountId().get(account.accountId) || 0
-      }));
+  private readonly searchChanges = new Subject<string>();
+  private readonly destroy = new Subject<void>();
+  private readonly loadedTradeAccountIds = new Set<string>();
 
-    });
+  constructor(private readonly adminDashboardService: AdminDashboardService) {}
 
+  ngOnInit(): void {
+    this.searchChanges.pipe(
+      debounceTime(250),
+      distinctUntilChanged(),
+      tap(() => this.page.set(0)),
+      switchMap(search => this.loadDashboardRequest(search, 0)),
+      takeUntil(this.destroy)
+    ).subscribe();
 
-    constructor(private accountService: AccountService, private tradeService: TradesService) {
-        // Trigger the API call
-        this.accountService.getAllAccounts();
-        
-        effect(() => {
-          const accountsData = this.accountService.allAccounts();
-          if (accountsData) {
-            this.accounts.set(accountsData);
-            console.log('Accounts loaded:', accountsData);
-            
-            // Load trades sequentially after accounts load
-            this.loadTradesSequentially(accountsData);
-          }
-        });
+    this.loadDashboard();
+  }
 
-      
-    }
-  
-    loadTradesSequentially(accounts: AccountResponse[]): void {
-      let i = 0;  // Index counter (like a for loop)
-  
-      // Define a function that calls itself
-      const loadNext = () => {
-        // Base case: stop when all accounts processed
-        if (i >= accounts.length) {
-          console.log('✓ All trades loaded');
-          return;  // Stop recursion
+  ngOnDestroy(): void {
+    this.destroy.next();
+    this.destroy.complete();
+    this.searchChanges.complete();
+  }
+
+  onSearchChanged(): void {
+    this.searchChanges.next(this.searchTerm);
+  }
+
+  loadDashboard(page = this.page()): void {
+    this.loadDashboardRequest(this.searchTerm, page)
+      .pipe(takeUntil(this.destroy))
+      .subscribe();
+  }
+
+  private loadDashboardRequest(search: string, page: number) {
+    this.loading.set(true);
+    this.error.set(null);
+
+    return this.adminDashboardService.getDashboard(search, page, this.pageSize).pipe(
+      tap(response => {
+        this.rows.set(response.items);
+        this.page.set(response.page);
+        this.totalPages.set(response.totalPages);
+        this.totalItems.set(response.totalItems);
+
+        const selected = this.selectedUser();
+        if (selected && !response.items.some(row => row.accountId === selected.accountId)) {
+          this.clearSelection();
         }
+        this.loading.set(false);
+      }),
+      catchError(() => {
+        this.rows.set([]);
+        this.loading.set(false);
+        this.error.set('Unable to load the admin dashboard.');
+        return of(null);
+      })
+    );
+  }
 
-        // Get current user
-        const accountId = accounts[i].accountId;
-        console.log('accountId:', accountId, 'userId:', accounts[i].userId);
-        this.tradeService.getTrades(accountId); // Fetch trades
-        this.tradeService.calculatePortfolioMetrics(accountId);
+  selectUser(user: AdminDashboardRow): void {
+    const previousSelection = this.selectedUser();
+    this.selectedUser.set(user);
+    this.tradesError.set(null);
 
-        // Poll for data to arrive
-        let attempts = 0;
-        const checkInterval = setInterval(() => {
-          const tradesData = this.tradeService.trades();
-          const metricsData = this.tradeService.portfolioMetrics();
-          
-          if (tradesData && tradesData.length > 0 && metricsData) {
-            // Both data arrived! Store it
-            const updatedTradesMap = new Map(this.tradesByAccountId());
-            updatedTradesMap.set(accountId, tradesData);
-            this.tradesByAccountId.set(updatedTradesMap);
-
-            const updatedPortfolioMap = new Map(this.portfolioValueByAccountId());
-            updatedPortfolioMap.set(accountId, metricsData.currentValue);
-            this.portfolioValueByAccountId.set(updatedPortfolioMap);
-
-            const updatedAllTimeProfitMap = new Map(this.allTimeProfitByAccountId());
-            updatedAllTimeProfitMap.set(accountId, metricsData.allTimeProfit);
-            this.allTimeProfitByAccountId.set(updatedAllTimeProfitMap);
-            
-            clearInterval(checkInterval);
-            
-            i++;  // Move to next user
-            loadNext();  // 🔄 Recursively call itself for next user
-          } else if (attempts++ > 50) {
-            // Timeout after 5 seconds
-            clearInterval(checkInterval);
-            i++;  // Move to next user anyway
-            loadNext();  // 🔄 Recursively call itself for next user
-          }
-        }, 100);
-      };
-
-      loadNext();  
-    }
-    
-    getUserName(userId: string): string {
-      if(userId == "a1000000-0000-0000-0000-000000000001")
-        return "Alice";
-      if(userId == "a1000000-0000-0000-0000-000000000002")
-        return "Bob";
-      if(userId == "a1000000-0000-0000-0000-000000000003")
-        return "Charlie";
-      return '';
+    if (previousSelection?.accountId === user.accountId && this.loadedTradeAccountIds.has(user.accountId)) {
+      return;
     }
 
-    getCellValue(user: any, header: string): any {
-        switch (header) {
-            case 'Name':
-                return user.name;
-            case 'Balance':
-              return user.balance;
-            case 'Trades':
-              return user.tradeCount;
-            case 'Created At':
-              return formatDate(user.createdAt, 'MM/dd/yyyy', 'en-US');
-            case 'Status':
-              return user.status;
-            case 'Portfolio Value':
-              return user.portfolioValue;
-            case 'Account Value':
-              return user.accountValue;
-            case 'Profit':
-              return user.allTimeProfit;
-            default:
-              return '';
-          }
-    }
-
-    // Computed signal to get the selected user's trades
-    selectedUserTrades = computed(() => {
-      const selected = this.selectedUser();
-      if (!selected) return [];
-      return this.tradesByAccountId().get(selected.accountId) || [];
+    this.selectedUserTrades.set([]);
+    this.loadingTrades.set(true);
+    this.adminDashboardService.getAccountTrades(user.accountId).pipe(
+      takeUntil(this.destroy),
+      catchError(() => {
+        this.tradesError.set('Unable to load trades for this account.');
+        return of(null);
+      })
+    ).subscribe(trades => {
+      if (!trades) {
+        this.loadingTrades.set(false);
+        return;
+      }
+      this.loadedTradeAccountIds.add(user.accountId);
+      if (this.selectedUser()?.accountId === user.accountId) {
+        this.selectedUserTrades.set(trades);
+        this.loadingTrades.set(false);
+      }
     });
+  }
 
-    selectUser(user: any) {
-      this.selectedUser.set(user);  // Set the clicked user
+  clearSelection(): void {
+    this.selectedUser.set(null);
+    this.selectedUserTrades.set([]);
+    this.tradesError.set(null);
+  }
+
+  previousPage(): void {
+    if (this.page() > 0) {
+      this.clearSelection();
+      this.loadDashboard(this.page() - 1);
     }
+  }
 
-    clearSelection() {
-      this.selectedUser.set(null);
+  nextPage(): void {
+    if (this.page() + 1 < this.totalPages()) {
+      this.clearSelection();
+      this.loadDashboard(this.page() + 1);
     }
+  }
 
-    toggleHoldingsTable() {
-      this.holdingsTableCollapsed.set(!this.holdingsTableCollapsed());
+  toggleHoldingsTable(): void {
+    this.holdingsTableCollapsed.set(!this.holdingsTableCollapsed());
+  }
+
+  toggleTradesTable(): void {
+    this.tradesTableCollapsed.set(!this.tradesTableCollapsed());
+  }
+
+  getUserName(user: AdminDashboardRow): string {
+    return `${user.firstName} ${user.lastName}`.trim() || user.email;
+  }
+
+  getCellValue(user: AdminDashboardRow, header: string): string | number {
+    switch (header) {
+      case 'Name': return this.getUserName(user);
+      case 'Balance': return user.balance;
+      case 'Trades': return user.tradeCount;
+      case 'Created At': return formatDate(user.createdAt, 'MM/dd/yyyy', 'en-US');
+      case 'Status': return user.accountStatus;
+      case 'Portfolio Value': return user.portfolioValue;
+      case 'Account Value': return user.balance + user.portfolioValue;
+      case 'Profit': return user.allTimeProfit;
+      default: return '';
     }
-
-    toggleTradesTable() {
-      this.tradesTableCollapsed.set(!this.tradesTableCollapsed());
-    }
-
+  }
 }

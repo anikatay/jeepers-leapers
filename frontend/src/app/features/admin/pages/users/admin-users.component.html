@@ -1,4 +1,18 @@
-<!-- User List View -->
+<div class="dashboard-toolbar">
+  <label for="admin-search">Search users, accounts, trades, or tickers</label>
+  <input
+    id="admin-search"
+    type="search"
+    [(ngModel)]="searchTerm"
+    (ngModelChange)="onSearchChanged()"
+    placeholder="Search by name, email, UUID, trade ID, or ticker"
+    autocomplete="off">
+  <span class="result-count" *ngIf="!loading()">{{ totalItems() }} accounts</span>
+</div>
+
+<p class="dashboard-message" *ngIf="loading()">Loading dashboard...</p>
+<p class="dashboard-message error" *ngIf="error()">{{ error() }}</p>
+
 <div>
   <div class="table-header">
     <h3>Accounts</h3>
@@ -6,32 +20,34 @@
       {{ holdingsTableCollapsed() ? '▶' : '▼' }}
     </button>
   </div>
-  <table class="holdings-table" *ngIf="accounts()" [class.collapsed]="holdingsTableCollapsed()">
+  <table class="holdings-table" *ngIf="!loading()" [class.collapsed]="holdingsTableCollapsed()">
     <thead>
       <tr>
-        <th *ngFor="let col of columns">
-          {{ col.header }}
-        </th>
+        <th *ngFor="let col of columns">{{ col.header }}</th>
       </tr>
     </thead>
-
     <tbody *ngIf="!holdingsTableCollapsed()">
-      <tr *ngFor="let user of userData()" 
-          (click)="selectUser(user)" 
-          [class.selected]="selectedUser()?.accountId === user.accountId"
-          style="cursor: pointer;">
-        <td *ngFor="let col of columns">
-          {{ getCellValue(user, col.header) }}
-        </td>
+      <tr *ngFor="let user of rows()"
+          (click)="selectUser(user)"
+          [class.selected]="selectedUser()?.accountId === user.accountId">
+        <td *ngFor="let col of columns">{{ getCellValue(user, col.header) }}</td>
+      </tr>
+      <tr *ngIf="rows().length === 0">
+        <td [attr.colspan]="columns.length">No accounts found.</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-<!-- Selected User Detail View -->
-<div class="user-detail-layout" *ngIf="selectedUser()">
+<div class="pagination" *ngIf="totalPages() > 0">
+  <button type="button" (click)="previousPage()" [disabled]="page() === 0">Previous</button>
+  <span>Page {{ page() + 1 }} of {{ totalPages() }}</span>
+  <button type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Next</button>
+</div>
+
+<div class="user-detail-layout" *ngIf="selectedUser() as user">
   <div class="detail-header">
-    <h2>{{ selectedUser().name }}'s Trades</h2>
+    <h2>{{ getUserName(user) }}'s Trades</h2>
     <div class="header-actions">
       <button (click)="toggleTradesTable()" class="collapse-btn" [class.collapsed]="tradesTableCollapsed()">
         {{ tradesTableCollapsed() ? '▶' : '▼' }}
@@ -40,11 +56,14 @@
     </div>
   </div>
   <div class="detail-info">
-    <p><strong>Account ID:</strong> {{ selectedUser().accountId }}</p>
-    <p><strong>Balance:</strong> {{ selectedUser().balance }}</p>
+    <p><strong>Account ID:</strong> {{ user.accountId }}</p>
+    <p><strong>Balance:</strong> {{ user.balance }}</p>
   </div>
 
-  <table class="trades-table" *ngIf="selectedUserTrades().length > 0" [class.collapsed]="tradesTableCollapsed()">
+  <p class="dashboard-message" *ngIf="loadingTrades()">Loading trades...</p>
+  <p class="dashboard-message error" *ngIf="tradesError()">{{ tradesError() }}</p>
+
+  <table class="trades-table" *ngIf="!loadingTrades() && selectedUserTrades().length > 0" [class.collapsed]="tradesTableCollapsed()">
     <thead>
       <tr>
         <th>Trade ID</th>
@@ -67,5 +86,7 @@
     </tbody>
   </table>
 
-  <p *ngIf="selectedUserTrades().length === 0" class="no-trades">No trades found for this user.</p>
+  <p *ngIf="!loadingTrades() && !tradesError() && selectedUserTrades().length === 0" class="no-trades">
+    No trades found for this account.
+  </p>
 </div>
