@@ -1,7 +1,14 @@
 import { Injectable } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
+import { HttpParams } from "@angular/common/http";
 import { Observable } from "rxjs";
-import { HistoryResponse, MarketQuote } from "../models/market.model";
+import {
+	HistoryResponse,
+	MarketHeatmapResponse,
+	MarketQuote,
+	MarketSector,
+	MarketSectorCatalog
+} from "../models/market.model";
 
 export interface FxRateResponse {
 	baseCurrency: string;
@@ -27,6 +34,22 @@ export class MarketDataService{
 
 	getQuote(ticker: string): Observable<MarketQuote> {
 		return this.http.get<MarketQuote>(`${this.apiUrl}/${ticker}/quote`);
+	}
+
+	getSectorCatalog(): Observable<MarketSectorCatalog> {
+		return this.http.get<MarketSectorCatalog>(`${this.apiUrl}/sectors`);
+	}
+
+	getSector(sectorId: string): Observable<MarketSector> {
+		return this.http.get<MarketSector>(`${this.apiUrl}/sectors/${sectorId}`);
+	}
+
+	getHeatmap(sectorId?: string): Observable<MarketHeatmapResponse> {
+		let params = new HttpParams();
+		if (sectorId) {
+			params = params.set('sector', sectorId);
+		}
+		return this.http.get<MarketHeatmapResponse>(`${this.apiUrl}/heatmap`, { params });
 	}
 
 	getExchangeRate(baseCurrency: string, quoteCurrency: string): Observable<FxRateResponse> {

@@ -40,6 +40,97 @@ BACKEND_QUOTE_URL = os.getenv(
     "BACKEND_QUOTE_URL",
     "http://app:8080/internal/market/quotes",
 )
+SECTOR_STREAM_ENABLED = os.getenv("SECTOR_STREAM_ENABLED", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+SECTOR_UNIVERSE_VERSION = "us-large-cap-v1"
+SECTOR_SELECTION_BASIS = "configured_large_cap_order"
+
+# The sidecar owns the initial universe. The order is the configured rank within
+# each sector; replacing this list is an explicit universe update.
+SECTOR_UNIVERSE = {
+    "communication-services": {
+        "name": "Communication Services",
+        "tickers": ["GOOGL", "META", "NFLX", "DIS", "CMCSA", "VZ", "T", "TMUS", "CHTR", "EA"],
+    },
+    "consumer-discretionary": {
+        "name": "Consumer Discretionary",
+        "tickers": ["AMZN", "TSLA", "HD", "MCD", "TJX", "LOW", "BKNG", "NKE", "SBUX", "ORLY"],
+    },
+    "consumer-staples": {
+        "name": "Consumer Staples",
+        "tickers": ["WMT", "COST", "PG", "KO", "PEP", "PM", "MO", "MDLZ", "CL", "KMB"],
+    },
+    "energy": {
+        "name": "Energy",
+        "tickers": ["XOM", "CVX", "COP", "EOG", "SLB", "OXY", "MPC", "PSX", "VLO", "WMB"],
+    },
+    "financials": {
+        "name": "Financials",
+        "tickers": ["JPM", "V", "MA", "BAC", "WFC", "GS", "MS", "BLK", "C", "AXP"],
+    },
+    "health-care": {
+        "name": "Health Care",
+        "tickers": ["LLY", "UNH", "JNJ", "ABBV", "MRK", "TMO", "ABT", "AMGN", "PFE", "ISRG"],
+    },
+    "industrials": {
+        "name": "Industrials",
+        "tickers": ["GE", "CAT", "RTX", "HON", "UNP", "DE", "BA", "ADP", "ETN", "LMT"],
+    },
+    "information-technology": {
+        "name": "Information Technology",
+        "tickers": ["NVDA", "MSFT", "AAPL", "AVGO", "ORCL", "CRM", "AMD", "CSCO", "IBM", "ADBE"],
+    },
+    "materials": {
+        "name": "Materials",
+        "tickers": ["LIN", "SHW", "APD", "ECL", "NEM", "FCX", "NUE", "DOW", "DD", "CTVA"],
+    },
+    "real-estate": {
+        "name": "Real Estate",
+        "tickers": ["PLD", "AMT", "EQIX", "WELL", "SPG", "O", "PSA", "CCI", "DLR", "VICI"],
+    },
+    "utilities": {
+        "name": "Utilities",
+        "tickers": ["NEE", "SO", "DUK", "CEG", "SRE", "AEP", "EXC", "XEL", "ED", "PCG"],
+    },
+}
+SECTOR_TICKERS = tuple(
+    ticker
+    for sector in SECTOR_UNIVERSE.values()
+    for ticker in sector["tickers"]
+)
+SECTOR_TICKER_SET = set(SECTOR_TICKERS)
+
+
+def sector_catalog_payload() -> dict:
+    return {
+        "market": "US",
+        "selectionBasis": SECTOR_SELECTION_BASIS,
+        "universeVersion": SECTOR_UNIVERSE_VERSION,
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "sectors": [
+            {
+                "id": sector_id,
+                "name": sector["name"],
+                "tickers": [
+                    {"ticker": ticker, "rank": rank}
+                    for rank, ticker in enumerate(sector["tickers"], start=1)
+                ],
+            }
+            for sector_id, sector in SECTOR_UNIVERSE.items()
+        ],
+    }
+
+
+def sector_or_404(raw_sector_id: str) -> tuple[str, dict]:
+    sector_id = raw_sector_id.strip().lower()
+    sector = SECTOR_UNIVERSE.get(sector_id)
+    if sector is None:
+        raise HTTPException(status_code=404, detail=f"Unknown sector: {raw_sector_id}")
+    return sector_id, sector
 
 
 def validate_ticker(raw: str) -> str:
@@ -321,6 +412,8 @@ stream = YahooStream()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if SECTOR_STREAM_ENABLED:
+        stream.desired.update(SECTOR_TICKERS)
     await stream.start()
     yield
     await stream.stop()
@@ -335,6 +428,8 @@ async def health():
         "status": "ok",
         "streamConnected": stream.websocket is not None and stream.websocket.is_connected(),
         "subscribedTickers": sorted(stream.desired),
+        "sectorStreamEnabled": SECTOR_STREAM_ENABLED,
+        "sectorTickerCount": len(SECTOR_TICKERS),
     }
 
 
@@ -348,6 +443,12 @@ async def subscribe_stream(ticker: str):
 @app.delete("/stream/subscribe/{ticker}")
 async def unsubscribe_stream(ticker: str):
     normalized = validate_ticker(ticker)
+    if SECTOR_STREAM_ENABLED and normalized in SECTOR_TICKER_SET:
+        return {
+            "ticker": normalized,
+            "subscribed": True,
+            "persistent": True,
+        }
     await stream.remove(normalized)
     return {"ticker": normalized, "subscribed": False}
 
@@ -355,6 +456,31 @@ async def unsubscribe_stream(ticker: str):
 @app.get("/stream/subscriptions")
 async def stream_subscriptions():
     return {"tickers": sorted(stream.desired)}
+
+
+@app.get("/sectors")
+def list_sectors():
+    return sector_catalog_payload()
+
+
+@app.get("/sectors/{sector_id}")
+def get_sector(sector_id: str):
+    normalized_id, sector = sector_or_404(sector_id)
+    catalog = sector_catalog_payload()
+    return {
+        "market": catalog["market"],
+        "selectionBasis": catalog["selectionBasis"],
+        "universeVersion": catalog["universeVersion"],
+        "generatedAt": catalog["generatedAt"],
+        "sector": {
+            "id": normalized_id,
+            "name": sector["name"],
+            "tickers": [
+                {"ticker": ticker, "rank": rank}
+                for rank, ticker in enumerate(sector["tickers"], start=1)
+            ],
+        },
+    }
 
 
 @app.get("/lookup/{ticker}")

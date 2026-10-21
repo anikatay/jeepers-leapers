@@ -5,8 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.MarketHeatmapResponse;
+import com.neueda.leap.dto.response.MarketHeatmapSector;
+import com.neueda.leap.dto.response.MarketHeatmapTicker;
 import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.MarketSector;
+import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.MarketSectorTicker;
 import com.neueda.leap.dto.response.QuoteStatus;
 import com.neueda.leap.websocket.MarketQuoteWebSocketHandler;
 import com.neueda.leap.exception.ObjectInvalidException;
@@ -158,6 +164,51 @@ public class MarketDataService implements IService {
                 resolveQuoteStatus(ticker, cached.live()));
     }
 
+    public MarketSectorCatalog getSectorCatalog() {
+        return client.fetchSectorCatalog();
+    }
+
+    public MarketSector getSector(String rawSectorId) {
+        String sectorId = normalizeSectorId(rawSectorId);
+        return getSectorCatalog().sectors().stream()
+                .filter(sector -> sectorId.equals(sector.id()))
+                .findFirst()
+                .orElseThrow(() -> new ObjectNotFoundException(
+                        "Unknown market sector: " + rawSectorId));
+    }
+
+    public MarketHeatmapResponse getHeatmap(String rawSectorId) {
+        MarketSectorCatalog catalog = getSectorCatalog();
+        List<MarketSector> sectors = catalog.sectors();
+        if (rawSectorId != null && !rawSectorId.isBlank()) {
+            String sectorId = normalizeSectorId(rawSectorId);
+            sectors = sectors.stream()
+                    .filter(sector -> sectorId.equals(sector.id()))
+                    .toList();
+            if (sectors.isEmpty()) {
+                throw new ObjectNotFoundException(
+                        "Unknown market sector: " + rawSectorId);
+            }
+        }
+
+        Instant asOf = Instant.now();
+        List<MarketHeatmapSector> heatmapSectors = sectors.stream()
+                .map(sector -> new MarketHeatmapSector(
+                        sector.id(),
+                        sector.name(),
+                        sector.tickers().stream()
+                                .map(ticker -> toHeatmapTicker(ticker))
+                                .toList()))
+                .toList();
+        return new MarketHeatmapResponse(
+                catalog.market(),
+                catalog.selectionBasis(),
+                catalog.universeVersion(),
+                catalog.generatedAt(),
+                asOf,
+                heatmapSectors);
+    }
+
     public BigDecimal getExchangeRate(String rawBaseCurrency, String rawQuoteCurrency) {
         String baseCurrency = normalizeCurrency(rawBaseCurrency);
         String quoteCurrency = normalizeCurrency(rawQuoteCurrency);
@@ -281,6 +332,39 @@ public class MarketDataService implements IService {
             throw new ObjectInvalidException("Unsupported currency: " + rawCurrency);
         }
         return currency;
+    }
+
+    private String normalizeSectorId(String rawSectorId) {
+        String sectorId = rawSectorId == null ? "" : rawSectorId.trim().toLowerCase();
+        if (!sectorId.matches("^[a-z0-9]+(?:-[a-z0-9]+)*$")) {
+            throw new ObjectInvalidException("Invalid market sector: " + rawSectorId);
+        }
+        return sectorId;
+    }
+
+    private MarketHeatmapTicker toHeatmapTicker(MarketSectorTicker sectorTicker) {
+        MarketQuote value;
+        try {
+            value = getQuoteSnapshot(sectorTicker.ticker());
+        } catch (ObjectNotFoundException e) {
+            return new MarketHeatmapTicker(
+                    sectorTicker.ticker(),
+                    sectorTicker.rank(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    QuoteStatus.UNAVAILABLE);
+        }
+
+        return new MarketHeatmapTicker(
+                value.ticker(),
+                sectorTicker.rank(),
+                value.price(),
+                value.quoteTime(),
+                value.receivedTime(),
+                value.source(),
+                value.status());
     }
 
     private Optional<CachedQuote> readCachedQuote(String ticker) {
