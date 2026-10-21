@@ -1,6 +1,9 @@
 package com.neueda.leap.controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import com.neueda.leap.service.UserService;
+import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.model.User;
 import com.neueda.leap.model.UserPii;
 import com.neueda.leap.dto.request.CreateUserRequest;
@@ -11,13 +14,17 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final AuthorizationService authorizationService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, AuthorizationService authorizationService) {
         this.userService = userService;
+        this.authorizationService = authorizationService;
     }
 
     @GetMapping("/{userId}")
-    public User getUserById(@PathVariable UUID userId) {
+    public User getUserById(@PathVariable UUID userId, @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireUser(userId, authorizationService.getAuthenticatedUserId(jwt));
+
         return userService.getUserById(userId);
     }
 
@@ -47,13 +54,18 @@ public class UserController {
     }
 
     @PutMapping("/{userId}/status")
-    public User updateUserStatus(@PathVariable UUID userId, @RequestParam String newStatus) {
+    public User updateUserStatus(@PathVariable UUID userId, @RequestParam String newStatus,
+            @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireUser(userId, authorizationService.getAuthenticatedUserId(jwt));
+
         User user = userService.getUserById(userId);
         return userService.updateUserStatus(user, newStatus);
     }
 
     @DeleteMapping("/{userId}")
-    public void deleteUserById(@PathVariable UUID userId) {
+    public void deleteUserById(@PathVariable UUID userId, @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireUser(userId, authorizationService.getAuthenticatedUserId(jwt));
+
         userService.deleteUserById(userId);
     }
 

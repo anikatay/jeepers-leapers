@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 
 import java.util.stream.Collectors;
@@ -69,6 +70,21 @@ public class GlobalExceptionHandler {
         response.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException e,
+            HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+                "ACCESS_DENIED",
+                "You are not authorized to access this resource",
+                e.getMessage(),
+                HttpStatus.FORBIDDEN.value()
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
      @ExceptionHandler(ObjectInvalidException.class)
     public ResponseEntity<ErrorResponse> handleInvalid(
             ObjectInvalidException e,

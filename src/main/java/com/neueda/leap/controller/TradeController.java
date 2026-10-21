@@ -6,9 +6,8 @@ import com.neueda.leap.analysis.TradeAnalysisResult;
 import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.dto.request.TradeRequest;
 import com.neueda.leap.dto.response.TradeResponse;
-import com.neueda.leap.model.Instrument;
 import com.neueda.leap.model.Trade;
-import com.neueda.leap.service.InstrumentService;
+import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.service.TradeService;
 
 import jakarta.validation.Valid;
@@ -44,7 +43,8 @@ public class TradeController {
         this.tradeService = tradeService;
         this.tradeAnalysisService = tradeAnalysisService;
         this.analysisRateLimiter = analysisRateLimiter;
-    }
+    private final AuthorizationService authorizationService;
+
 
     @PostMapping
         public ResponseEntity<Trade> createTrade(
@@ -70,7 +70,9 @@ public class TradeController {
     public ResponseEntity<List<TradeResponse>> getTradesByAccount(
             @PathVariable UUID accountId,
             @RequestParam(required = false) Integer limit,
-            @RequestParam (required = false) Integer offset) {
+            @RequestParam (required = false) Integer offset,
+            @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
         
         List<TradeResponse> trades = tradeService.getAllTradesByAccountWithInstrument(accountId, limit, offset);
         
@@ -84,7 +86,9 @@ public class TradeController {
     @GetMapping("/account/{accountId}/instrument/{instrumentId}")
     public ResponseEntity<List<TradeResponse>> getTradesByAccountAndInstrument(
             @PathVariable UUID accountId,
-            @PathVariable UUID instrumentId) {
+            @PathVariable UUID instrumentId,
+            @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
         
         List<TradeResponse> trades = tradeService.getTradesByAccountAndInstrument(accountId, instrumentId);
         
