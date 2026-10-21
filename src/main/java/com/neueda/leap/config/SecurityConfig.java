@@ -14,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 import com.neueda.leap.util.JwtSecret;
+import java.util.Base64;
 
 @Configuration
 public class SecurityConfig {
@@ -23,8 +24,8 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        // Must match how JwtUtil signs, or no issued token verifies
-        SecretKeySpec key = new SecretKeySpec(JwtSecret.keyBytes(sharedSecret), "HmacSHA256");
+        SecretKeySpec key = new SecretKeySpec(
+            Base64.getDecoder().decode(sharedSecret), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 

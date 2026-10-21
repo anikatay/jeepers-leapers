@@ -1,14 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
-
-export interface MarketQuote {
-  type: 'QUOTE';
-  ticker: string;
-  price: number;
-  quoteTime: string;
-  receivedTime: string;
-  source: string;
-}
+import { MarketQuote } from '../models/market.model';
 
 @Injectable({
   providedIn: 'root'

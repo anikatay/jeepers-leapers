@@ -4,6 +4,7 @@ import com.neueda.leap.exception.MarketDataUnavailableException;
 import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
+import com.neueda.leap.dto.response.MarketSectorCatalog;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectInvalidException;
 
@@ -80,6 +81,24 @@ public class MarketDataClient {
 			throw new ObjectInvalidException("Invalid market data batch request");
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException("Market data service failed for batch request", e);
+		}
+	}
+
+	public MarketSectorCatalog fetchSectorCatalog() {
+		try {
+			MarketSectorCatalog response = restClient.get()
+					.uri(uri -> uri.path("/sectors").build())
+					.retrieve()
+					.body(MarketSectorCatalog.class);
+
+			if (response == null || response.sectors() == null || response.sectors().isEmpty()) {
+				throw new MarketDataUnavailableException(
+						"Market service returned an empty sector catalog");
+			}
+			return response;
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market sector catalog service failed", e);
 		}
 	}
 
