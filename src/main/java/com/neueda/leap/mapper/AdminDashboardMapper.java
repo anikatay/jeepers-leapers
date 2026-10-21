@@ -40,24 +40,24 @@ public interface AdminDashboardMapper {
                        WHERE h2.account_id = a.account_id
                    ), 0) AS all_time_profit
             FROM users u
-            JOIN user_pii p ON p.user_id = u.user_id
+            LEFT JOIN user_pii p ON p.user_id = u.user_id
             JOIN accounts a ON a.user_id = u.user_id
             LEFT JOIN trades t ON t.account_id = a.account_id
             WHERE (
-                COALESCE(#{search}, '') = ''
-                OR CAST(u.user_id AS TEXT) ILIKE CONCAT('%', #{search}, '%')
-                OR CAST(a.account_id AS TEXT) ILIKE CONCAT('%', #{search}, '%')
-                OR p.email ILIKE CONCAT('%', #{search}, '%')
-                OR p.first_name ILIKE CONCAT('%', #{search}, '%')
-                OR p.last_name ILIKE CONCAT('%', #{search}, '%')
+                COALESCE(CAST(#{search} AS TEXT), '') = ''
+                OR CAST(u.user_id AS TEXT) ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                OR CAST(a.account_id AS TEXT) ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                OR p.email ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                OR p.first_name ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                OR p.last_name ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
                 OR EXISTS (
                     SELECT 1
                     FROM trades ts
                     JOIN instruments ins ON ins.instrument_id = ts.instrument_id
                     WHERE ts.account_id = a.account_id
                       AND (
-                          CAST(ts.trade_id AS TEXT) ILIKE CONCAT('%', #{search}, '%')
-                          OR ins.ticker ILIKE CONCAT('%', #{search}, '%')
+                          CAST(ts.trade_id AS TEXT) ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                          OR ins.ticker ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
                       )
                 )
             )
@@ -72,23 +72,23 @@ public interface AdminDashboardMapper {
     @Select("""
             SELECT COUNT(DISTINCT a.account_id)
             FROM users u
-            JOIN user_pii p ON p.user_id = u.user_id
+            LEFT JOIN user_pii p ON p.user_id = u.user_id
             JOIN accounts a ON a.user_id = u.user_id
             WHERE (
-                COALESCE(#{search}, '') = ''
-                OR CAST(u.user_id AS TEXT) ILIKE CONCAT('%', #{search}, '%')
-                OR CAST(a.account_id AS TEXT) ILIKE CONCAT('%', #{search}, '%')
-                OR p.email ILIKE CONCAT('%', #{search}, '%')
-                OR p.first_name ILIKE CONCAT('%', #{search}, '%')
-                OR p.last_name ILIKE CONCAT('%', #{search}, '%')
+                COALESCE(CAST(#{search} AS TEXT), '') = ''
+                OR CAST(u.user_id AS TEXT) ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                OR CAST(a.account_id AS TEXT) ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                OR p.email ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                OR p.first_name ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                OR p.last_name ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
                 OR EXISTS (
                     SELECT 1
                     FROM trades ts
                     JOIN instruments ins ON ins.instrument_id = ts.instrument_id
                     WHERE ts.account_id = a.account_id
                       AND (
-                          CAST(ts.trade_id AS TEXT) ILIKE CONCAT('%', #{search}, '%')
-                          OR ins.ticker ILIKE CONCAT('%', #{search}, '%')
+                          CAST(ts.trade_id AS TEXT) ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+                          OR ins.ticker ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
                       )
                 )
             )

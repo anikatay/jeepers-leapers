@@ -1,0 +1,140 @@
+<header class="admin-bar">
+  <a class="brand" routerLink="/admin">
+    <img src="/symbol.PNG" alt="" width="34" height="34">
+    <span class="font-display">Bull Exchange</span>
+  </a>
+
+  <nav aria-label="Admin">
+    <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+  </nav>
+
+  <div class="actions">
+    <button type="button" class="switch" role="switch" [class.on]="dark()" [attr.aria-checked]="dark()" aria-label="Dark mode" (click)="toggleDark()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+      <span class="knob"></span>
+    </button>
+
+    <div class="theme" (click)="$event.stopPropagation()">
+      <button type="button" class="pill" aria-label="Color theme" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())">
+        <span class="swatch"></span>
+        <svg viewBox="0 0 24 24" class="caret" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      @if (menuOpen()) {
+        <div class="menu" role="menu">
+          @for (item of themes; track item) {
+            <button type="button" role="menuitemradio" [attr.aria-checked]="theme() === item" [class.active]="theme() === item" (click)="setTheme(item)">{{ item | titlecase }}</button>
+          }
+        </div>
+      }
+    </div>
+
+    <span class="user"><span class="avatar">A</span>Administrator</span>
+    <button type="button" class="pill" aria-label="Sign out" title="Sign out" (click)="logout()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5M20 12H9M12 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" /></svg>
+    </button>
+  </div>
+</header>
+
+<main class="admin-page" aria-labelledby="admin-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">ADMINISTRATION</p>
+      <h1 id="admin-title">Account oversight</h1>
+      <p class="muted">Users, balances, activity, and account performance.</p>
+    </div>
+  </header>
+
+<div class="dashboard-toolbar">
+  <label for="admin-search">Search users</label>
+  <input
+    id="admin-search"
+    type="search"
+    [(ngModel)]="searchTerm"
+    (ngModelChange)="onSearchChanged()"
+    placeholder="Search by name, email, UUID, trade ID, or ticker"
+    autocomplete="off">
+  <span class="result-count" *ngIf="!loading()">{{ totalItems() }} accounts</span>
+</div>
+
+<p class="dashboard-message" *ngIf="loading()">Loading dashboard...</p>
+<p class="dashboard-message error" *ngIf="error()">{{ error() }}</p>
+
+<div>
+  <div class="table-header">
+    <h3>Accounts</h3>
+    <button (click)="toggleHoldingsTable()" class="collapse-btn" [class.collapsed]="holdingsTableCollapsed()">
+      {{ holdingsTableCollapsed() ? '▶' : '▼' }}
+    </button>
+  </div>
+  <table class="holdings-table" *ngIf="!loading()" [class.collapsed]="holdingsTableCollapsed()">
+    <thead>
+      <tr>
+        <th *ngFor="let col of columns">{{ col.header }}</th>
+      </tr>
+    </thead>
+    <tbody *ngIf="!holdingsTableCollapsed()">
+      <tr *ngFor="let user of rows()"
+          (click)="selectUser(user)"
+          [class.selected]="selectedUser()?.accountId === user.accountId">
+        <td *ngFor="let col of columns">{{ getCellValue(user, col.header) }}</td>
+      </tr>
+      <tr *ngIf="rows().length === 0">
+        <td [attr.colspan]="columns.length">No accounts found.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="pagination" *ngIf="totalPages() > 0">
+  <button type="button" (click)="previousPage()" [disabled]="page() === 0">Previous</button>
+  <span>Page {{ page() + 1 }} of {{ totalPages() }}</span>
+  <button type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Next</button>
+</div>
+
+<div class="user-detail-layout" *ngIf="selectedUser() as user">
+  <div class="detail-header">
+    <h2>{{ getUserName(user) }}'s Trades</h2>
+    <div class="header-actions">
+      <button (click)="toggleTradesTable()" class="collapse-btn" [class.collapsed]="tradesTableCollapsed()">
+        {{ tradesTableCollapsed() ? '▶' : '▼' }}
+      </button>
+      <button (click)="clearSelection()" class="clear-btn">✕ Clear</button>
+    </div>
+  </div>
+  <div class="detail-info">
+    <p><strong>Account ID:</strong> {{ user.accountId }}</p>
+    <p><strong>Balance:</strong> {{ user.balance }}</p>
+  </div>
+
+  <p class="dashboard-message" *ngIf="loadingTrades()">Loading trades...</p>
+  <p class="dashboard-message error" *ngIf="tradesError()">{{ tradesError() }}</p>
+
+  <table class="trades-table" *ngIf="!loadingTrades() && selectedUserTrades().length > 0" [class.collapsed]="tradesTableCollapsed()">
+    <thead>
+      <tr>
+        <th>Trade ID</th>
+        <th>Ticker</th>
+        <th>Side</th>
+        <th>Quantity</th>
+        <th>Price</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody *ngIf="!tradesTableCollapsed()">
+      <tr *ngFor="let trade of selectedUserTrades()">
+        <td>{{ trade.tradeId }}</td>
+        <td>{{ trade.ticker }}</td>
+        <td>{{ trade.side }}</td>
+        <td>{{ trade.quantity }}</td>
+        <td>{{ trade.executionPrice }}</td>
+        <td>{{ trade.executedAt | date: 'MM/dd/yyyy' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p *ngIf="!loadingTrades() && !tradesError() && selectedUserTrades().length === 0" class="no-trades">
+    No trades found for this account.
+  </p>
+</div>
+</main>
