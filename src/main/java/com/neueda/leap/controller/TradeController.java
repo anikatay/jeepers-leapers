@@ -14,7 +14,6 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,8 +23,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;
 import java.util.UUID;
@@ -71,11 +68,11 @@ public class TradeController {
     
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<TradeResponse>> getTradesByAccount(
-            @PathVariable UUID accountId,
-            @RequestParam(required = false) Integer limit,
-            @RequestParam (required = false) Integer offset,
+            @PathVariable(name = "accountId") UUID accountId,
+            @RequestParam(name = "limit", required = false) Integer limit,
+            @RequestParam(name = "offset", required = false) Integer offset,
             @AuthenticationPrincipal Jwt jwt) {
-        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
         
         List<TradeResponse> trades = tradeService.getAllTradesByAccountWithInstrument(accountId, limit, offset);
         
@@ -88,10 +85,10 @@ public class TradeController {
 
     @GetMapping("/account/{accountId}/instrument/{instrumentId}")
     public ResponseEntity<List<TradeResponse>> getTradesByAccountAndInstrument(
-            @PathVariable UUID accountId,
-            @PathVariable UUID instrumentId,
+            @PathVariable(name = "accountId") UUID accountId,
+            @PathVariable(name = "instrumentId") UUID instrumentId,
             @AuthenticationPrincipal Jwt jwt) {
-        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
         
         List<TradeResponse> trades = tradeService.getTradesByAccountAndInstrument(accountId, instrumentId);
         
@@ -103,27 +100,19 @@ public class TradeController {
     }
 
     @PostMapping("/{tradeId}/analysis")
-    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable UUID tradeId,
+    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable(name = "tradeId") UUID tradeId,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID userId = userIdOf(jwt);
+        UUID userId = authorizationService.getAuthenticatedUserId(jwt);
         analysisRateLimiter.acquire(userId.toString());
         return ResponseEntity.ok(tradeAnalysisService.analyze(tradeId, userId));
     }
 
     /** What the model would be told about the trade, without calling it. */
     @GetMapping("/{tradeId}/analysis/context")
-    public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable UUID tradeId,
+    public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable(name = "tradeId") UUID tradeId,
             @AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId, userIdOf(jwt)));
-    }
-
-    // JwtUtil puts the user's ID in every token it issues
-    private static UUID userIdOf(Jwt jwt) {
-        String userId = jwt.getClaimAsString("userId");
-        if (userId == null) {
-            throw new BadCredentialsException("Token has no userId claim");
-        }
-        return UUID.fromString(userId);
+        return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId,
+                authorizationService.getAuthenticatedUserId(jwt)));
     }
 
 }

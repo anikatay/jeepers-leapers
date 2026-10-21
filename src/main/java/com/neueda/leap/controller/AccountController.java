@@ -55,9 +55,9 @@ public class AccountController {
     
     // get specific account
     @GetMapping("/{accountId}")
-    public ResponseEntity<AccountResponse> getAccount(@PathVariable UUID accountId,
+    public ResponseEntity<AccountResponse> getAccount(@PathVariable(name = "accountId") UUID accountId,
             @AuthenticationPrincipal Jwt jwt){
-        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
 
         Account account = accountService.getAccount(accountId);
         return ResponseEntity.ok(AccountResponse.mapToResponse(account));
@@ -65,26 +65,29 @@ public class AccountController {
 
     // close account
     @DeleteMapping("/{accountId}")
-    public ResponseEntity<Void> closeAccount(@PathVariable UUID accountId, @AuthenticationPrincipal Jwt jwt){
-        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+        public ResponseEntity<Void> closeAccount(@PathVariable(name = "accountId") UUID accountId,
+            @AuthenticationPrincipal Jwt jwt){
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
 
         accountService.closeAccount(accountId);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{accountId}/deposit")
-    public ResponseEntity<Void> incrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request,
+        public ResponseEntity<Void> incrementBalance(@PathVariable(name = "accountId") UUID accountId,
+            @RequestBody UpdateBalanceRequest request,
             @AuthenticationPrincipal Jwt jwt){
-        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
 
         accountService.incrementBalance(accountId, request.amount());
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{accountId}/withdraw")
-    public ResponseEntity<Void> decrementBalance(@PathVariable UUID accountId, @RequestBody UpdateBalanceRequest request,
+        public ResponseEntity<Void> decrementBalance(@PathVariable(name = "accountId") UUID accountId,
+            @RequestBody UpdateBalanceRequest request,
             @AuthenticationPrincipal Jwt jwt){
-        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
 
         accountService.decrementBalance(accountId, request.amount());
         return ResponseEntity.noContent().build();
@@ -92,7 +95,8 @@ public class AccountController {
 
     // get all active accounts
     @GetMapping("/active")
-    public ResponseEntity<List<AccountResponse>> getAllActiveAccounts(){
+    public ResponseEntity<List<AccountResponse>> getAllActiveAccounts(@AuthenticationPrincipal Jwt jwt){
+        authorizationService.requireAdmin(jwt);
         List<AccountResponse> accounts = accountService.getAllActiveAccounts();
         return ResponseEntity.ok(accounts);
     }
