@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS analytics.dim_exchanges (
     name VARCHAR(255) NOT NULL,
     region VARCHAR(64) NOT NULL,
     timezone VARCHAR(32) NOT NULL,
-    currency VARCHAR(8) NOT NULL CHECK (currency IN ('USD', 'EUR', 'INR')),
+    currency VARCHAR(8) NOT NULL CHECK (currency IN ('USD', 'EUR', 'INR', 'GBP')),
     etl_run_id VARCHAR(255),
     etl_timestamp TIMESTAMPTZ DEFAULT NOW()
 );
@@ -89,7 +89,7 @@ COMMENT ON COLUMN analytics.dim_instruments.exchange_id IS 'Foreign key: which e
 CREATE TABLE IF NOT EXISTS analytics.dim_accounts (
     account_id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
-    currency VARCHAR(8) NOT NULL CHECK (currency IN ('USD', 'EUR', 'INR')),
+    currency VARCHAR(8) NOT NULL CHECK (currency IN ('USD', 'EUR', 'INR', 'GBP')),
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
     created_at TIMESTAMPTZ NOT NULL,
     etl_run_id VARCHAR(255),
