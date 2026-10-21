@@ -45,7 +45,8 @@ public class TradeController {
         this.authorizationService = authorizationService;
         this.tradeAnalysisService = tradeAnalysisService;
         this.analysisRateLimiter = analysisRateLimiter;
-    }
+    private final AuthorizationService authorizationService;
+
 
     
 
