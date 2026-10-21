@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;
 import java.util.UUID;
@@ -45,7 +47,9 @@ public class TradeController {
     }
 
     @PostMapping
-    public ResponseEntity<Trade> createTrade(@Valid @RequestBody TradeRequest request) {
+        public ResponseEntity<Trade> createTrade(
+            @Valid @RequestBody TradeRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
         
             // Map request to Trade model
         Trade trade = new Trade();
@@ -56,7 +60,8 @@ public class TradeController {
         trade.setQuantity(request.quantity());
         
         // Service will calculate tradeValue and update account balance
-        Trade created = tradeService.createTrade(trade);
+        UUID authenticatedUserId = UUID.fromString(jwt.getSubject());
+        Trade created = tradeService.createTrade(trade, authenticatedUserId);
         
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }

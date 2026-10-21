@@ -8,12 +8,18 @@ export class ApiInterceptor implements HttpInterceptor {
   private apiUrl = 'http://localhost:8090';
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // Add Content-Type header to API requests
     if (req.url.startsWith('/api')) {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token && !req.url.includes('/auth/login')) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const clonedReq = req.clone({
-        setHeaders: {
-          'Content-Type': 'application/json'
-        }
+        setHeaders: headers
       });
       return next.handle(clonedReq);
     }
