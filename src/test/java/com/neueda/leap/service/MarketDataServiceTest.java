@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.MarketHeatmapResponse;
+import com.neueda.leap.dto.response.MarketSector;
+import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.MarketSectorTicker;
 import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.dto.response.QuoteStatus;
 import com.neueda.leap.exception.MarketClosedException;
@@ -154,6 +158,40 @@ class MarketDataServiceTest {
 
         assertEquals(QuoteStatus.CLOSED, result.status());
         assertEquals(BigDecimal.valueOf(180), result.price());
+    }
+
+    @Test
+    void testGetSectorCatalogDelegatesToMarketClient() {
+        MarketSectorCatalog expected = sectorCatalog();
+        when(marketDataClient.fetchSectorCatalog()).thenReturn(expected);
+
+        MarketSectorCatalog result = marketDataService.getSectorCatalog();
+
+        assertEquals(expected, result);
+        verify(marketDataClient).fetchSectorCatalog();
+    }
+
+    @Test
+    void testGetHeatmapUsesSharedQuoteCacheAndMarksMissingQuotesUnavailable()
+            throws Exception {
+        when(marketDataClient.fetchSectorCatalog()).thenReturn(sectorCatalog());
+        MarketQuote cached = new MarketQuote(
+                "QUOTE",
+                "XOM",
+                BigDecimal.valueOf(120),
+                Instant.parse("2026-10-21T15:59:00Z"),
+                Instant.parse("2026-10-21T15:59:01Z"),
+                "test");
+        when(valueOperations.get("quote:latest:XOM")).thenReturn("{\"quote\":true}");
+        when(objectMapper.readValue("{\"quote\":true}", MarketQuote.class)).thenReturn(cached);
+
+        MarketHeatmapResponse result = marketDataService.getHeatmap(null);
+
+        assertEquals(1, result.sectors().size());
+        assertEquals(2, result.sectors().get(0).tickers().size());
+        assertEquals(QuoteStatus.LIVE, result.sectors().get(0).tickers().get(0).status());
+        assertEquals(QuoteStatus.UNAVAILABLE, result.sectors().get(0).tickers().get(1).status());
+        assertEquals(BigDecimal.valueOf(120), result.sectors().get(0).tickers().get(0).price());
     }
 
     // Verifies invalid tickers are rejected before cache or client calls.
@@ -370,6 +408,20 @@ class MarketDataServiceTest {
 
     private HistoryResponse history(String ticker, List<PriceBar> bars) {
         return new HistoryResponse(ticker, "5y", bars);
+    }
+
+    private MarketSectorCatalog sectorCatalog() {
+        return new MarketSectorCatalog(
+                "US",
+                "configured_large_cap_order",
+                "us-large-cap-v1",
+                Instant.parse("2026-10-21T16:00:00Z"),
+                List.of(new MarketSector(
+                        "energy",
+                        "Energy",
+                        List.of(
+                                new MarketSectorTicker("XOM", 1),
+                                new MarketSectorTicker("CVX", 2)))));
     }
 
     private List<PriceBar> barsForSlicing() {
