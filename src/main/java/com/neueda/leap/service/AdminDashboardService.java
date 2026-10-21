@@ -29,10 +29,13 @@ public class AdminDashboardService {
         int normalizedSize = size == null ? DEFAULT_PAGE_SIZE : Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
         long totalItems = dashboardMapper.countDashboardRows(normalizedSearch);
+        int totalPages = totalItems == 0 ? 0 : (int) ((totalItems + normalizedSize - 1) / normalizedSize);
+        if (totalPages > 0 && normalizedPage >= totalPages) {
+            normalizedPage = 0;
+        }
         List<AdminDashboardRow> items = totalItems == 0
                 ? List.of()
                 : dashboardMapper.findDashboardRows(normalizedSearch, normalizedSize, normalizedPage * normalizedSize);
-        int totalPages = totalItems == 0 ? 0 : (int) ((totalItems + normalizedSize - 1) / normalizedSize);
         return new AdminDashboardResponse(items, normalizedPage, normalizedSize, totalItems, totalPages);
     }
 

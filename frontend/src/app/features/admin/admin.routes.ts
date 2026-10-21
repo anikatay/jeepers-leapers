@@ -1,16 +1,9 @@
-// clients.routes.ts
 import { Routes } from '@angular/router';
-//import { AdminHomeComponent } from './pages/home/admin-home.component';
-import { AdminUsersComponent } from './pages/users/admin-users.component';
+import { AdminHomeComponent } from './pages/home/admin-home.component';
 
 export const ADMIN_ROUTES: Routes = [
   {
     path: '',
-    component: AdminUsersComponent, // acts as the layout shell
-    children: [
-      { path: 'users', component: AdminUsersComponent }
-      // 'orders' later, same pattern
-    ]
-
+    component: AdminHomeComponent
   }
 ];
