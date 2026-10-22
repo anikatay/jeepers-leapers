@@ -7,6 +7,7 @@ services:
       - ${Market_port}
     environment:
       BACKEND_QUOTE_URL: http://app:8080/internal/market/quotes
+      SECTOR_STREAM_ENABLED: ${SECTOR_STREAM_ENABLED:-true}
   kafka:
     image: apache/kafka:latest
     ports: 
