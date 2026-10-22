@@ -5,6 +5,7 @@ import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectInvalidException;
 
@@ -129,6 +130,30 @@ public class MarketDataClient {
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException(
 					"Market lookup failed for " + ticker, e);
+		}
+	}
+
+	public MarketQuote fetchLatestQuote(String ticker) {
+		try {
+			MarketQuote response = restClient.get()
+					.uri(uri -> uri.path("/quote")
+							.queryParam("ticker", ticker)
+							.build())
+					.retrieve()
+					.body(MarketQuote.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException(
+						"Market quote service returned an empty response for " + ticker);
+			}
+			return response;
+		} catch (HttpClientErrorException.NotFound e) {
+			throw new ObjectNotFoundException("No current market quote for " + ticker);
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException("Invalid market quote request for " + ticker);
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market quote service failed for " + ticker, e);
 		}
 	}
 

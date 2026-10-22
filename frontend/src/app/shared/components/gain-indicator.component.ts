@@ -16,7 +16,7 @@ import { CommonModule } from '@angular/common';
     </span>
   `,
   styles: [`
-    .gain-indicator { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600; font-size: 0.875rem; white-space: nowrap; }
+    .gain-indicator { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600; font-size: 0.875rem; white-space: nowrap; transition: color 2000ms ease; }
     .gain-indicator.positive { color: #16a34a; }
     .gain-indicator.negative { color: #dc2626; }
     .arrow { width: 14px; height: 14px; flex-shrink: 0; }

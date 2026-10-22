@@ -189,7 +189,7 @@ button {
   font-weight: 700;
   color: var(--foreground);
   margin: 0.25rem 0 0 0;
-  transition: color 300ms ease;
+  transition: color 2000ms ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -271,7 +271,7 @@ button {
   font-weight: 700;
   color: var(--foreground);
   margin: 0;
-  transition: color 300ms ease;
+  transition: color 2000ms ease;
 }
 
 .pie-label {
@@ -337,14 +337,14 @@ button {
   font-weight: 500;
   color: var(--foreground);
   min-width: 2rem;
-  transition: color 300ms ease;
+  transition: color 2000ms ease;
 }
 
 .holding-value {
   font-size: 0.75rem;
   color: var(--muted-foreground);
   white-space: nowrap;
-  transition: color 300ms ease;
+  transition: color 2000ms ease;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────

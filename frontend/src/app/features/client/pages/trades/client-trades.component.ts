@@ -2,6 +2,7 @@ import { Component, inject , OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, forkJoin } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import { TradesService } from '../../../../core/services/trades.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { PortfolioService } from '../../../../core/services/portfolio.service';
@@ -59,8 +60,15 @@ export class ClientTradesComponent implements OnInit {
   typeFilter = signal<TypeFilter>('all');
   fromDate = signal('');
   toDate = signal('');
+  minQuantity = signal('');
+  maxQuantity = signal('');
+  minPrice = signal('');
+  maxPrice = signal('');
+  minTotal = signal('');
+  maxTotal = signal('');
+  currencyFilter = signal('all');
   sortOrder = signal<SortOrder>('newest');
-  showDateFilter = signal(false);
+  showFilterPanel = signal(false);
   overallGain = signal<number>(0);
   overallGainPct = signal<number>(0);
   portfolioSparkline = signal<number[]>([]);
@@ -181,12 +189,14 @@ export class ClientTradesComponent implements OnInit {
     this.subscribedTickers = tickers;
 
     if (!this.quoteSubscription) {
-      this.quoteSubscription = this.marketQuoteService.quotes$.subscribe(quote => {
-        this.heldPositions = this.heldPositions.map(p =>
-          p.ticker === quote.ticker ? { ...p, currentPrice: quote.price } : p
-        );
-        this.recomputeOverallGain();
-      });
+      this.quoteSubscription = this.marketQuoteService.quotes$
+        .pipe(throttleTime(2000, undefined, { leading: true, trailing: true }))
+        .subscribe(quote => {
+          this.heldPositions = this.heldPositions.map(p =>
+            p.ticker === quote.ticker ? { ...p, currentPrice: quote.price } : p
+          );
+          this.recomputeOverallGain();
+        });
     }
   }
 
@@ -251,12 +261,29 @@ export class ClientTradesComponent implements OnInit {
     };
   }
 
+  get availableCurrencies(): string[] {
+    return Array.from(new Set(this.allTrades().map(trade => trade.currency))).sort();
+  }
+
+  private parseFilterValue(value: string): number | null {
+    if (!value.trim()) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   get filteredTrades(): Trade[] {
     const trades = this.allTrades();
     const searchLower = this.search().toLowerCase().trim();
     const type = this.typeFilter();
     const from = this.fromDate();
     const to = this.toDate();
+    const currency = this.currencyFilter();
+    const minQuantity = this.parseFilterValue(this.minQuantity());
+    const maxQuantity = this.parseFilterValue(this.maxQuantity());
+    const minPrice = this.parseFilterValue(this.minPrice());
+    const maxPrice = this.parseFilterValue(this.maxPrice());
+    const minTotal = this.parseFilterValue(this.minTotal());
+    const maxTotal = this.parseFilterValue(this.maxTotal());
     const order = this.sortOrder();
 
     let filtered = trades.filter(trade => {
@@ -269,6 +296,19 @@ export class ClientTradesComponent implements OnInit {
       if (type !== 'all' && trade.type !== type) {
         return false;
       }
+
+      // Currency filter
+      if (currency !== 'all' && trade.currency !== currency) {
+        return false;
+      }
+
+      // Numeric range filters
+      if (minQuantity !== null && trade.qty < minQuantity) return false;
+      if (maxQuantity !== null && trade.qty > maxQuantity) return false;
+      if (minPrice !== null && trade.price < minPrice) return false;
+      if (maxPrice !== null && trade.price > maxPrice) return false;
+      if (minTotal !== null && trade.total < minTotal) return false;
+      if (maxTotal !== null && trade.total > maxTotal) return false;
 
       // Date range filter
       const tradeDate = new Date(trade.date);
@@ -299,8 +339,13 @@ export class ClientTradesComponent implements OnInit {
            this.typeFilter() !== 'all' || 
            this.fromDate() !== '' || 
            this.toDate() !== '' || 
-           this.sortOrder() !== 'newest' ||
-           this.showDateFilter();
+           this.minQuantity() !== '' ||
+           this.maxQuantity() !== '' ||
+           this.minPrice() !== '' ||
+           this.maxPrice() !== '' ||
+           this.minTotal() !== '' ||
+           this.maxTotal() !== '' ||
+           this.currencyFilter() !== 'all';
   }
 
   get totalTrades(): number {
@@ -324,12 +369,19 @@ export class ClientTradesComponent implements OnInit {
     this.typeFilter.set('all');
     this.fromDate.set('');
     this.toDate.set('');
+    this.minQuantity.set('');
+    this.maxQuantity.set('');
+    this.minPrice.set('');
+    this.maxPrice.set('');
+    this.minTotal.set('');
+    this.maxTotal.set('');
+    this.currencyFilter.set('all');
     this.sortOrder.set('newest');
-    this.showDateFilter.set(false);
+    this.showFilterPanel.set(false);
   }
 
-  toggleDateFilter() {
-    this.showDateFilter.update(v => !v);
+  toggleFilterPanel() {
+    this.showFilterPanel.update(v => !v);
   }
 
   onSearchChange(value: string) {
@@ -339,6 +391,34 @@ export class ClientTradesComponent implements OnInit {
   onTypeFilterChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     this.typeFilter.set(value as TypeFilter);
+  }
+
+  onCurrencyFilterChange(event: Event) {
+    this.currencyFilter.set((event.target as HTMLSelectElement).value);
+  }
+
+  onMinQuantityChange(event: Event) {
+    this.minQuantity.set((event.target as HTMLInputElement).value);
+  }
+
+  onMaxQuantityChange(event: Event) {
+    this.maxQuantity.set((event.target as HTMLInputElement).value);
+  }
+
+  onMinPriceChange(event: Event) {
+    this.minPrice.set((event.target as HTMLInputElement).value);
+  }
+
+  onMaxPriceChange(event: Event) {
+    this.maxPrice.set((event.target as HTMLInputElement).value);
+  }
+
+  onMinTotalChange(event: Event) {
+    this.minTotal.set((event.target as HTMLInputElement).value);
+  }
+
+  onMaxTotalChange(event: Event) {
+    this.maxTotal.set((event.target as HTMLInputElement).value);
   }
 
   onSortChange(event: Event) {

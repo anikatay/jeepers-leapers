@@ -371,7 +371,7 @@ export class ClientHomeComponent implements OnInit {
     if (!this.quoteSubscription) {
       // Throttle so bursts of ticker pushes don't repaint the UI on every tick
       this.quoteSubscription = this.marketQuoteService.quotes$
-        .pipe(throttleTime(300, undefined, { leading: true, trailing: true }))
+        .pipe(throttleTime(2000, undefined, { leading: true, trailing: true }))
         .subscribe(quote => {
           const updated = this.holdings().map(h =>
             h.symbol === quote.ticker

@@ -154,6 +154,11 @@ public class MarketDataService implements IService {
                         cached.live() ? QuoteStatus.LIVE : QuoteStatus.STALE));
     }
 
+    public MarketQuote fetchLiveQuote(String rawTicker) {
+        String ticker = normalizeTicker(rawTicker);
+        return cacheLatestQuote(client.fetchLatestQuote(ticker));
+    }
+
     public MarketQuote getQuoteSnapshot(String rawTicker) {
         String ticker = normalizeTicker(rawTicker);
         CachedQuote cached = readCachedQuote(ticker)
