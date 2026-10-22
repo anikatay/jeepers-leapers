@@ -5,6 +5,7 @@ import {
   AdminAccountTrades,
   AdminDashboardResponse
 } from '../models/admin-dashboard.model';
+import { AccountResponse } from '../models/account.model';
 
 @Injectable({
   providedIn: 'root'
@@ -35,5 +36,16 @@ export class AdminDashboardService {
       `${this.apiUrl}/accounts/${accountId}/trades`,
       { params }
     );
+  }
+
+  freezeAccount(accountId: string, reason: string): Observable<AccountResponse> {
+    return this.http.patch<AccountResponse>(
+      `${this.apiUrl}/accounts/${accountId}/freeze`,
+      { reason }
+    );
+  }
+
+  unfreezeAccount(accountId: string): Observable<AccountResponse> {
+    return this.http.patch<AccountResponse>(`${this.apiUrl}/accounts/${accountId}/unfreeze`, {});
   }
 }

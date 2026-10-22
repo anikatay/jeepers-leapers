@@ -10,7 +10,7 @@ export class ApiInterceptor implements HttpInterceptor {
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     if (req.url.startsWith('/api')) {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
@@ -25,8 +25,8 @@ export class ApiInterceptor implements HttpInterceptor {
       return next.handle(clonedReq).pipe(
         catchError(error => {
           if (error.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('session');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('session');
             this.router.navigate(['/auth/login']);
           }
           return throwError(() => error);

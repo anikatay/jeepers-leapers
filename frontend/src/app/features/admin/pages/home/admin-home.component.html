@@ -94,47 +94,80 @@
 
 <div class="user-detail-layout" *ngIf="selectedUser() as user">
   <div class="detail-header">
-    <h2>{{ getUserName(user) }}'s Trades</h2>
-    <div class="header-actions">
-      <button (click)="toggleTradesTable()" class="collapse-btn" [class.collapsed]="tradesTableCollapsed()">
-        {{ tradesTableCollapsed() ? '▶' : '▼' }}
+    <h2>{{ getUserName(user) }}'s Account</h2>
+    <button (click)="clearSelection()" class="clear-btn">✕ Clear</button>
+  </div>
+
+  <div class="detail-columns">
+    <section class="trades-panel" aria-labelledby="trades-heading">
+      <div class="panel-heading">
+        <h3 id="trades-heading">Trades</h3>
+        <button (click)="toggleTradesTable()" class="collapse-btn" [class.collapsed]="tradesTableCollapsed()" [attr.aria-label]="tradesTableCollapsed() ? 'Expand trades' : 'Collapse trades'">
+          {{ tradesTableCollapsed() ? '▶' : '▼' }}
+        </button>
+      </div>
+
+      <p class="dashboard-message" *ngIf="loadingTrades()">Loading trades...</p>
+      <p class="dashboard-message error" *ngIf="tradesError()">{{ tradesError() }}</p>
+
+      <table class="trades-table" *ngIf="!loadingTrades() && selectedUserTrades().length > 0" [class.collapsed]="tradesTableCollapsed()">
+        <thead>
+          <tr>
+            <th>Trade ID</th>
+            <th>Ticker</th>
+            <th>Side</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody *ngIf="!tradesTableCollapsed()">
+          <tr *ngFor="let trade of selectedUserTrades()">
+            <td>{{ trade.tradeId }}</td>
+            <td>{{ trade.ticker }}</td>
+            <td>{{ trade.side }}</td>
+            <td>{{ trade.quantity }}</td>
+            <td>{{ trade.executionPrice }}</td>
+            <td>{{ trade.executedAt | date: 'MM/dd/yyyy' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p *ngIf="!loadingTrades() && !tradesError() && selectedUserTrades().length === 0" class="no-trades">
+        No trades found for this account.
+      </p>
+    </section>
+
+    <aside class="account-control-panel" aria-labelledby="account-controls-heading">
+      <div class="panel-heading">
+        <h3 id="account-controls-heading">Account controls</h3>
+        <span class="status-badge" [class.frozen]="isFrozen(user)">{{ user.accountStatus }}</span>
+      </div>
+
+      <div class="detail-info">
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Account ID:</strong> {{ user.accountId }}</p>
+        <p><strong>Balance:</strong> {{ user.balance }}</p>
+      </div>
+
+      <div *ngIf="isFrozen(user)" class="frozen-reason">
+        <span class="field-label">Freeze reason</span>
+        <p>{{ user.freezeReason || 'No reason was recorded.' }}</p>
+      </div>
+
+      <div *ngIf="!isFrozen(user)" class="freeze-form">
+        <label class="field-label" for="freeze-reason">Reason for freezing</label>
+        <textarea id="freeze-reason" [(ngModel)]="freezeReason" maxlength="500" rows="4" placeholder="Explain why trading should be suspended"></textarea>
+        <button type="button" class="freeze-btn" (click)="freezeSelectedAccount()" [disabled]="freezeSubmitting() || !freezeReason.trim()">
+          {{ freezeSubmitting() ? 'Freezing...' : 'Freeze account' }}
+        </button>
+      </div>
+
+      <button *ngIf="isFrozen(user)" type="button" class="unfreeze-btn" (click)="unfreezeSelectedAccount()" [disabled]="freezeSubmitting()">
+        {{ freezeSubmitting() ? 'Restoring...' : 'Unfreeze account' }}
       </button>
-      <button (click)="clearSelection()" class="clear-btn">✕ Clear</button>
-    </div>
+      <p class="dashboard-message error" *ngIf="freezeError()">{{ freezeError() }}</p>
+    </aside>
   </div>
-  <div class="detail-info">
-    <p><strong>Account ID:</strong> {{ user.accountId }}</p>
-    <p><strong>Balance:</strong> {{ user.balance }}</p>
-  </div>
-
-  <p class="dashboard-message" *ngIf="loadingTrades()">Loading trades...</p>
-  <p class="dashboard-message error" *ngIf="tradesError()">{{ tradesError() }}</p>
-
-  <table class="trades-table" *ngIf="!loadingTrades() && selectedUserTrades().length > 0" [class.collapsed]="tradesTableCollapsed()">
-    <thead>
-      <tr>
-        <th>Trade ID</th>
-        <th>Ticker</th>
-        <th>Side</th>
-        <th>Quantity</th>
-        <th>Price</th>
-        <th>Date</th>
-      </tr>
-    </thead>
-    <tbody *ngIf="!tradesTableCollapsed()">
-      <tr *ngFor="let trade of selectedUserTrades()">
-        <td>{{ trade.tradeId }}</td>
-        <td>{{ trade.ticker }}</td>
-        <td>{{ trade.side }}</td>
-        <td>{{ trade.quantity }}</td>
-        <td>{{ trade.executionPrice }}</td>
-        <td>{{ trade.executedAt | date: 'MM/dd/yyyy' }}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <p *ngIf="!loadingTrades() && !tradesError() && selectedUserTrades().length === 0" class="no-trades">
-    No trades found for this account.
-  </p>
 </div>
 </main>

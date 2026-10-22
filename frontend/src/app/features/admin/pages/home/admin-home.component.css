@@ -253,6 +253,122 @@
   margin-bottom: 0;
 }
 
+.detail-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.8fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.trades-panel,
+.account-control-panel {
+  min-width: 0;
+}
+
+.account-control-panel {
+  padding-left: 24px;
+  border-left: 1px solid var(--color-border);
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.panel-heading h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 15px;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.frozen {
+  border-color: #dc2626;
+  color: #b91c1c;
+}
+
+.account-control-panel .detail-info {
+  display: block;
+  margin-bottom: 20px;
+}
+
+.account-control-panel .detail-info p {
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.frozen-reason {
+  padding: 12px;
+  border-left: 3px solid #dc2626;
+  background: color-mix(in srgb, #dc2626 8%, var(--color-bg-light));
+}
+
+.frozen-reason p {
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.freeze-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 96px;
+  margin-bottom: 10px;
+  padding: 10px;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-light);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.freeze-btn,
+.unfreeze-btn {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--color-primary-green);
+  border-radius: 6px;
+  background: var(--color-primary-green);
+  color: var(--color-bg-white);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.unfreeze-btn {
+  border-color: var(--color-border);
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.freeze-btn:disabled,
+.unfreeze-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* Button Styling */
 .clear-btn {
   display: inline-flex;
@@ -339,6 +455,18 @@
 
   .user-detail-layout .trades-table {
     margin-top: 16px;
+  }
+
+  .detail-columns {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .account-control-panel {
+    padding-top: 24px;
+    padding-left: 0;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
   }
 
   .user-detail-layout button {

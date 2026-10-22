@@ -21,6 +21,7 @@ public interface AdminDashboardMapper {
                    a.currency,
                    a.balance,
                    a.status AS account_status,
+                   a.freeze_reason,
                    a.created_at,
                    COUNT(t.trade_id) AS trade_count,
                    COALESCE((
@@ -62,7 +63,7 @@ public interface AdminDashboardMapper {
                 )
             )
             GROUP BY u.user_id, p.first_name, p.last_name, p.email, u.role, u.status,
-                     a.account_id, a.currency, a.balance, a.status, a.created_at
+                     a.account_id, a.currency, a.balance, a.status, a.freeze_reason, a.created_at
             ORDER BY a.created_at DESC, a.account_id
             LIMIT #{limit} OFFSET #{offset}
             """)
