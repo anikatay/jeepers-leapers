@@ -12,6 +12,7 @@ import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
 import { Subscription, forkJoin } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import { MarketDataService } from '../../../../core/services/market-data.service';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
@@ -384,29 +385,32 @@ export class ClientHomeComponent implements OnInit {
     this.subscribedTickers = tickers;
 
     if (!this.quoteSubscription) {
-      this.quoteSubscription = this.marketQuoteService.quotes$.subscribe(quote => {
-        const updated = this.holdings().map(h =>
-          h.symbol === quote.ticker
-            ? { ...h, price: quote.price, value: (h.value / h.price) * quote.price }
-            : h
-        );
-        const totalValue = updated.reduce((sum, h) => sum + h.value, 0);
-        const totalGain = updated.reduce((sum, h) => {
-          const shares = h.price > 0 ? h.value / h.price : 0;
-          return sum + (h.price - h.avgCostBasis) * shares;
-        }, 0);
-        const withPct = updated.map(h => ({
-          ...h,
-          pct: totalValue > 0 ? Math.round((h.value / totalValue) * 100) : 0
-        }));
+      // Throttle so bursts of ticker pushes don't repaint the UI on every tick
+      this.quoteSubscription = this.marketQuoteService.quotes$
+        .pipe(throttleTime(300, undefined, { leading: true, trailing: true }))
+        .subscribe(quote => {
+          const updated = this.holdings().map(h =>
+            h.symbol === quote.ticker
+              ? { ...h, price: quote.price, value: (h.value / h.price) * quote.price }
+              : h
+          );
+          const totalValue = updated.reduce((sum, h) => sum + h.value, 0);
+          const totalGain = updated.reduce((sum, h) => {
+            const shares = h.price > 0 ? h.value / h.price : 0;
+            return sum + (h.price - h.avgCostBasis) * shares;
+          }, 0);
+          const withPct = updated.map(h => ({
+            ...h,
+            pct: totalValue > 0 ? Math.round((h.value / totalValue) * 100) : 0
+          }));
 
-        this.holdings.set(withPct);
-        this.portfolioValue.set(
-          `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-        );
-        this.setGainSignal(this.overallGain, totalGain);
-        this.generatePieSlices(withPct, totalValue);
-      });
+          this.holdings.set(withPct);
+          this.portfolioValue.set(
+            `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          );
+          this.setGainSignal(this.overallGain, totalGain);
+          this.generatePieSlices(withPct, totalValue);
+        });
     }
 
   }
