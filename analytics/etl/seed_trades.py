@@ -2,6 +2,10 @@
 Seed Trade Data Script
 Generates realistic trade data for testing the P&L pipeline.
 
+Each trade is applied the way the app applies one: a BUY takes cash and adds to the
+holding, a SELL does the reverse. Quantities are cut down to what the account can
+afford or sell, so fewer trades than requested may be inserted.
+
 Accounts:
   - Alice    (d4000000-0000-0000-0000-000000000001)
   - Bob      (d4000000-0000-0000-0000-000000000002)
@@ -91,13 +95,114 @@ def generate_trade_data(num_trades: int = 50, start_date: str = "2025-08-25") ->
     return trades
 
 
+# A seeded BUY spends at most this share of the account's remaining cash
+MAX_BUY_CASH_FRACTION = Decimal('0.10')
+
+
+def _sellable_quantity(conn, trade: dict) -> int:
+    """
+    Shares a SELL can take without breaking the trade history.
+
+    Seeded trades are back-dated, so a sale has to be covered by shares bought before it
+    and must not leave any later sale short; otherwise FIFO matching in Phase 3 would find
+    sales with no purchase behind them. It is also capped by the shares held now.
+    """
+    sold_at = datetime.fromisoformat(trade['executed_at'])
+    history = conn.execute(text("""
+        SELECT side, quantity, executed_at FROM trades
+        WHERE account_id = :account_id AND instrument_id = :instrument_id
+        ORDER BY executed_at
+    """), trade)
+
+    position = Decimal(0)
+    lowest_from_sale_on = None
+    for side, quantity, executed_at in history:
+        if executed_at > sold_at and lowest_from_sale_on is None:
+            lowest_from_sale_on = position
+        position += quantity if side == 'BUY' else -quantity
+        if executed_at > sold_at:
+            lowest_from_sale_on = min(lowest_from_sale_on, position)
+    if lowest_from_sale_on is None:
+        lowest_from_sale_on = position
+
+    held = conn.execute(text("""
+        SELECT quantity FROM holdings
+        WHERE account_id = :account_id AND instrument_id = :instrument_id
+    """), trade).scalar() or Decimal(0)
+
+    return max(0, int(min(lowest_from_sale_on, held)))
+
+
+def _apply_trade(conn, trade: dict) -> int:
+    """
+    Insert one trade the way the app does, moving cash and holdings with it.
+
+    The generated quantity is cut down to what the account can afford (BUY) or sell (SELL).
+
+    Returns:
+        Quantity traded, or 0 if the trade was skipped
+    """
+    price = Decimal(trade['execution_price'])
+    wanted = int(trade['quantity'])
+
+    if trade['side'] == 'BUY':
+        cash = conn.execute(
+            text("SELECT balance FROM accounts WHERE account_id = :account_id FOR UPDATE"), trade
+        ).scalar_one()
+        quantity = min(wanted, int(cash * MAX_BUY_CASH_FRACTION / price))
+    else:
+        quantity = min(wanted, _sellable_quantity(conn, trade))
+    if quantity < 1:
+        return 0
+
+    row = {**trade, 'quantity': quantity, 'execution_price': price, 'value': price * quantity}
+    if trade['side'] == 'BUY':
+        conn.execute(text("""
+            UPDATE accounts SET balance = balance - :value, updated_at = NOW()
+            WHERE account_id = :account_id
+        """), row)
+        conn.execute(text("""
+            INSERT INTO holdings (account_id, instrument_id, quantity)
+            VALUES (:account_id, :instrument_id, :quantity)
+            ON CONFLICT (account_id, instrument_id)
+            DO UPDATE SET quantity = holdings.quantity + EXCLUDED.quantity
+        """), row)
+    else:
+        # Selling every share removes the holding, as the app does; holdings have CHECK (quantity > 0)
+        conn.execute(text("""
+            DELETE FROM holdings
+            WHERE account_id = :account_id AND instrument_id = :instrument_id AND quantity = :quantity
+        """), row)
+        conn.execute(text("""
+            UPDATE holdings SET quantity = quantity - :quantity
+            WHERE account_id = :account_id AND instrument_id = :instrument_id AND quantity > :quantity
+        """), row)
+        conn.execute(text("""
+            UPDATE accounts SET balance = balance + :value, updated_at = NOW()
+            WHERE account_id = :account_id
+        """), row)
+
+    conn.execute(text("""
+        INSERT INTO trades (
+            trade_id, account_id, instrument_id, side,
+            quantity, execution_price, executed_at
+        ) VALUES (
+            :trade_id, :account_id, :instrument_id, :side,
+            :quantity, :execution_price, :executed_at
+        )
+    """), row)
+    return quantity
+
+
 def insert_trades_to_oltp(trades: list) -> dict:
     """
-    Insert trades into the OLTP database.
-    
+    Insert trades into the OLTP database, keeping holdings and balances in step.
+
+    A trade the account cannot make (no cash for a BUY, no shares for a SELL) is skipped.
+
     Args:
         trades: List of trade dictionaries
-        
+
     Returns:
         Dictionary with insertion statistics
     """
@@ -105,50 +210,49 @@ def insert_trades_to_oltp(trades: list) -> dict:
     results = {
         'total_trades': len(trades),
         'inserted': 0,
+        'skipped': 0,
         'failed': 0,
         'errors': [],
         'trades_by_account': {},
         'trades_by_side': {'BUY': 0, 'SELL': 0},
     }
-    
+
     with engine.connect() as conn:
         for trade in trades:
             try:
                 account_name = trade.pop('account_name', 'Unknown')
                 ticker = trade.pop('ticker', 'Unknown')
-                
-                # Insert into trades table
-                insert_sql = text("""
-                    INSERT INTO trades (
-                        trade_id, account_id, instrument_id, side, 
-                        quantity, execution_price, executed_at
-                    ) VALUES (
-                        :trade_id, :account_id, :instrument_id, :side,
-                        :quantity, :execution_price, :executed_at
-                    )
-                """)
-                
-                conn.execute(insert_sql, trade)
+
+                # Savepoint: a trade's cash, holding and trade rows land together or not at all
+                with conn.begin_nested():
+                    quantity = _apply_trade(conn, trade)
+
+                if quantity == 0:
+                    results['skipped'] += 1
+                    reason = 'not enough cash' if trade['side'] == 'BUY' else 'no shares to sell'
+                    print(f"- {trade['side']:4} {ticker} skipped ({reason}) | {account_name}")
+                    continue
+
                 results['inserted'] += 1
-                
+
                 # Track by account
                 if account_name not in results['trades_by_account']:
                     results['trades_by_account'][account_name] = 0
                 results['trades_by_account'][account_name] += 1
-                
+
                 # Track by side
                 results['trades_by_side'][trade['side']] += 1
-                
-                print(f"✓ {trade['side']:4} {trade['quantity']:>3} shares of {ticker} @ ${float(trade['execution_price']):>7.2f} | {account_name}")
-                
+
+                print(f"✓ {trade['side']:4} {quantity:>3} shares of {ticker} @ ${float(trade['execution_price']):>7.2f} | {account_name}")
+
             except Exception as e:
                 results['failed'] += 1
                 error_msg = f"Failed to insert trade {trade.get('trade_id', 'unknown')}: {str(e)}"
                 results['errors'].append(error_msg)
                 print(f"✗ {error_msg}")
-        
+
         conn.commit()
-    
+
     return results
 
 
@@ -179,6 +283,7 @@ def seed_trades_main(num_trades: int = 50, start_date: str = "2025-08-25"):
     print("="*80)
     print(f"Total trades generated:  {results['total_trades']}")
     print(f"Successfully inserted:   {results['inserted']}")
+    print(f"Skipped (no cash/shares): {results['skipped']}")
     print(f"Failed:                  {results['failed']}")
     
     if results['trades_by_account']:

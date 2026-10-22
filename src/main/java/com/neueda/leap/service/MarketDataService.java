@@ -5,17 +5,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.MarketHeatmapResponse;
+import com.neueda.leap.dto.response.MarketHeatmapSector;
+import com.neueda.leap.dto.response.MarketHeatmapTicker;
 import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.MarketSector;
+import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.MarketSectorTicker;
+import com.neueda.leap.dto.response.QuoteStatus;
 import com.neueda.leap.websocket.MarketQuoteWebSocketHandler;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.MarketDataUnavailableException;
+import com.neueda.leap.exception.MarketClosedException;
+import com.neueda.leap.mapper.InstrumentMapper;
+import com.neueda.leap.model.Instrument;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +57,7 @@ public class MarketDataService implements IService {
     private static final String SUBSCRIPTION_HOT_UNTIL_PREFIX = "market:subscription:hot-until:";
     private static final String SUBSCRIPTION_LAST_REFRESH_PREFIX = "market:subscription:last-refresh:";
     private static final String LATEST_QUOTE_PREFIX = "quote:latest:";
+    private static final String LAST_KNOWN_QUOTE_PREFIX = "quote:last-known:";
     private static final Pattern CURRENCY_PATTERN = Pattern.compile("^[A-Z]{3}$");
     private static final Set<String> SUPPORTED_CURRENCIES = Set.of("USD", "EUR", "INR", "GBP");
 
@@ -54,34 +66,42 @@ public class MarketDataService implements IService {
     private final long fetchRetryDelayMs;
     private final long hotWindowSeconds;
     private final long latestQuoteTtlSeconds;
+    private final long lastKnownQuoteTtlSeconds;
     private final long fxRateTtlSeconds;
-
 
     private final MarketDataClient client;
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
     private final ObjectProvider<MarketQuoteWebSocketHandler> quoteWebSocketHandler;
+    private final InstrumentMapper instrumentMapper;
+    private final MarketSessionService marketSessionService;
 
     public MarketDataService(
             MarketDataClient client, 
             StringRedisTemplate redis,
             ObjectMapper objectMapper,
             ObjectProvider<MarketQuoteWebSocketHandler> quoteWebSocketHandler,
+            InstrumentMapper instrumentMapper,
+            MarketSessionService marketSessionService,
             @Value("${market.lock-ttl-seconds:20}") long lockTtlSeconds,
             @Value("${market.refresh-cooldown-seconds:180}") long refreshCooldownSeconds,
             @Value("${market.fetch-retry-delay-ms:120}") long fetchRetryDelayMs,
             @Value("${market.subscription.hot-window-seconds:120}") long hotWindowSeconds,
             @Value("${quote.cache-ttl-seconds:60}") long latestQuoteTtlSeconds,
+            @Value("${quote.last-known-ttl-seconds:604800}") long lastKnownQuoteTtlSeconds,
             @Value("${fx.rate-cache-ttl-seconds:60}") long fxRateTtlSeconds) {
         this.client = client;
         this.redis = redis;
         this.objectMapper = objectMapper;
         this.quoteWebSocketHandler = quoteWebSocketHandler;
+        this.instrumentMapper = instrumentMapper;
+        this.marketSessionService = marketSessionService;
         this.lockTtlSeconds = lockTtlSeconds;
         this.refreshCooldownSeconds = refreshCooldownSeconds;
         this.fetchRetryDelayMs = fetchRetryDelayMs;
         this.hotWindowSeconds = hotWindowSeconds;
         this.latestQuoteTtlSeconds = latestQuoteTtlSeconds;
+        this.lastKnownQuoteTtlSeconds = lastKnownQuoteTtlSeconds;
         this.fxRateTtlSeconds = fxRateTtlSeconds;
     }
 
@@ -95,7 +115,7 @@ public class MarketDataService implements IService {
         return slice(full, period);
     }
 
-    public void cacheLatestQuote(MarketQuote quote) {
+    public MarketQuote cacheLatestQuote(MarketQuote quote) {
         if (quote == null || quote.ticker() == null || quote.price() == null
                 || quote.quoteTime() == null) {
             throw new ObjectInvalidException("Invalid market quote");
@@ -108,31 +128,85 @@ public class MarketDataService implements IService {
                 quote.price(),
                 quote.quoteTime(),
                 quote.receivedTime() == null ? Instant.now() : quote.receivedTime(),
-                quote.source());
+                quote.source(),
+                QuoteStatus.LIVE);
         try {
             String payload = objectMapper.writeValueAsString(normalized);
             redis.opsForValue().set(
                     LATEST_QUOTE_PREFIX + ticker,
                     payload,
                     Duration.ofSeconds(latestQuoteTtlSeconds));
+            redis.opsForValue().set(
+                    LAST_KNOWN_QUOTE_PREFIX + ticker,
+                    payload,
+                    Duration.ofSeconds(lastKnownQuoteTtlSeconds));
         } catch (JsonProcessingException e) {
             throw new ObjectInvalidException("Unable to cache market quote for " + ticker, e);
         }
+        return normalized;
     }
 
     public Optional<MarketQuote> getLatestQuote(String rawTicker) {
         String ticker = normalizeTicker(rawTicker);
-        String cached = readCache(LATEST_QUOTE_PREFIX + ticker);
-        if (cached == null) {
-            return Optional.empty();
+        return readCachedQuote(ticker)
+                .map(cached -> withStatus(
+                        cached.quote(),
+                        cached.live() ? QuoteStatus.LIVE : QuoteStatus.STALE));
+    }
+
+    public MarketQuote getQuoteSnapshot(String rawTicker) {
+        String ticker = normalizeTicker(rawTicker);
+        CachedQuote cached = readCachedQuote(ticker)
+                .orElseThrow(() -> new ObjectNotFoundException(
+                        "No cached market quote for " + ticker));
+        return withStatus(
+                cached.quote(),
+                resolveQuoteStatus(ticker, cached.live()));
+    }
+
+    public MarketSectorCatalog getSectorCatalog() {
+        return client.fetchSectorCatalog();
+    }
+
+    public MarketSector getSector(String rawSectorId) {
+        String sectorId = normalizeSectorId(rawSectorId);
+        return getSectorCatalog().sectors().stream()
+                .filter(sector -> sectorId.equals(sector.id()))
+                .findFirst()
+                .orElseThrow(() -> new ObjectNotFoundException(
+                        "Unknown market sector: " + rawSectorId));
+    }
+
+    public MarketHeatmapResponse getHeatmap(String rawSectorId) {
+        MarketSectorCatalog catalog = getSectorCatalog();
+        List<MarketSector> sectors = catalog.sectors();
+        if (rawSectorId != null && !rawSectorId.isBlank()) {
+            String sectorId = normalizeSectorId(rawSectorId);
+            sectors = sectors.stream()
+                    .filter(sector -> sectorId.equals(sector.id()))
+                    .toList();
+            if (sectors.isEmpty()) {
+                throw new ObjectNotFoundException(
+                        "Unknown market sector: " + rawSectorId);
+            }
         }
-        try {
-            return Optional.of(objectMapper.readValue(cached, MarketQuote.class));
-        } catch (JsonProcessingException e) {
-            log.warn("Discarding unreadable latest quote cache entry {}", ticker, e);
-            redis.delete(LATEST_QUOTE_PREFIX + ticker);
-            return Optional.empty();
-        }
+
+        Instant asOf = Instant.now();
+        List<MarketHeatmapSector> heatmapSectors = sectors.stream()
+                .map(sector -> new MarketHeatmapSector(
+                        sector.id(),
+                        sector.name(),
+                        sector.tickers().stream()
+                                .map(ticker -> toHeatmapTicker(ticker))
+                                .toList()))
+                .toList();
+        return new MarketHeatmapResponse(
+                catalog.market(),
+                catalog.selectionBasis(),
+                catalog.universeVersion(),
+                catalog.generatedAt(),
+                asOf,
+                heatmapSectors);
     }
 
     public BigDecimal getExchangeRate(String rawBaseCurrency, String rawQuoteCurrency) {
@@ -258,6 +332,102 @@ public class MarketDataService implements IService {
             throw new ObjectInvalidException("Unsupported currency: " + rawCurrency);
         }
         return currency;
+    }
+
+    private String normalizeSectorId(String rawSectorId) {
+        String sectorId = rawSectorId == null ? "" : rawSectorId.trim().toLowerCase();
+        if (!sectorId.matches("^[a-z0-9]+(?:-[a-z0-9]+)*$")) {
+            throw new ObjectInvalidException("Invalid market sector: " + rawSectorId);
+        }
+        return sectorId;
+    }
+
+    private MarketHeatmapTicker toHeatmapTicker(MarketSectorTicker sectorTicker) {
+        MarketQuote value;
+        try {
+            value = getQuoteSnapshot(sectorTicker.ticker());
+        } catch (ObjectNotFoundException e) {
+            return new MarketHeatmapTicker(
+                    sectorTicker.ticker(),
+                    sectorTicker.rank(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    QuoteStatus.UNAVAILABLE);
+        }
+
+        return new MarketHeatmapTicker(
+                value.ticker(),
+                sectorTicker.rank(),
+                value.price(),
+                value.quoteTime(),
+                value.receivedTime(),
+                value.source(),
+                value.status());
+    }
+
+    private Optional<CachedQuote> readCachedQuote(String ticker) {
+        String liveKey = LATEST_QUOTE_PREFIX + ticker;
+        Optional<MarketQuote> liveQuote = parseCachedQuote(liveKey, readCache(liveKey));
+        if (liveQuote.isPresent()) {
+            return Optional.of(new CachedQuote(liveQuote.get(), true));
+        }
+
+        String lastKnownKey = LAST_KNOWN_QUOTE_PREFIX + ticker;
+        Optional<MarketQuote> lastKnownQuote = parseCachedQuote(
+                lastKnownKey,
+                readCache(lastKnownKey));
+        return lastKnownQuote.map(quote -> new CachedQuote(quote, false));
+    }
+
+    private Optional<MarketQuote> parseCachedQuote(String key, String cached) {
+        if (cached == null) {
+            return Optional.empty();
+        }
+        try {
+            MarketQuote quote = objectMapper.readValue(cached, MarketQuote.class);
+            return quote == null ? Optional.empty() : Optional.of(quote);
+        } catch (JsonProcessingException e) {
+            log.warn("Discarding unreadable quote cache entry {}", key, e);
+            redis.delete(key);
+            return Optional.empty();
+        }
+    }
+
+    private QuoteStatus resolveQuoteStatus(String ticker, boolean live) {
+        Instrument instrument;
+        try {
+            instrument = instrumentMapper.findByTicker(ticker);
+        } catch (DataAccessException e) {
+            log.warn("Could not resolve market session for quote {}", ticker, e);
+            return live ? QuoteStatus.LIVE : QuoteStatus.STALE;
+        }
+
+        if (instrument == null) {
+            return live ? QuoteStatus.LIVE : QuoteStatus.STALE;
+        }
+
+        try {
+            marketSessionService.assertMarketOpen(instrument);
+            return live ? QuoteStatus.LIVE : QuoteStatus.STALE;
+        } catch (MarketClosedException e) {
+            return QuoteStatus.CLOSED;
+        } catch (ObjectNotFoundException | DataAccessException e) {
+            log.warn("Could not determine market session for quote {}", ticker, e);
+            return live ? QuoteStatus.LIVE : QuoteStatus.STALE;
+        }
+    }
+
+    private MarketQuote withStatus(MarketQuote quote, QuoteStatus status) {
+        return new MarketQuote(
+                quote.type(),
+                quote.ticker(),
+                quote.price(),
+                quote.quoteTime(),
+                quote.receivedTime(),
+                quote.source(),
+                status);
     }
 
     private long readLong(String key, long defaultValue) {
@@ -389,5 +559,8 @@ public class MarketDataService implements IService {
         } catch (JsonProcessingException e) {
             log.warn("Could not serialize history for {}", key, e);
         }
+    }
+
+    private record CachedQuote(MarketQuote quote, boolean live) {
     }
 }

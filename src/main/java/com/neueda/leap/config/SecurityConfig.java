@@ -12,7 +12,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import com.neueda.leap.util.JwtSecret;
+import java.util.Base64;
 
 @Configuration
 public class SecurityConfig {
@@ -23,7 +25,7 @@ public class SecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         SecretKeySpec key = new SecretKeySpec(
-                sharedSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            Base64.getDecoder().decode(sharedSecret), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 
@@ -38,7 +40,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints - no auth required
-                        .requestMatchers("api/auth/login").permitAll()                        .requestMatchers("/public/**").permitAll()
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/register").permitAll()
+                        .requestMatchers("/public/**").permitAll()
                         
                         // Admin endpoints - ADMIN role only
                         .requestMatchers("/admin/**").hasRole("ADMIN")
@@ -46,17 +50,15 @@ public class SecurityConfig {
                         // Analyst endpoints - ANALYST or ADMIN
                         .requestMatchers("/analyst/**").hasAnyRole("ANALYST", "ADMIN")
                         
-                        // API endpoints - all authenticated users
-                        .requestMatchers("/api/**").permitAll()
-                        
                         // Live market quotes over websockets -public, same as /api/market
                         .requestMatchers("/ws/**").permitAll()
 
                         .requestMatchers("/internal/**").permitAll()
 
                         // Portfolio endpoints - authenticated users (CLIENT, ANALYST, ADMIN)
-                        .requestMatchers("/holdings/**").authenticated()
-                        .requestMatchers("/trades/**").authenticated()
+                        .requestMatchers("/api/holdings/**").authenticated()
+                        .requestMatchers("/api/trades/**").authenticated()
+                        .requestMatchers("/api/**").authenticated()
 
                 
                         

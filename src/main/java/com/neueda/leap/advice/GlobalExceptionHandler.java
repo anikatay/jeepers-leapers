@@ -1,4 +1,6 @@
 package com.neueda.leap.advice;
+import com.neueda.leap.analysis.TooManyAnalysesException;
+import com.neueda.leap.analysis.TradeAnalysisException;
 import com.neueda.leap.dto.response.ErrorResponse;
 import com.neueda.leap.dto.response.FieldError;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
@@ -12,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 
 import java.util.stream.Collectors;
@@ -26,8 +29,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice 
 public class GlobalExceptionHandler {
-
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ObjectAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleAlreadyExists(ObjectAlreadyExistsException e, HttpServletRequest request){
         ErrorResponse response = new ErrorResponse(
@@ -67,6 +70,21 @@ public class GlobalExceptionHandler {
         response.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException e,
+            HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+                "ACCESS_DENIED",
+                "You are not authorized to access this resource",
+                e.getMessage(),
+                HttpStatus.FORBIDDEN.value()
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
      @ExceptionHandler(ObjectInvalidException.class)
     public ResponseEntity<ErrorResponse> handleInvalid(
             ObjectInvalidException e,
@@ -147,6 +165,37 @@ public class GlobalExceptionHandler {
         );
         response.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(TradeAnalysisException.class)
+    public ResponseEntity<ErrorResponse> handleTradeAnalysisFailure(
+            TradeAnalysisException e,
+            HttpServletRequest request) {
+        // The cause can quote the upstream error body, so it is logged and not returned.
+        log.warn("Trade analysis failed for {}: {}", request.getRequestURI(), e.getMessage());
+        ErrorResponse response = new ErrorResponse(
+            "ANALYSIS_UNAVAILABLE",
+            "The trade could not be analysed right now. Please try again later.",
+            502
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
+    }
+
+    @ExceptionHandler(TooManyAnalysesException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyAnalyses(
+            TooManyAnalysesException e,
+            HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+            "TOO_MANY_ANALYSES",
+            "Too many trade analyses. Please wait before trying again.",
+            e.getMessage(),
+            429
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", String.valueOf(e.getRetryAfterSeconds()))
+            .body(response);
     }
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)

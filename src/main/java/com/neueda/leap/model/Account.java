@@ -6,6 +6,7 @@ import java.util.UUID;
 
 
 public class Account {
+    private final BigDecimal STARTING_BALANCE = BigDecimal.valueOf(1000);
 
     private UUID accountId;
 
@@ -13,7 +14,7 @@ public class Account {
 
     private String currency = "USD";
 
-    private BigDecimal balance = BigDecimal.ZERO;
+    private BigDecimal balance = STARTING_BALANCE;
 
     private String status = "ACTIVE";
 

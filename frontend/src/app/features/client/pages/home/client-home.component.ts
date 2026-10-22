@@ -62,25 +62,9 @@ export class ClientHomeComponent implements OnInit {
   private auth = inject(AuthService);
   private get ACCOUNT_ID() { return this.auth.session()?.accountId ?? ''; }
   printname() {
-    const accountId = this.auth.session()?.accountId;
-
-    if (accountId === 'd4000000-0000-0000-0000-000000000001') {
-      return {
-        userInitial: 'J',
-        userName: 'Joanna'
-      };
-    }
-
-    if (accountId === 'd4000000-0000-0000-0000-000000000002') {
-      return {
-        userInitial: 'B',
-        userName: 'Bob'
-      };
-    }
-
     return {
-      userInitial: 'C',
-      userName: 'Charlie'
+      userInitial: this.auth.userName.charAt(0),
+      userName: this.auth.userName
     };
   }
 
@@ -536,7 +520,7 @@ export class ClientHomeComponent implements OnInit {
   }
 
   goToProfile() {
-    this.router.navigate(['/client/profile']);
+    this.router.navigate(['/client/portfolio']);
   }
 
   handleProfileOption(option: string) {

@@ -9,6 +9,16 @@ public record MarketQuote(
         BigDecimal price,
         Instant quoteTime,
         Instant receivedTime,
-        String source
+        String source,
+        QuoteStatus status
 ) {
+    public MarketQuote(
+            String type,
+            String ticker,
+            BigDecimal price,
+            Instant quoteTime,
+            Instant receivedTime,
+            String source) {
+        this(type, ticker, price, quoteTime, receivedTime, source, QuoteStatus.LIVE);
+    }
 }

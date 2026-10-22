@@ -3,8 +3,11 @@ package com.neueda.leap.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.dto.request.CreateUserRequest;
 import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.dto.response.UserDetailsResponse;
 import com.neueda.leap.model.User;
 import com.neueda.leap.model.UserPii;
+import com.neueda.leap.service.AuthorizationService;
+import com.neueda.leap.service.UserPiiService;
 import com.neueda.leap.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +17,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,17 +47,36 @@ class UserControllerTest {
     @MockBean
     private UserService userService;
 
+        @MockBean
+        private UserPiiService userPiiService;
+
+        @MockBean
+        private AuthorizationService authorizationService;
+
     @Test
     void getUserByIdReturnsUser() throws Exception {
         UUID userId = UUID.randomUUID();
+        UserPii pii = new UserPii(
+                userId,
+                "Alex",
+                "Smith",
+                LocalDate.of(1990, 1, 1),
+                "111-22-3333",
+                "123 Main St",
+                "555-0100",
+                "alex@example.com");
         when(userService.getUserById(userId))
-                .thenReturn(new User(userId, "ROLE_CUSTOMER", "ACTIVE"));
+                .thenReturn(new User(
+                        userId, "ROLE_CUSTOMER", "ACTIVE"));
+        when(userPiiService.getUserPiiById(userId)).thenReturn(pii);
 
         mockMvc.perform(get("/api/users/{userId}", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.role").value("ROLE_CUSTOMER"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.firstName").value("Alex"))
+                .andExpect(jsonPath("$.lastName").value("Smith"));
     }
 
     @Test
@@ -74,7 +96,7 @@ class UserControllerTest {
         UUID userId = UUID.randomUUID();
         CreateUserRequest request = validRequest(userId);
         User createdUser = new User(userId, "ROLE_CUSTOMER", "ACTIVE");
-        when(userService.createUser(any(User.class), any(UserPii.class))).thenReturn(createdUser);
+        when(userService.createUser(any(User.class))).thenReturn(createdUser);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +105,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.role").value("ROLE_CUSTOMER"));
 
-        verify(userService).createUser(any(User.class), any(UserPii.class));
+        verify(userService).createUser(any(User.class));
     }
 
     @Test
@@ -148,13 +170,6 @@ class UserControllerTest {
         return new CreateUserRequest(
                 userId,
                 "ROLE_CUSTOMER",
-                "ACTIVE",
-                "Alex",
-                "Smith",
-                OffsetDateTime.now().minusYears(30),
-                "111-22-3333",
-                "123 Main St",
-                "5550100",
-                "alex@example.com");
+                "ACTIVE");
     }
 }

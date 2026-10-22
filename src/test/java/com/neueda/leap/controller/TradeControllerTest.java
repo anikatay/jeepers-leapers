@@ -1,20 +1,25 @@
 package com.neueda.leap.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.neueda.leap.analysis.AnalysisRateLimiter;
+import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.dto.request.TradeRequest;
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.model.Instrument;
 import com.neueda.leap.model.Trade;
+import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.service.InstrumentService;
 import com.neueda.leap.service.TradeService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -23,6 +28,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -44,6 +51,25 @@ class TradeControllerTest {
 
     @MockBean
     private InstrumentService instrumentService;
+
+        @MockBean
+        private AuthorizationService authorizationService;
+
+    // Covered by TradeAnalysisEndpointTest; mocked here so the controller can be created
+    @MockBean
+    private TradeAnalysisService tradeAnalysisService;
+
+    @MockBean
+    private AnalysisRateLimiter analysisRateLimiter;
+
+        private UUID authenticatedUserId;
+
+        @BeforeEach
+        void setUp() {
+                authenticatedUserId = UUID.randomUUID();
+                when(authorizationService.getAuthenticatedUserId(nullable(Jwt.class)))
+                                .thenReturn(authenticatedUserId);
+        }
 
     // Verifies creating a trade returns 201 with created trade fields.
     @Test
@@ -69,7 +95,7 @@ class TradeControllerTest {
         created.setExecutedAt(OffsetDateTime.now());
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
-        when(tradeService.createTrade(any(Trade.class))).thenReturn(created);
+        when(tradeService.createTrade(any(Trade.class), eq(authenticatedUserId))).thenReturn(created);
 
         mockMvc.perform(post("/api/trades")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -101,7 +127,7 @@ class TradeControllerTest {
         UUID instrumentId = UUID.randomUUID();
                 TradeRequest request = new TradeRequest(accountId, instrumentId, "BUY", BigDecimal.valueOf(10));
 
-        when(tradeService.createTrade(any(Trade.class)))
+        when(tradeService.createTrade(any(Trade.class), eq(authenticatedUserId)))
                 .thenThrow(new ObjectNotFoundException("Instrument not found: " + instrumentId));
 
         mockMvc.perform(post("/api/trades")
@@ -123,7 +149,7 @@ class TradeControllerTest {
         instrument.setCurrentPrice(BigDecimal.valueOf(100.50));
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
-        when(tradeService.createTrade(any(Trade.class)))
+        when(tradeService.createTrade(any(Trade.class), eq(authenticatedUserId)))
                 .thenThrow(new ObjectInvalidException("Insufficient balance for trade"));
 
         mockMvc.perform(post("/api/trades")
@@ -145,7 +171,8 @@ class TradeControllerTest {
         instrument.setCurrentPrice(BigDecimal.valueOf(100.50));
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
-        when(tradeService.createTrade(any(Trade.class))).thenThrow(new RuntimeException("unexpected"));
+        when(tradeService.createTrade(any(Trade.class), eq(authenticatedUserId)))
+                .thenThrow(new RuntimeException("unexpected"));
 
         mockMvc.perform(post("/api/trades")
                         .contentType(MediaType.APPLICATION_JSON)

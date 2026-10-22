@@ -40,12 +40,12 @@ class SecurityConfigTest {
         when(jwtDecoder.decode("malformed-token")).thenThrow(new JwtException("Invalid token"));
     }
 
-    // Verifies public and API endpoints are accessible without authentication.
+    // Verifies public endpoints are anonymous while the API requires authentication.
     @Test
-    void publicAndApiEndpointsPermitAnonymousRequests() throws Exception {
+    void publicEndpointsPermitAnonymousRequestsAndApiRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/auth/login")).andExpect(status().isOk());
         mockMvc.perform(get("/public/status")).andExpect(status().isOk());
-        mockMvc.perform(get("/api/status")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/status")).andExpect(status().isUnauthorized());
     }
 
     // Verifies portfolio endpoints reject requests without a bearer token.

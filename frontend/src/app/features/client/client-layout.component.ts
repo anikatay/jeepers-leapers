@@ -5,6 +5,7 @@ import { NavbarComponent, NavItem } from '../../shared/components/navbar.compone
 import { TradeModalService } from '../../core/services/trade-modal.service';
 import { InstrumentService } from '../../core/services/instrument.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-client-layout',
@@ -27,15 +28,18 @@ export class ClientLayoutComponent implements OnInit {
     { label: 'Trades', path: '/client/trades' }
   ];
 
-  userName = 'Joanna';
-  
+  userName: string;
+
   private allInstruments = signal<InstrumentResponse[]>([]);
 
   constructor(
     private tradeModalService: TradeModalService,
     private instrumentService: InstrumentService,
-    private router: Router
-  ) {}
+    private router: Router,
+    private authService: AuthService
+  ) {
+    this.userName = this.authService.userName;
+  }
 
   ngOnInit() {
     this.loadInstruments();
@@ -53,6 +57,17 @@ export class ClientLayoutComponent implements OnInit {
   }
 
   onProfileOptionSelected(option: string) {
+    if (option === 'logout') {
+      this.authService.logout();
+      this.router.navigate(['/auth/login']);
+      return;
+    }
+
+    if (option === 'profile') {
+      this.router.navigate(['/client/portfolio']);
+      return;
+    }
+
     // Handle trade: option
     if (option.startsWith('trade:')) {
       const symbol = option.substring(6);

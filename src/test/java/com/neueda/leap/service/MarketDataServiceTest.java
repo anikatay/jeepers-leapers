@@ -4,10 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.MarketHeatmapResponse;
+import com.neueda.leap.dto.response.MarketSector;
+import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.MarketSectorTicker;
 import com.neueda.leap.dto.response.PriceBar;
+import com.neueda.leap.dto.response.QuoteStatus;
+import com.neueda.leap.exception.MarketClosedException;
 import com.neueda.leap.exception.MarketDataUnavailableException;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
+import com.neueda.leap.mapper.InstrumentMapper;
+import com.neueda.leap.model.Instrument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +29,7 @@ import com.neueda.leap.websocket.MarketQuoteWebSocketHandler;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -28,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -52,6 +63,12 @@ class MarketDataServiceTest {
     @Mock
     private ObjectProvider<MarketQuoteWebSocketHandler> quoteWebSocketHandler;
 
+    @Mock
+    private InstrumentMapper instrumentMapper;
+
+    @Mock
+    private MarketSessionService marketSessionService;
+
     private MarketDataService marketDataService;
 
     @BeforeEach
@@ -64,12 +81,117 @@ class MarketDataServiceTest {
             redis,
             objectMapper,
             quoteWebSocketHandler,
+            instrumentMapper,
+            marketSessionService,
             20,
             180,
             120,
             120,
             60,
+            604800,
             60);
+    }
+
+    @Test
+    void testCacheLatestQuoteWritesLiveAndLastKnownEntries() throws Exception {
+        MarketQuote quote = new MarketQuote(
+                "QUOTE",
+                " aapl ",
+                BigDecimal.valueOf(180),
+                Instant.parse("2026-10-20T19:00:00Z"),
+                Instant.parse("2026-10-20T19:00:01Z"),
+                "test");
+        when(objectMapper.writeValueAsString(any(MarketQuote.class))).thenReturn("{\"quote\":true}");
+
+        MarketQuote normalized = marketDataService.cacheLatestQuote(quote);
+
+        assertEquals("AAPL", normalized.ticker());
+        assertEquals(QuoteStatus.LIVE, normalized.status());
+        verify(valueOperations).set(
+                "quote:latest:AAPL",
+                "{\"quote\":true}",
+                Duration.ofSeconds(60));
+        verify(valueOperations).set(
+                "quote:last-known:AAPL",
+                "{\"quote\":true}",
+                Duration.ofSeconds(604800));
+    }
+
+    @Test
+    void testGetLatestQuoteFallsBackToLastKnownQuoteAsStale() throws Exception {
+        MarketQuote cached = new MarketQuote(
+                "QUOTE",
+                "AAPL",
+                BigDecimal.valueOf(180),
+                Instant.parse("2026-10-20T19:00:00Z"),
+                Instant.parse("2026-10-20T19:00:01Z"),
+                "test");
+        when(valueOperations.get("quote:latest:AAPL")).thenReturn(null);
+        when(valueOperations.get("quote:last-known:AAPL")).thenReturn("{\"quote\":true}");
+        when(objectMapper.readValue("{\"quote\":true}", MarketQuote.class)).thenReturn(cached);
+
+        MarketQuote result = marketDataService.getLatestQuote("aapl").orElseThrow();
+
+        assertEquals(BigDecimal.valueOf(180), result.price());
+        assertEquals(QuoteStatus.STALE, result.status());
+    }
+
+    @Test
+    void testGetQuoteSnapshotMarksKnownClosedMarket() throws Exception {
+        MarketQuote cached = new MarketQuote(
+                "QUOTE",
+                "AAPL",
+                BigDecimal.valueOf(180),
+                Instant.parse("2026-10-20T19:00:00Z"),
+                Instant.parse("2026-10-20T19:00:01Z"),
+                "test");
+        Instrument instrument = new Instrument();
+        instrument.setTicker("AAPL");
+        when(valueOperations.get("quote:latest:AAPL")).thenReturn(null);
+        when(valueOperations.get("quote:last-known:AAPL")).thenReturn("{\"quote\":true}");
+        when(objectMapper.readValue("{\"quote\":true}", MarketQuote.class)).thenReturn(cached);
+        when(instrumentMapper.findByTicker("AAPL")).thenReturn(instrument);
+        doThrow(new MarketClosedException("market closed"))
+                .when(marketSessionService).assertMarketOpen(instrument);
+
+        MarketQuote result = marketDataService.getQuoteSnapshot("AAPL");
+
+        assertEquals(QuoteStatus.CLOSED, result.status());
+        assertEquals(BigDecimal.valueOf(180), result.price());
+    }
+
+    @Test
+    void testGetSectorCatalogDelegatesToMarketClient() {
+        MarketSectorCatalog expected = sectorCatalog();
+        when(marketDataClient.fetchSectorCatalog()).thenReturn(expected);
+
+        MarketSectorCatalog result = marketDataService.getSectorCatalog();
+
+        assertEquals(expected, result);
+        verify(marketDataClient).fetchSectorCatalog();
+    }
+
+    @Test
+    void testGetHeatmapUsesSharedQuoteCacheAndMarksMissingQuotesUnavailable()
+            throws Exception {
+        when(marketDataClient.fetchSectorCatalog()).thenReturn(sectorCatalog());
+        MarketQuote cached = new MarketQuote(
+                "QUOTE",
+                "XOM",
+                BigDecimal.valueOf(120),
+                Instant.parse("2026-10-21T15:59:00Z"),
+                Instant.parse("2026-10-21T15:59:01Z"),
+                "test");
+        when(valueOperations.get("quote:latest:XOM")).thenReturn("{\"quote\":true}");
+        when(objectMapper.readValue("{\"quote\":true}", MarketQuote.class)).thenReturn(cached);
+
+        MarketHeatmapResponse result = marketDataService.getHeatmap(null);
+
+        assertEquals(1, result.sectors().size());
+        assertEquals(2, result.sectors().get(0).tickers().size());
+        assertEquals(QuoteStatus.LIVE, result.sectors().get(0).tickers().get(0).status());
+        assertEquals(QuoteStatus.UNAVAILABLE, result.sectors().get(0).tickers().get(1).status());
+        assertEquals(BigDecimal.valueOf(120), result.sectors().get(0).tickers().get(0).price());
     }
 
     // Verifies invalid tickers are rejected before cache or client calls.
@@ -286,6 +408,20 @@ class MarketDataServiceTest {
 
     private HistoryResponse history(String ticker, List<PriceBar> bars) {
         return new HistoryResponse(ticker, "5y", bars);
+    }
+
+    private MarketSectorCatalog sectorCatalog() {
+        return new MarketSectorCatalog(
+                "US",
+                "configured_large_cap_order",
+                "us-large-cap-v1",
+                Instant.parse("2026-10-21T16:00:00Z"),
+                List.of(new MarketSector(
+                        "energy",
+                        "Energy",
+                        List.of(
+                                new MarketSectorTicker("XOM", 1),
+                                new MarketSectorTicker("CVX", 2)))));
     }
 
     private List<PriceBar> barsForSlicing() {

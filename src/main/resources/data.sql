@@ -9,7 +9,9 @@ INSERT INTO exchanges (exchange_id, "name", region, timezone, currency) VALUES
     ('NASDAQ', 'NASDAQ', 'USA', 'America/New_York', 'USD'),
     ('LSE', 'London Stock Exchange', 'UK', 'Europe/London', 'GBP'),
     ('NSE', 'National Stock Exchange of India', 'INDIA', 'Asia/Kolkata', 'INR'),
-    ('BSE', 'BSE India', 'INDIA', 'Asia/Kolkata', 'INR')
+    ('BSE', 'BSE India', 'INDIA', 'Asia/Kolkata', 'INR'),
+    ('CRYPTO', 'Crypto currency', 'USA', 'America/New_York', 'USD')
+
 ON CONFLICT DO NOTHING;
 
 -- ── Users ────────────────────────────────────────────────────────────────────
@@ -22,7 +24,7 @@ INSERT INTO users (user_id, role) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO user_pii (user_id, first_name, last_name, date_of_birth, ssn, email) VALUES
-    ('a1000000-0000-0000-0000-000000000001', 'Alice', 'Anderson', '1990-01-01', '111-11-1111', 'joanna@example.com'),
+    ('a1000000-0000-0000-0000-000000000001', 'Joanna', 'Anderson', '1990-01-01', '111-11-1111', 'joanna@example.com'),
     ('a1000000-0000-0000-0000-000000000002', 'Bob', 'Brown', '1988-05-12', '222-22-2222', 'bob@example.com'),
     ('a1000000-0000-0000-0000-000000000003', 'Charlie', 'Clark', '1995-09-23', '333-33-3333', 'charlie@example.com'),
     ('a1000000-0000-0000-0000-000000000004', 'Admin', 'User', '1985-03-15', '444-44-4444', 'admin@platform.com'),
@@ -36,6 +38,11 @@ INSERT INTO user_credentials (user_id, password_hash) VALUES
     ('a1000000-0000-0000-0000-000000000003', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
     ('a1000000-0000-0000-0000-000000000004', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
     ('a1000000-0000-0000-0000-000000000005', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.')
+    ('a1000000-0000-0000-0000-000000000001', '$2a$10$L2FJMdQFHym5WD7CabaMdOIY4ZpRocmlIWTZ3epF83XJtX1Y9lkfW'),
+    ('a1000000-0000-0000-0000-000000000002', '$2a$10$L2FJMdQFHym5WD7CabaMdOIY4ZpRocmlIWTZ3epF83XJtX1Y9lkfW'),
+    ('a1000000-0000-0000-0000-000000000003', '$2a$10$L2FJMdQFHym5WD7CabaMdOIY4ZpRocmlIWTZ3epF83XJtX1Y9lkfW'),
+    ('a1000000-0000-0000-0000-000000000004', '$2a$10$uZZ/jRAsfk7gnSpnAg2BeOTVL84LhTx02a.h9CpZsHTK3.OakI8iy'),
+    ('a1000000-0000-0000-0000-000000000005', '$2a$10$LJSZnaPrORx92EWm2xvyd.2Y17OFr/mdlZ.qixtSmHMYV0x3X882y')
 ON CONFLICT DO NOTHING;
 
 -- ── Accounts ─────────────────────────────────────────────────────────────────
@@ -43,6 +50,16 @@ INSERT INTO accounts (account_id, user_id, currency, balance) VALUES
     ('d4000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'USD', 50000.00),
     ('d4000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000002', 'USD', 75000.00),
     ('d4000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000003', 'USD', 60000.00)
+ON CONFLICT DO NOTHING;
+
+-- ── User Credentials ─────────────────────────────────────────────────────────
+
+INSERT INTO user_credentials (user_id, password_hash) VALUES
+    ('a1000000-0000-0000-0000-000000000001', '$2a$10$Y3EOki3i/dU27xb3MarsveGu0C/TtZGQa5PAKE4VRq8NvrLeyCCHO'),
+    ('a1000000-0000-0000-0000-000000000002', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000003', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000004', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.'),
+    ('a1000000-0000-0000-0000-000000000005', '$2a$10$iNhW3fZiR4igheZs7JInRuHlwYR3KiDl1WH/oGwPAYMil9k/ZPE2.')
 ON CONFLICT DO NOTHING;
 
 -- ── Instruments ──────────────────────────────────────────────────────────────
@@ -53,28 +70,32 @@ INSERT INTO instruments (instrument_id, ticker, "name", exchange_id, current_pri
     ('b2000000-0000-0000-0000-000000000004', 'TSLA',  'Tesla Inc.',          'NASDAQ', 254.7500),
     ('b2000000-0000-0000-0000-000000000005', 'AMZN',  'Amazon.com Inc.',     'NASDAQ', 196.0000),
     ('b2000000-0000-0000-0000-000000000006', 'NVDA',  'NVIDIA Corp.',        'NASDAQ', 138.2500),
-    ('b2000000-0000-0000-0000-000000000007', 'META',  'Meta Platforms Inc.', 'NASDAQ', 575.5000)
+    ('b2000000-0000-0000-0000-000000000007', 'META',  'Meta Platforms Inc.', 'NASDAQ', 575.5000),
+    ('b2000000-0000-0000-0000-000000000008', 'BTC-USD',  'Bitcoin US dollar', 'CRYPTO', 575.5000)
+
 ON CONFLICT DO NOTHING;
 
 -- ── Holdings (portfolio holdings) ────────────────────────────────────────────
--- Alice holds AAPL, GOOGL, MSFT
-INSERT INTO holdings (account_id, instrument_id, quantity) VALUES
+-- These are the net positions of the seed trades below. They are loaded only into a
+-- database with no trades yet: once trading starts, a holding that has been sold out is
+-- deleted, and reloading it on the next restart would bring the shares back.
+INSERT INTO holdings (account_id, instrument_id, quantity)
+SELECT seed.account_id::uuid, seed.instrument_id::uuid, seed.quantity
+FROM (VALUES
+    -- Alice holds AAPL, GOOGL, MSFT
     ('d4000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 15.00000000),
     ('d4000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000002', 10.00000000),
-    ('d4000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000003',  5.00000000)
-ON CONFLICT DO NOTHING;
-
--- Bob holds TSLA, AMZN, NVDA
-INSERT INTO holdings (account_id, instrument_id, quantity) VALUES
+    ('d4000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000003',  5.00000000),
+    -- Bob holds TSLA, AMZN, NVDA, MSFT
     ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000004', 20.00000000),
     ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000005', 12.00000000),
-    ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000006', 30.00000000)
-ON CONFLICT DO NOTHING;
-
--- Charlie holds META, AAPL
-INSERT INTO holdings (account_id, instrument_id, quantity) VALUES
+    ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000006', 30.00000000),
+    ('d4000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000003',  4.00000000),
+    -- Charlie holds META, AAPL
     ('d4000000-0000-0000-0000-000000000003', 'b2000000-0000-0000-0000-000000000007',  8.00000000),
     ('d4000000-0000-0000-0000-000000000003', 'b2000000-0000-0000-0000-000000000001', 25.00000000)
+) AS seed(account_id, instrument_id, quantity)
+WHERE NOT EXISTS (SELECT 1 FROM trades)
 ON CONFLICT DO NOTHING;
 
 -- ── Trades ───────────────────────────────────────────────────────────────────
