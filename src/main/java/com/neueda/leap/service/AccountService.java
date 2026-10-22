@@ -22,6 +22,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.util.StringUtils;
+
 @Service
 public class AccountService implements IService {
 
@@ -73,6 +75,60 @@ public class AccountService implements IService {
             throw new ObjectNotFoundException("Account not found with ID: " + accountId);
         }
         return account;
+    }
+    // Get account for update during a trade (locks the row incase someone gets frozenwhile trade is pending
+    // so that whatever the status was when the trade button was clicked thats whats used
+
+    @Transactional
+    public Account getAccountForTrade(UUID accountId) {
+        if (accountId == null) {
+            throw new ObjectNotFoundException("Account ID cannot be null");
+        }
+
+        Account account = accountMapper.findByAccountIdForUpdate(accountId);
+        if (account == null) {
+            throw new ObjectNotFoundException("Account not found with ID: " + accountId);
+        }
+        return account;
+    }
+
+    @Transactional
+    public Account freezeAccount(UUID accountId, String reason) {
+        if (accountId == null) {
+            throw new ObjectNotFoundException("Account ID cannot be null");
+        }
+        if (!StringUtils.hasText(reason) || reason.trim().length() > 500) {
+            throw new ObjectInvalidException("Freeze reason must contain between 1 and 500 characters");
+        }
+
+        Account account = getAccount(accountId);
+        if (!"ACTIVE".equals(account.getStatus())) {
+            throw new ObjectInvalidException("Only active accounts can be frozen");
+        }
+
+        int updated = accountMapper.freezeAccount(accountId, reason.trim(), OffsetDateTime.now());
+        if (updated < 1) {
+            throw new ObjectNotProcessedException("Was unable to freeze account " + accountId);
+        }
+        return getAccount(accountId);
+    }
+
+    @Transactional
+    public Account unfreezeAccount(UUID accountId) {
+        if (accountId == null) {
+            throw new ObjectNotFoundException("Account ID cannot be null");
+        }
+
+        Account account = getAccount(accountId);
+        if (!"FROZEN".equals(account.getStatus())) {
+            throw new ObjectInvalidException("Only frozen accounts can be unfrozen");
+        }
+
+        int updated = accountMapper.unfreezeAccount(accountId, OffsetDateTime.now());
+        if (updated < 1) {
+            throw new ObjectNotProcessedException("Was unable to unfreeze account " + accountId);
+        }
+        return getAccount(accountId);
     }
 
     public UUID getAccountIdByUserId(UUID userId) {
@@ -188,6 +244,7 @@ public class AccountService implements IService {
                         a.getCurrency(),
                         a.getBalance(),
                         a.getStatus(),
+                        a.getFreezeReason(),
                         a.getCreatedAt()))
                 .toList();
     }
@@ -202,6 +259,7 @@ public class AccountService implements IService {
                         a.getCurrency(),
                         a.getBalance(),
                         a.getStatus(),
+                        a.getFreezeReason(),
                         a.getCreatedAt()))
                 .toList();
     }

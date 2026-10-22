@@ -11,6 +11,7 @@ export interface AdminDashboardRow {
   currency: string;
   balance: number;
   accountStatus: string;
+  freezeReason: string | null;
   createdAt: string;
   tradeCount: number;
   portfolioValue: number;

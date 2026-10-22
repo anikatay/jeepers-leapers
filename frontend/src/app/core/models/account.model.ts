@@ -8,6 +8,7 @@ export interface AccountResponse {
   currency: string;
   balance: number;         // BigDecimal as number
   status: string;
+  freezeReason: string | null;
   createdAt: string;       // OffsetDateTime as ISO string
 
 }

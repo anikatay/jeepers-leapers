@@ -15,6 +15,7 @@ public class AdminDashboardRow {
     private String currency;
     private BigDecimal balance;
     private String accountStatus;
+    private String freezeReason;
     private OffsetDateTime createdAt;
     private long tradeCount;
     private BigDecimal portfolioValue;
@@ -101,6 +102,14 @@ public class AdminDashboardRow {
 
     public void setAccountStatus(String accountStatus) {
         this.accountStatus = accountStatus;
+    }
+
+    public String getFreezeReason() {
+        return freezeReason;
+    }
+
+    public void setFreezeReason(String freezeReason) {
+        this.freezeReason = freezeReason;
     }
 
     public OffsetDateTime getCreatedAt() {

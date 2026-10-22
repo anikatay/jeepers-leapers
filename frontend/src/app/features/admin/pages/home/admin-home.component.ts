@@ -28,6 +28,8 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
   readonly loadingTrades = signal(false);
   readonly error = signal<string | null>(null);
   readonly tradesError = signal<string | null>(null);
+  readonly freezeError = signal<string | null>(null);
+  readonly freezeSubmitting = signal(false);
   readonly page = signal(0);
   readonly totalPages = signal(0);
   readonly totalItems = signal(0);
@@ -36,6 +38,7 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
   readonly tradesTableCollapsed = signal(false);
 
   searchTerm = '';
+  freezeReason = '';
   columns: { header: string }[] = [
     { header: 'Name' },
     { header: 'Account Value' },
@@ -137,6 +140,8 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
     const previousSelection = this.selectedUser();
     this.selectedUser.set(user);
     this.tradesError.set(null);
+    this.freezeError.set(null);
+    this.freezeReason = '';
 
     if (previousSelection?.accountId === user.accountId && this.loadedTradeAccountIds.has(user.accountId)) {
       return;
@@ -167,6 +172,71 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
     this.selectedUser.set(null);
     this.selectedUserTrades.set([]);
     this.tradesError.set(null);
+    this.freezeError.set(null);
+    this.freezeReason = '';
+  }
+
+  isFrozen(user: AdminDashboardRow): boolean {
+    return user.accountStatus === 'FROZEN';
+  }
+
+  freezeSelectedAccount(): void {
+    const user = this.selectedUser();
+    const reason = this.freezeReason.trim();
+    if (!user || this.isFrozen(user) || !reason || this.freezeSubmitting()) {
+      if (!reason) {
+        this.freezeError.set('A reason is required to freeze an account.');
+      }
+      return;
+    }
+
+    this.freezeSubmitting.set(true);
+    this.freezeError.set(null);
+    this.adminDashboardService.freezeAccount(user.accountId, reason).pipe(
+      takeUntil(this.destroy)
+    ).subscribe({
+      next: account => {
+        this.updateAccountState(account.accountId, account.status, account.freezeReason);
+        this.freezeReason = '';
+        this.freezeSubmitting.set(false);
+      },
+      error: error => {
+        this.freezeError.set(error?.error?.details || error?.error?.message || 'Unable to freeze this account.');
+        this.freezeSubmitting.set(false);
+      }
+    });
+  }
+
+  unfreezeSelectedAccount(): void {
+    const user = this.selectedUser();
+    if (!user || !this.isFrozen(user) || this.freezeSubmitting()) {
+      return;
+    }
+
+    this.freezeSubmitting.set(true);
+    this.freezeError.set(null);
+    this.adminDashboardService.unfreezeAccount(user.accountId).pipe(
+      takeUntil(this.destroy)
+    ).subscribe({
+      next: account => {
+        this.updateAccountState(account.accountId, account.status, account.freezeReason);
+        this.freezeSubmitting.set(false);
+      },
+      error: error => {
+        this.freezeError.set(error?.error?.details || error?.error?.message || 'Unable to unfreeze this account.');
+        this.freezeSubmitting.set(false);
+      }
+    });
+  }
+
+  private updateAccountState(accountId: string, status: string, freezeReason: string | null): void {
+    this.rows.update(rows => rows.map(row => row.accountId === accountId
+      ? { ...row, accountStatus: status, freezeReason }
+      : row));
+    const selected = this.selectedUser();
+    if (selected?.accountId === accountId) {
+      this.selectedUser.set({ ...selected, accountStatus: status, freezeReason });
+    }
   }
 
   previousPage(): void {
