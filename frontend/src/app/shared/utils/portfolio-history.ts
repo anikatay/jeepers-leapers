@@ -10,7 +10,7 @@ export interface PortfolioHistoryPoint {
  * Does not account for quantity changes over time (past trades aren't backdated).
  */
 export function combinePortfolioHistory(
-  heldInstruments: Array<{ ticker: string; quantity: number }>,
+  trades: [],
   histories: HistoryResponse[]
 ): PortfolioHistoryPoint[] {
   const totalsByDate = new Map<string, number>();
