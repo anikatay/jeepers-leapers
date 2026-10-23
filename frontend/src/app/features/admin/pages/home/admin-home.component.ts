@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
 import { CommonModule, formatDate } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap, takeUntil, tap } from 'rxjs';
@@ -28,7 +28,10 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
   readonly totalItems = signal(0);
   readonly pageSize = 25;
   readonly holdingsTableCollapsed = signal(false);
-  readonly tradesTableCollapsed = signal(false);
+  readonly tradingPanelCollapsed = signal(false);
+  readonly detailPanelFullscreen = signal(false);
+  readonly detailPanelHeight = signal(560);
+  readonly detailPanelTopOffset = signal(0);
 
   searchTerm = '';
   freezeReason = '';
@@ -46,6 +49,13 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
   private readonly searchChanges = new Subject<string>();
   private readonly destroy = new Subject<void>();
   private readonly loadedTradeAccountIds = new Set<string>();
+  private resizingDetailPanel = false;
+  private resizeStartY = 0;
+  private resizeStartHeight = 0;
+  private resizeStartTopOffset = 0;
+
+  @ViewChild('userDetailLayout')
+  private userDetailLayout?: ElementRef<HTMLElement>;
 
   constructor(
     private readonly adminDashboardService: AdminDashboardService
@@ -138,6 +148,7 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
   }
 
   clearSelection(): void {
+    this.exitDetailPanelFullscreen();
     this.selectedUser.set(null);
     this.selectedUserTrades.set([]);
     this.tradesError.set(null);
@@ -226,8 +237,97 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
     this.holdingsTableCollapsed.set(!this.holdingsTableCollapsed());
   }
 
-  toggleTradesTable(): void {
-    this.tradesTableCollapsed.set(!this.tradesTableCollapsed());
+  toggleTradingPanel(): void {
+    this.tradingPanelCollapsed.update(collapsed => !collapsed);
+  }
+
+  toggleDetailPanelFullscreen(): void {
+    if (this.detailPanelFullscreen()) {
+      this.exitDetailPanelFullscreen();
+      return;
+    }
+
+    this.tradingPanelCollapsed.set(false);
+    this.detailPanelFullscreen.set(true);
+
+    const detailPanel = this.userDetailLayout?.nativeElement;
+    if (detailPanel?.requestFullscreen) {
+      void detailPanel.requestFullscreen().catch(() => undefined);
+    }
+  }
+
+  startDetailPanelResize(event: PointerEvent): void {
+    if (this.detailPanelFullscreen()) {
+      return;
+    }
+
+    const splitter = event.currentTarget as HTMLElement;
+    this.resizingDetailPanel = true;
+    this.resizeStartY = event.clientY;
+    this.resizeStartHeight = this.detailPanelHeight();
+    this.resizeStartTopOffset = this.detailPanelTopOffset();
+    splitter.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  }
+
+  @HostListener('document:pointermove', ['$event'])
+  resizeDetailPanel(event: PointerEvent): void {
+    if (!this.resizingDetailPanel) {
+      return;
+    }
+
+    const requestedHeight = this.resizeStartHeight - (event.clientY - this.resizeStartY);
+    const nextHeight = this.clamp(requestedHeight, 300, 900);
+    this.detailPanelHeight.set(nextHeight);
+    this.detailPanelTopOffset.set(this.resizeStartTopOffset + this.resizeStartHeight - nextHeight);
+  }
+
+  @HostListener('document:pointerup')
+  stopDetailPanelResize(): void {
+    this.resizingDetailPanel = false;
+  }
+
+  onDetailPanelResizerKeydown(event: KeyboardEvent): void {
+    if (this.detailPanelFullscreen()) {
+      return;
+    }
+
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      const change = event.key === 'ArrowUp' ? 20 : -20;
+      this.setDetailPanelHeight(this.detailPanelHeight() + change);
+      event.preventDefault();
+    } else if (event.key === 'Home') {
+      this.setDetailPanelHeight(300);
+      event.preventDefault();
+    } else if (event.key === 'End') {
+      this.setDetailPanelHeight(900);
+      event.preventDefault();
+    }
+  }
+
+  @HostListener('document:fullscreenchange')
+  onFullscreenChange(): void {
+    if (!document.fullscreenElement) {
+      this.detailPanelFullscreen.set(false);
+    }
+  }
+
+  private exitDetailPanelFullscreen(): void {
+    this.detailPanelFullscreen.set(false);
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined);
+    }
+  }
+
+  private clamp(value: number, minimum: number, maximum: number): number {
+    return Math.min(Math.max(value, minimum), maximum);
+  }
+
+  private setDetailPanelHeight(height: number): void {
+    const nextHeight = this.clamp(height, 300, 900);
+    const heightChange = nextHeight - this.detailPanelHeight();
+    this.detailPanelHeight.set(nextHeight);
+    this.detailPanelTopOffset.update(offset => offset - heightChange);
   }
 
   getUserName(user: AdminDashboardRow): string {
@@ -248,5 +348,9 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
       case 'Profit': return user.allTimeProfit;
       default: return '';
     }
+  }
+
+  isMoneyColumn(header: string): boolean {
+    return ['Account Value', 'Balance', 'Portfolio Value', 'Profit'].includes(header);
   }
 }

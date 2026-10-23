@@ -39,7 +39,12 @@
       <tr *ngFor="let user of rows()"
           (click)="selectUser(user)"
           [class.selected]="selectedUser()?.accountId === user.accountId">
-        <td *ngFor="let col of columns">{{ getCellValue(user, col.header) }}</td>
+        <td *ngFor="let col of columns">
+          <ng-container *ngIf="isMoneyColumn(col.header); else accountValue">
+            {{ getCellValue(user, col.header) | currency: 'USD' : 'symbol' : '1.2-2' }}
+          </ng-container>
+          <ng-template #accountValue>{{ getCellValue(user, col.header) }}</ng-template>
+        </td>
       </tr>
       <tr *ngIf="rows().length === 0">
         <td [attr.colspan]="columns.length">No accounts found.</td>
@@ -54,46 +59,85 @@
   <button type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Next</button>
 </div>
 
-<div class="user-detail-layout" *ngIf="selectedUser() as user">
+<div
+  #userDetailLayout
+  class="user-detail-layout"
+  *ngIf="selectedUser() as user"
+  [class.fullscreen]="detailPanelFullscreen()"
+  [style.--detail-panel-height.px]="detailPanelHeight()"
+  [style.--detail-panel-top-offset.px]="detailPanelTopOffset()">
   <div class="detail-header">
     <h2>{{ getUserName(user) }}'s Account</h2>
-    <button (click)="clearSelection()" class="clear-btn">✕ Clear</button>
+    <div class="detail-actions">
+      <button
+        type="button"
+        class="panel-action"
+        (click)="toggleTradingPanel()"
+        [attr.aria-expanded]="!tradingPanelCollapsed()"
+        [attr.aria-label]="tradingPanelCollapsed() ? 'Expand trading details' : 'Collapse trading details'"
+        [title]="tradingPanelCollapsed() ? 'Expand trading details' : 'Collapse trading details'">
+        {{ tradingPanelCollapsed() ? '▶' : '▼' }}
+      </button>
+      <button
+        type="button"
+        class="panel-action"
+        (click)="toggleDetailPanelFullscreen()"
+        [disabled]="tradingPanelCollapsed()"
+        [attr.aria-label]="detailPanelFullscreen() ? 'Exit full screen' : 'Open details in full screen'"
+        [title]="detailPanelFullscreen() ? 'Exit full screen' : 'Open details in full screen'">
+        {{ detailPanelFullscreen() ? '↙' : '⛶' }}
+      </button>
+      <button type="button" (click)="clearSelection()" class="clear-btn">✕ Clear</button>
+    </div>
   </div>
 
-  <div class="detail-columns">
+  <div
+    class="detail-panel-resizer"
+    role="separator"
+    aria-orientation="horizontal"
+    aria-label="Resize selected account details"
+    [attr.aria-valuenow]="detailPanelHeight()"
+    aria-valuemin="300"
+    aria-valuemax="900"
+    tabindex="0"
+    (pointerdown)="startDetailPanelResize($event)"
+    (keydown)="onDetailPanelResizerKeydown($event)"></div>
+
+  <div
+    class="detail-columns"
+    *ngIf="!tradingPanelCollapsed()">
     <section class="trades-panel" aria-labelledby="trades-heading">
       <div class="panel-heading">
         <h3 id="trades-heading">Trades</h3>
-        <button (click)="toggleTradesTable()" class="collapse-btn" [class.collapsed]="tradesTableCollapsed()" [attr.aria-label]="tradesTableCollapsed() ? 'Expand trades' : 'Collapse trades'">
-          {{ tradesTableCollapsed() ? '▶' : '▼' }}
-        </button>
       </div>
 
       <p class="dashboard-message" *ngIf="loadingTrades()">Loading trades...</p>
       <p class="dashboard-message error" *ngIf="tradesError()">{{ tradesError() }}</p>
 
-      <table class="trades-table" *ngIf="!loadingTrades() && selectedUserTrades().length > 0" [class.collapsed]="tradesTableCollapsed()">
-        <thead>
-          <tr>
-            <th>Trade ID</th>
-            <th>Ticker</th>
-            <th>Side</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody *ngIf="!tradesTableCollapsed()">
-          <tr *ngFor="let trade of selectedUserTrades()">
-            <td>{{ trade.tradeId }}</td>
-            <td>{{ trade.ticker }}</td>
-            <td>{{ trade.side }}</td>
-            <td>{{ trade.quantity }}</td>
-            <td>{{ trade.executionPrice }}</td>
-            <td>{{ trade.executedAt | date: 'MM/dd/yyyy' }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="trades-table-scroll">
+        <table class="trades-table" *ngIf="!loadingTrades() && selectedUserTrades().length > 0">
+          <thead>
+            <tr>
+              <th>Trade ID</th>
+              <th>Ticker</th>
+              <th>Side</th>
+              <th>Quantity</th>
+              <th>Price</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let trade of selectedUserTrades()">
+              <td>{{ trade.tradeId }}</td>
+              <td>{{ trade.ticker }}</td>
+              <td>{{ trade.side }}</td>
+              <td>{{ trade.quantity }}</td>
+              <td>{{ trade.executionPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+              <td>{{ trade.executedAt | date: 'MM/dd/yyyy' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <p *ngIf="!loadingTrades() && !tradesError() && selectedUserTrades().length === 0" class="no-trades">
         No trades found for this account.
@@ -109,7 +153,7 @@
       <div class="detail-info">
         <p><strong>Email:</strong> {{ user.email }}</p>
         <p><strong>Account ID:</strong> {{ user.accountId }}</p>
-        <p><strong>Balance:</strong> {{ user.balance }}</p>
+        <p><strong>Balance:</strong> {{ user.balance | currency: 'USD' : 'symbol' : '1.2-2' }}</p>
       </div>
 
       <div *ngIf="isFrozen(user)" class="frozen-reason">
@@ -131,5 +175,6 @@
       <p class="dashboard-message error" *ngIf="freezeError()">{{ freezeError() }}</p>
     </aside>
   </div>
+
 </div>
 </main>

@@ -59,7 +59,7 @@ public class SecurityConfig {
                         // Admin endpoints - ADMIN role only
                         .requestMatchers("/admin/**", "/api/admin/**").hasAuthority("ROLE_ADMIN")
                         
-                        // Analyst endpoints - ANALYST or ADMIN
+                        // Analyst endpoints - ANALYST or ADMIN role
                         .requestMatchers("/analyst/**").hasAnyRole("ANALYST", "ADMIN")
                         
                         // Live market quotes over websockets -public, same as /api/market
