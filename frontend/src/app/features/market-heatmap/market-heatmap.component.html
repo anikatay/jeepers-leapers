@@ -4,15 +4,20 @@
       <h1 id="heatmap-title">Market Heatmap</h1>
       <p class="muted">
         US large caps by sector · {{ sizing() === 'rank' ? 'Rank Weighted' : 'Equal Size' }}
-        @if (heatmap(); as data) {
-          · prices as of {{ time(data.asOf) }}
+        @if (updatedAt(); as updated) {
+          · prices as of {{ time(updated) }}
         }
       </p>
     </div>
-    <button type="button" class="ghost" [disabled]="loading()" (click)="load()">
-      <svg class="icon" [class.spin]="loading()" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5" /></svg>
-      Refresh
-    </button>
+    <div class="actions">
+      @if (heatmap()) {
+        <app-connection-status />
+      }
+      <button type="button" class="ghost" [disabled]="loading()" (click)="load()">
+        <svg class="icon" [class.spin]="loading()" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5" /></svg>
+        Refresh
+      </button>
+    </div>
   </header>
 
   <section class="toolbar" aria-label="Heatmap controls">

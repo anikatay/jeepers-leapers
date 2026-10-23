@@ -1,5 +1,6 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, catchError, from, map, mergeMap, of, retry, shareReplay, tap, timer } from 'rxjs';
+import { Observable, catchError, from, map, mergeMap, of, retry, shareReplay, throwError, timer } from 'rxjs';
 import { MarketDataService } from '../../core/services/market-data.service';
 import { PriceBar, QuoteStatus } from '../../core/models/market.model';
 
@@ -9,8 +10,15 @@ export type PerformancePeriod = '1D' | '1W' | '1M';
 // (a weekend plus one market holiday). Larger gaps mean missing history.
 const MAX_SESSION_GAP_DAYS = 4;
 const HISTORY_PERIOD = '3mo';
-const HISTORY_TTL_MS = 30 * 60 * 1000;
+export const HISTORY_TTL_MS = 30 * 60 * 1000;
 const HISTORY_CONCURRENCY = 4;
+// Status 0 is a network error; 503 is also what the backend returns while another request holds its fetch lock.
+const RETRYABLE_STATUS = new Set([0, 429, 502, 503, 504]);
+const RETRY_LIMIT = 3;
+const RETRY_BASE_DELAY_MS = 1000;
+const RETRY_MAX_DELAY_MS = 8000;
+const MAX_RETRY_AFTER_MS = 30_000;
+const FAILURE_TTL_MS = 2 * 60 * 1000;
 
 export interface QuoteInput {
   price: number | null;
@@ -58,10 +66,17 @@ export function sparkline(quote: QuoteInput, bars: PriceBar[] | null | undefined
   return closes.length >= 5 ? [...closes, quote.price] : null;
 }
 
-function shiftDate(date: string, by: { days?: number; months?: number }): string {
-  const value = new Date(`${date}T00:00:00Z`);
-  if (by.months) value.setUTCMonth(value.getUTCMonth() + by.months);
-  if (by.days) value.setUTCDate(value.getUTCDate() + by.days);
+/**
+ * Calendar arithmetic on YYYY-MM-DD dates. Month shifts clamp to the last day of the
+ * target month (Mar 31 − 1 month = Feb 28/29) instead of overflowing into the next one.
+ */
+export function shiftDate(date: string, by: { days?: number; months?: number }): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const months = year * 12 + (month - 1) + (by.months ?? 0);
+  const targetYear = Math.floor(months / 12);
+  const targetMonth = months - targetYear * 12;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const value = new Date(Date.UTC(targetYear, targetMonth, Math.min(day, lastDay) + (by.days ?? 0)));
   return value.toISOString().slice(0, 10);
 }
 
@@ -69,10 +84,38 @@ function daysBetween(from: string, to: string): number {
   return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
 }
 
+/**
+ * Delay before retrying a failed history request, or null when the failure is not transient
+ * (e.g. 404 for a ticker without data) or the server asks for a longer wait than we will hold a slot for.
+ * 503 covers the backend's per-ticker fetch lock and upstream Yahoo failures.
+ */
+export function retryDelay(error: unknown, attempt: number, random: () => number = Math.random): number | null {
+  if (!(error instanceof HttpErrorResponse) || !RETRYABLE_STATUS.has(error.status)) return null;
+  const retryAfter = parseRetryAfter(error.headers?.get('Retry-After'));
+  if (retryAfter !== null) return retryAfter <= MAX_RETRY_AFTER_MS ? retryAfter : null;
+  const ceiling = Math.min(RETRY_MAX_DELAY_MS, RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
+  return Math.round(ceiling / 2 + random() * (ceiling / 2));
+}
+
+/** Retry-After as milliseconds; accepts delta-seconds or an HTTP date. */
+export function parseRetryAfter(value: string | null | undefined, now = Date.now()): number | null {
+  if (!value?.trim()) return null;
+  if (/^\d+$/.test(value.trim())) return Number(value.trim()) * 1000;
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? null : Math.max(0, date - now);
+}
+
+/** How long a failed history stays cached before it may be requested again. */
+function failureTtl(error: unknown): number {
+  if (error instanceof HttpErrorResponse && error.status === 404) return HISTORY_TTL_MS;
+  const retryAfter = error instanceof HttpErrorResponse ? parseRetryAfter(error.headers?.get('Retry-After')) : null;
+  return Math.max(FAILURE_TTL_MS, retryAfter ?? 0);
+}
+
 /** Shared, short-lived cache of daily history so revisits and refreshes do not refetch every ticker. */
 @Injectable({ providedIn: 'root' })
 export class HeatmapHistoryCache {
-  private readonly entries = new Map<string, { loadedAt: number; bars$: Observable<PriceBar[] | null> }>();
+  private readonly entries = new Map<string, { expiresAt: number; bars$: Observable<PriceBar[] | null> }>();
 
   constructor(private market: MarketDataService) {}
 
@@ -85,18 +128,28 @@ export class HeatmapHistoryCache {
 
   private history(ticker: string): Observable<PriceBar[] | null> {
     const cached = this.entries.get(ticker);
-    if (cached && Date.now() - cached.loadedAt < HISTORY_TTL_MS) return cached.bars$;
+    if (cached && Date.now() < cached.expiresAt) return cached.bars$;
 
-    const bars$ = this.market.getHistory(ticker, HISTORY_PERIOD).pipe(
-      map(response => response.bars ?? []),
-      retry({ count: 1, delay: () => timer(1500) }),
-      catchError(() => of(null)),
-      tap(bars => {
-        if (bars === null) this.entries.delete(ticker);
+    const entry = { expiresAt: Date.now() + HISTORY_TTL_MS, bars$: of<PriceBar[] | null>(null) };
+    entry.bars$ = this.market.getHistory(ticker, HISTORY_PERIOD).pipe(
+      retry({
+        count: RETRY_LIMIT,
+        delay: (error, attempt) => {
+          const wait = retryDelay(error, attempt);
+          return wait === null ? throwError(() => error) : timer(wait);
+        }
+      }),
+      map(response => {
+        entry.expiresAt = Date.now() + HISTORY_TTL_MS;
+        return response.bars ?? [];
+      }),
+      catchError(error => {
+        entry.expiresAt = Date.now() + failureTtl(error);
+        return of(null);
       }),
       shareReplay(1)
     );
-    this.entries.set(ticker, { loadedAt: Date.now(), bars$ });
-    return bars$;
+    this.entries.set(ticker, entry);
+    return entry.bars$;
   }
 }

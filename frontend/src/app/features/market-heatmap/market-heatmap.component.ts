@@ -1,18 +1,23 @@
 import { AfterViewInit, Component, DestroyRef, ElementRef, HostListener, computed, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Subscription, bufferTime, filter, interval } from 'rxjs';
+import { ConnectionStatusComponent } from '../../shared/components/connection.status.component';
 import { MarketDataService } from '../../core/services/market-data.service';
-import { MarketHeatmapResponse, MarketHeatmapTicker, PriceBar } from '../../core/models/market.model';
-import { HeatmapHistoryCache, PerformancePeriod, percentChange, sparkline } from './market-performance';
-import { Placed, Rect, squarify } from './treemap';
+import { MarketQuoteService } from '../../core/services/market-quote.service';
+import { MarketHeatmapResponse, MarketHeatmapSector, MarketHeatmapTicker, MarketQuote, PriceBar } from '../../core/models/market.model';
+import { HISTORY_TTL_MS, HeatmapHistoryCache, PerformancePeriod, percentChange, sparkline } from './market-performance';
+import { Rect, squarify } from './treemap';
 
 type Sizing = 'rank' | 'equal';
+type LiveQuote = Pick<MarketHeatmapTicker, 'price' | 'quoteTime' | 'receivedTime' | 'source' | 'status'>;
 
 interface Stock extends MarketHeatmapTicker {
   sectorId: string;
   sectorName: string;
   sectorSize: number;
+  /** Snapshot price used to size tile text, so live ticks do not reflow labels. */
+  layoutPrice: number | null;
   change: number | null;
   spark: number[] | null;
   historyState: 'pending' | 'ready' | 'failed';
@@ -23,6 +28,10 @@ interface TileText {
   detail: number;
   showPrice: boolean;
   showChange: boolean;
+}
+
+interface Cell extends Rect {
+  ticker: string;
 }
 
 interface Tile extends Rect {
@@ -47,13 +56,16 @@ const PANEL_WIDTH = 340;
 const PANEL_HEIGHT = 500;
 // Percent move that reaches full color intensity for each period.
 const COLOR_CAP: Record<PerformancePeriod, number> = { '1D': 3, '1W': 6, '1M': 10 };
+// Widest expected change label; fitting against it keeps tiles from switching layout as values change.
+const CHANGE_TEMPLATE = '+00.00%';
+const QUOTE_FLUSH_MS = 500;
 
 const price = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 @Component({
   selector: 'app-market-heatmap',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ConnectionStatusComponent],
   templateUrl: './market-heatmap.component.html',
   styleUrl: './market-heatmap.component.css'
 })
@@ -64,33 +76,47 @@ export class MarketHeatmapComponent implements AfterViewInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly histories = signal(new Map<string, PriceBar[] | null>());
+  readonly live = signal(new Map<string, LiveQuote>());
+  readonly lastLive = signal<string | null>(null);
   readonly period = signal<PerformancePeriod>('1D');
   readonly sizing = signal<Sizing>('rank');
   readonly sectorId = signal('ALL');
   readonly query = signal('');
   readonly width = signal(0);
+  readonly viewport = signal({ width: window.innerWidth, height: window.innerHeight });
   readonly active = signal<Active | null>(null);
   readonly pinned = signal(false);
 
   private historySub?: Subscription;
+  private subscribed = new Set<string>();
 
   readonly sectors = computed(() => this.heatmap()?.sectors ?? []);
 
   readonly stocks = computed<Stock[]>(() => {
     const histories = this.histories();
+    const live = this.live();
     const period = this.period();
-    return this.sectors().flatMap(sector => sector.tickers.map(ticker => {
+    return this.sectors().flatMap(sector => sector.tickers.map(base => {
+      const ticker = newest(base, live.get(base.ticker));
       const bars = histories.get(ticker.ticker);
       return {
         ...ticker,
         sectorId: sector.id,
         sectorName: sector.name,
         sectorSize: sector.tickers.length,
+        layoutPrice: base.price ?? ticker.price,
         change: percentChange(ticker, bars, period),
         spark: sparkline(ticker, bars),
         historyState: !histories.has(ticker.ticker) ? 'pending' : bars ? 'ready' : 'failed'
       } satisfies Stock;
     }));
+  });
+
+  readonly updatedAt = computed(() => {
+    const asOf = this.heatmap()?.asOf ?? null;
+    const live = this.lastLive();
+    if (!asOf || !live) return asOf ?? live;
+    return Date.parse(live) > Date.parse(asOf) ? live : asOf;
   });
 
   readonly coverage = computed(() => {
@@ -114,23 +140,20 @@ export class MarketHeatmapComponent implements AfterViewInit {
     return Math.round(Math.min(820, Math.max(440, width * (single ? 0.45 : 0.58))));
   });
 
-  readonly layout = computed(() => {
+  /** Tile positions depend only on sectors, ranks, sizing and size, never on prices. */
+  readonly geometry = computed(() => {
     const width = this.width();
     const height = this.height();
-    const period = this.period();
+    const sectorId = this.sectorId();
     const weight = (rank: number) => (this.sizing() === 'rank' ? rank ** -0.75 : 1);
-    const groups = new Map<string, Stock[]>();
-    for (const stock of this.stocks()) {
-      if (this.sectorId() !== 'ALL' && stock.sectorId !== this.sectorId()) continue;
-      groups.set(stock.sectorId, [...(groups.get(stock.sectorId) ?? []), stock]);
-    }
+    const sectors = this.sectors().filter(sector => sector.tickers.length && (sectorId === 'ALL' || sector.id === sectorId));
 
-    const placedSectors = squarify(
-      [...groups.values()].map(stocks => ({ data: stocks, value: stocks.reduce((sum, stock) => sum + weight(stock.rank), 0) })),
+    const placedSectors = squarify<MarketHeatmapSector>(
+      sectors.map(sector => ({ data: sector, value: sector.tickers.reduce((sum, ticker) => sum + weight(ticker.rank), 0) })),
       { x: 0, y: 0, w: width, h: height }
     );
 
-    return placedSectors.map(({ data: stocks, ...outer }) => {
+    return placedSectors.map(({ data: sector, ...outer }) => {
       const rect = snap(inset(outer, SECTOR_GAP / 2));
       // Body starts one divider in from the sector outline; each tile gives up one divider on its right and bottom.
       const body = {
@@ -139,10 +162,25 @@ export class MarketHeatmapComponent implements AfterViewInit {
         w: Math.max(0, rect.w - TILE_GAP),
         h: Math.max(0, rect.h - SECTOR_HEADER)
       };
-      const tiles = squarify(stocks.map(stock => ({ data: stock, value: weight(stock.rank) })), body)
-        .map(placed => this.tile(placed, period));
-      return { id: stocks[0].sectorId, name: stocks[0].sectorName, rect, tiles };
+      const cells: Cell[] = squarify(sector.tickers.map(ticker => ({ data: ticker.ticker, value: weight(ticker.rank) })), body)
+        .map(({ data, ...placed }) => {
+          const cell = snap(placed);
+          return { ticker: data, ...cell, w: Math.max(0, cell.w - TILE_GAP), h: Math.max(0, cell.h - TILE_GAP) };
+        });
+      return { id: sector.id, name: sector.name, rect, cells };
     });
+  });
+
+  readonly layout = computed(() => {
+    const period = this.period();
+    const stocks = new Map(this.stocks().map(stock => [stock.ticker, stock]));
+    return this.geometry().map(({ cells, ...sector }) => ({
+      ...sector,
+      tiles: cells.flatMap(cell => {
+        const stock = stocks.get(cell.ticker);
+        return stock ? [this.tile(cell, stock, period)] : [];
+      })
+    }));
   });
 
   readonly legend = computed(() => {
@@ -163,8 +201,7 @@ export class MarketHeatmapComponent implements AfterViewInit {
   readonly panelPosition = computed(() => {
     const active = this.active();
     if (!active) return null;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const { width: vw, height: vh } = this.viewport();
     const width = Math.min(PANEL_WIDTH, vw - 16);
     const right = active.x + 18;
     const left = right + width <= vw - 8 ? right : active.x - 18 - width;
@@ -177,11 +214,22 @@ export class MarketHeatmapComponent implements AfterViewInit {
 
   constructor(
     private market: MarketDataService,
+    private quotes: MarketQuoteService,
     private historyCache: HeatmapHistoryCache,
     private destroyRef: DestroyRef,
     private host: ElementRef<HTMLElement>
   ) {
+    this.watchQuotes();
     this.load();
+
+    interval(HISTORY_TTL_MS + 60_000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.subscribed.size) this.loadHistories([...this.subscribed], true);
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.subscribed.forEach(ticker => this.quotes.unsubscribe(ticker, this));
+      this.subscribed.clear();
+    });
   }
 
   ngAfterViewInit(): void {
@@ -197,13 +245,20 @@ export class MarketHeatmapComponent implements AfterViewInit {
       next: heatmap => {
         this.heatmap.set(heatmap);
         this.loading.set(false);
-        this.loadHistories(heatmap.sectors.flatMap(sector => sector.tickers.map(ticker => ticker.ticker)));
+        const tickers = tickersOf(heatmap);
+        this.syncSubscriptions(tickers);
+        this.loadHistories(tickers);
       },
       error: () => {
         this.loading.set(false);
         this.error.set('Market data could not be loaded. The market service may be unavailable.');
       }
     });
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.viewport.set({ width: window.innerWidth, height: window.innerHeight });
   }
 
   @HostListener('document:click', ['$event'])
@@ -276,21 +331,102 @@ export class MarketHeatmapComponent implements AfterViewInit {
     return values.map((value, i) => `${((i / (values.length - 1)) * 100).toFixed(2)},${(26 - ((value - min) / span) * 24).toFixed(2)}`).join(' ');
   }
 
-  private loadHistories(tickers: string[]): void {
+  private watchQuotes(): void {
+    this.quotes.quotes$.pipe(
+      filter(quote => this.subscribed.has(quote.ticker)),
+      bufferTime(QUOTE_FLUSH_MS),
+      filter(batch => batch.length > 0),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(batch => this.applyQuotes(batch));
+
+    // Quotes sent while the socket was down are lost; re-read the cached snapshot once it is back.
+    let dropped = false;
+    toObservable(this.quotes.status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(status => {
+      if (status === 'reconnecting') dropped = true;
+      if (status === 'connected' && dropped) {
+        dropped = false;
+        this.syncSnapshot();
+      }
+    });
+  }
+
+  private applyQuotes(batch: MarketQuote[]): void {
+    const next = new Map(this.live());
+    let latest = this.lastLive();
+    for (const quote of batch) {
+      const time = quote.quoteTime ? Date.parse(quote.quoteTime) : NaN;
+      if (!Number.isFinite(quote.price) || quote.price <= 0 || Number.isNaN(time)) continue;
+      const current = next.get(quote.ticker);
+      if (current?.quoteTime && Date.parse(current.quoteTime) > time) continue;
+      next.set(quote.ticker, {
+        price: quote.price,
+        quoteTime: quote.quoteTime,
+        receivedTime: quote.receivedTime ?? null,
+        source: quote.source ?? null,
+        status: quote.status ?? 'LIVE'
+      });
+      const received = quote.receivedTime ?? quote.quoteTime;
+      if (!latest || Date.parse(received) > Date.parse(latest)) latest = received;
+    }
+    this.live.set(next);
+    this.lastLive.set(latest);
+  }
+
+  private syncSnapshot(): void {
+    this.market.getHeatmap().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: heatmap => {
+        this.heatmap.set(heatmap);
+        const tickers = tickersOf(heatmap);
+        this.syncSubscriptions(tickers);
+        const missing = tickers.filter(ticker => !this.histories().has(ticker));
+        if (missing.length) this.loadHistories(missing, true);
+      },
+      error: () => {}
+    });
+  }
+
+  /** Holds exactly one claim per heatmap ticker on the shared quote socket. */
+  private syncSubscriptions(tickers: string[]): void {
+    const next = new Set(tickers);
+    this.subscribed.forEach(ticker => {
+      if (!next.has(ticker)) this.quotes.unsubscribe(ticker, this);
+    });
+    next.forEach(ticker => {
+      if (!this.subscribed.has(ticker)) this.quotes.subscribe(ticker, this);
+    });
+    this.subscribed = next;
+  }
+
+  /** `keep` refreshes in place: existing bars stay visible and are not replaced by a failed refetch. */
+  private loadHistories(tickers: string[], keep = false): void {
     this.historySub?.unsubscribe();
-    this.histories.set(new Map());
+    if (!keep) this.histories.set(new Map());
     this.historySub = this.historyCache.load(tickers).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(([ticker, bars]) =>
-      this.histories.update(current => new Map(current).set(ticker, bars))
+      this.histories.update(current => {
+        const existing = current.get(ticker);
+        if (existing === bars || (bars === null && existing)) return current;
+        return new Map(current).set(ticker, bars);
+      })
     );
   }
 
-  private tile(placed: Placed<Stock>, period: PerformancePeriod): Tile {
-    const cell = snap(placed);
-    const rect = { ...cell, w: Math.max(0, cell.w - TILE_GAP), h: Math.max(0, cell.h - TILE_GAP) };
-    const stock = placed.data;
-    const text = fitText(stock.ticker, this.price(stock.price), this.change(stock.change), stock.price !== null, rect);
-    return { ...rect, stock, text, ...tone(stock.change, period) };
+  private tile(cell: Cell, stock: Stock, period: PerformancePeriod): Tile {
+    // Size text for a slightly larger price than the snapshot so ordinary live moves never change the layout.
+    const priceTemplate = stock.layoutPrice === null ? '' : this.price(stock.layoutPrice * 1.1);
+    const text = fitText(stock.ticker, priceTemplate, CHANGE_TEMPLATE, stock.layoutPrice !== null, cell);
+    return { x: cell.x, y: cell.y, w: cell.w, h: cell.h, stock, text, ...tone(stock.change, period) };
   }
+}
+
+function tickersOf(heatmap: MarketHeatmapResponse): string[] {
+  return heatmap.sectors.flatMap(sector => sector.tickers.map(ticker => ticker.ticker));
+}
+
+/** The snapshot ticker with a live quote applied, when that quote is at least as recent. */
+function newest(base: MarketHeatmapTicker, live: LiveQuote | undefined): MarketHeatmapTicker {
+  if (!live?.quoteTime) return base;
+  if (base.quoteTime && Date.parse(base.quoteTime) > Date.parse(live.quoteTime)) return base;
+  return { ...base, ...live };
 }
 
 function inset(rect: Rect, by: number): Rect {

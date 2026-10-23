@@ -2,13 +2,17 @@ import { Injectable, signal, computed } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import { MarketQuote } from '../models/market.model';
 
+/** Owner used by callers that do not pass one; they share a single claim per ticker. */
+const SHARED_OWNER = 'shared';
+
 @Injectable({
   providedIn: 'root'
 })
 export class MarketQuoteService {
   private socket: WebSocket | null = null;
   private readonly quotesSubject = new Subject<MarketQuote>();
-  private readonly subscribedTickers = new Set<string>();
+  // A ticker stays subscribed on the socket until every owner has released it.
+  private readonly owners = new Map<string, Set<object | string>>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly quotes$: Observable<MarketQuote> = this.quotesSubject.asObservable();
@@ -31,7 +35,7 @@ export class MarketQuoteService {
     this.socket.onopen = () => {
       this.connected.set(true);
       this.reconnecting.set(false);
-      this.subscribedTickers.forEach((ticker) => this.send('SUBSCRIBE', ticker));
+      this.owners.forEach((_, ticker) => this.send('SUBSCRIBE', ticker));
     };
 
     this.socket.onmessage = (event) => {
@@ -44,7 +48,7 @@ export class MarketQuoteService {
     this.socket.onclose = () => {
       this.connected.set(false);
       this.socket = null;
-      if (this.subscribedTickers.size > 0 && !this.reconnectTimer) {
+      if (this.owners.size > 0 && !this.reconnectTimer) {
         this.reconnecting.set(true);
         this.reconnectTimer = setTimeout(() => {
           this.reconnectTimer = null;
@@ -60,21 +64,27 @@ export class MarketQuoteService {
     };
   }
 
-  subscribe(ticker: string): void {
+  subscribe(ticker: string, owner: object | string = SHARED_OWNER): void {
     const normalizedTicker = ticker.trim().toUpperCase();
-    this.subscribedTickers.add(normalizedTicker);
+    const owners = this.owners.get(normalizedTicker) ?? new Set<object | string>();
+    owners.add(owner);
+    this.owners.set(normalizedTicker, owners);
     this.connect();
     this.send('SUBSCRIBE', normalizedTicker);
   }
 
-  unsubscribe(ticker: string): void {
+  unsubscribe(ticker: string, owner: object | string = SHARED_OWNER): void {
     const normalizedTicker = ticker.trim().toUpperCase();
-    this.subscribedTickers.delete(normalizedTicker);
+    const owners = this.owners.get(normalizedTicker);
+    if (!owners?.delete(owner) || owners.size > 0) {
+      return;
+    }
+    this.owners.delete(normalizedTicker);
     this.send('UNSUBSCRIBE', normalizedTicker);
   }
 
   disconnect(): void {
-    this.subscribedTickers.clear();
+    this.owners.clear();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;

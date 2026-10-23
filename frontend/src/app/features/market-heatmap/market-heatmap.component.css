@@ -3,8 +3,8 @@
   --hm-down: #e26464;
   --hm-flat: #e5e8ed;
   --hm-na: #dadee4;
-  --hm-gap: #ffffff;
-  --hm-edge: rgb(15 23 42 / 0.1);
+  --hm-gap: var(--card);
+  --hm-edge: rgb(15 23 42 / 0.14);
   --hm-sector-line: rgb(15 23 42 / 0.28);
   --hm-text: #12202c;
   --hm-text-strong: #0b1a12;
@@ -23,7 +23,7 @@
   --hm-down: #f63538;
   --hm-flat: #414554;
   --hm-na: #2b2f3a;
-  --hm-gap: #0f1115;
+  --hm-gap: color-mix(in srgb, var(--card) 70%, #000);
   --hm-edge: rgb(0 0 0 / 0.22);
   --hm-sector-line: rgb(255 255 255 / 0.16);
   --hm-text: #ffffff;
@@ -49,6 +49,7 @@
 .page *::after { box-sizing: border-box; }
 
 .head { align-items: flex-end; display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; }
+.actions { align-items: center; display: flex; flex-wrap: wrap; gap: 0.75rem; }
 h1 { font-family: "DM Sans", sans-serif; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
 .muted { color: var(--text-2); font-size: 0.8rem; margin: 0.25rem 0 0; }
 .num { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
