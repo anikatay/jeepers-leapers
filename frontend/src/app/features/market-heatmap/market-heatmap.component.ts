@@ -8,7 +8,6 @@ import { HeatmapHistoryCache, PerformancePeriod, percentChange, sparkline } from
 import { Placed, Rect, squarify } from './treemap';
 
 type Sizing = 'rank' | 'equal';
-type TileSize = 'lg' | 'md' | 'sm' | 'xs';
 
 interface Stock extends MarketHeatmapTicker {
   sectorId: string;
@@ -19,10 +18,16 @@ interface Stock extends MarketHeatmapTicker {
   historyState: 'pending' | 'ready' | 'failed';
 }
 
+interface TileText {
+  ticker: number;
+  detail: number;
+  showPrice: boolean;
+  showChange: boolean;
+}
+
 interface Tile extends Rect {
   stock: Stock;
-  size: TileSize;
-  font: number;
+  text: TileText | null;
   background: string;
   strong: boolean;
 }
@@ -34,8 +39,10 @@ interface Active {
 }
 
 const SECTOR_HEADER = 20;
-const SECTOR_GAP = 4;
+const SECTOR_GAP = 6;
+// Divider between neighbouring tiles; tile edges are snapped to whole pixels so every divider is crisp.
 const TILE_GAP = 1;
+const TILE_PADDING = 6;
 const PANEL_WIDTH = 340;
 const PANEL_HEIGHT = 500;
 // Percent move that reaches full color intensity for each period.
@@ -124,8 +131,14 @@ export class MarketHeatmapComponent implements AfterViewInit {
     );
 
     return placedSectors.map(({ data: stocks, ...outer }) => {
-      const rect = inset(outer, SECTOR_GAP / 2);
-      const body = { x: rect.x, y: rect.y + SECTOR_HEADER, w: rect.w, h: Math.max(0, rect.h - SECTOR_HEADER) };
+      const rect = snap(inset(outer, SECTOR_GAP / 2));
+      // Body starts one divider in from the sector outline; each tile gives up one divider on its right and bottom.
+      const body = {
+        x: rect.x + TILE_GAP,
+        y: rect.y + SECTOR_HEADER,
+        w: Math.max(0, rect.w - TILE_GAP),
+        h: Math.max(0, rect.h - SECTOR_HEADER)
+      };
       const tiles = squarify(stocks.map(stock => ({ data: stock, value: weight(stock.rank) })), body)
         .map(placed => this.tile(placed, period));
       return { id: stocks[0].sectorId, name: stocks[0].sectorName, rect, tiles };
@@ -272,15 +285,49 @@ export class MarketHeatmapComponent implements AfterViewInit {
   }
 
   private tile(placed: Placed<Stock>, period: PerformancePeriod): Tile {
-    const rect = inset(placed, TILE_GAP / 2);
-    const size: TileSize = rect.w >= 120 && rect.h >= 78 ? 'lg' : rect.w >= 62 && rect.h >= 40 ? 'md' : rect.w >= 34 && rect.h >= 18 ? 'sm' : 'xs';
-    const font = size === 'lg' ? Math.round(Math.min(34, Math.max(15, Math.min(rect.w / 4.6, rect.h / 3.4)))) : size === 'md' ? 13 : 11;
-    return { ...rect, stock: placed.data, size, font, ...tone(placed.data.change, period) };
+    const cell = snap(placed);
+    const rect = { ...cell, w: Math.max(0, cell.w - TILE_GAP), h: Math.max(0, cell.h - TILE_GAP) };
+    const stock = placed.data;
+    const text = fitText(stock.ticker, this.price(stock.price), this.change(stock.change), stock.price !== null, rect);
+    return { ...rect, stock, text, ...tone(stock.change, period) };
   }
 }
 
 function inset(rect: Rect, by: number): Rect {
   return { x: rect.x + by, y: rect.y + by, w: Math.max(0, rect.w - by * 2), h: Math.max(0, rect.h - by * 2) };
+}
+
+/** Rounds each edge (not the size) so neighbouring rectangles keep sharing exact pixel edges. */
+function snap(rect: Rect): Rect {
+  const x = Math.round(rect.x);
+  const y = Math.round(rect.y);
+  return { x, y, w: Math.round(rect.x + rect.w) - x, h: Math.round(rect.y + rect.h) - y };
+}
+
+/**
+ * Picks the richest content that fits the tile: ticker + price + change, then ticker + change,
+ * then ticker only. Font sizes derive from the tile's own width and height.
+ */
+function fitText(ticker: string, priceText: string, changeText: string, hasPrice: boolean, rect: Rect): TileText | null {
+  const width = rect.w - TILE_PADDING;
+  const height = rect.h - TILE_PADDING;
+  // Approximate advance widths in em: bold sans capitals and monospace digits.
+  const tickerEm = ticker.length * 0.68 + 0.1;
+  const monoEm = 0.61;
+
+  for (const lines of hasPrice ? [3, 2, 1] : [2, 1]) {
+    const showChange = lines >= 2;
+    const showPrice = lines === 3;
+    const ratio = showPrice ? 0.42 : 0.48;
+    const tickerFont = Math.min(36, width / tickerEm, height / (1.12 + (lines - 1) * ratio * 1.3));
+    const detail = Math.min(15, Math.max(10, tickerFont * ratio));
+    const needed = tickerFont * 1.12 + (lines - 1) * detail * 1.3;
+    const detailWidth = Math.max(showPrice ? priceText.length : 0, showChange ? changeText.length : 0) * monoEm * detail;
+
+    if (tickerFont < (lines === 1 ? 8 : 11) || needed > height || detailWidth > width) continue;
+    return { ticker: Math.floor(tickerFont), detail: Math.floor(detail), showPrice, showChange };
+  }
+  return null;
 }
 
 function tone(change: number | null, period: PerformancePeriod): { background: string; strong: boolean } {

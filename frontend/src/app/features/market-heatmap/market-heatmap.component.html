@@ -50,10 +50,11 @@
     } @else {
       <div class="canvas" [style.height.px]="height()" (mouseleave)="leave()">
         @for (sector of layout(); track sector.id) {
-          <div class="sector-head" [style.left.px]="sector.rect.x" [style.top.px]="sector.rect.y" [style.width.px]="sector.rect.w">{{ sector.name }}</div>
+          <div class="sector" [style.left.px]="sector.rect.x" [style.top.px]="sector.rect.y" [style.width.px]="sector.rect.w" [style.height.px]="sector.rect.h">
+            <span class="sector-head">{{ sector.name }}</span>
+          </div>
           @for (tile of sector.tiles; track tile.stock.ticker) {
             <button type="button" class="tile"
-                    [class]="'tile ' + tile.size"
                     [class.strong]="tile.strong"
                     [class.dim]="dimmed(tile.stock.ticker)"
                     [class.na]="tile.stock.change === null"
@@ -66,14 +67,14 @@
                     (focus)="focus($event, tile.stock.ticker)"
                     (blur)="leave()"
                     (click)="pin($event, tile.stock.ticker)">
-              @if (tile.size !== 'xs') {
-                <b [style.font-size.px]="tile.font">{{ tile.stock.ticker }}</b>
-              }
-              @if (tile.size === 'lg') {
-                <span class="price">{{ price(tile.stock.price) }}</span>
-              }
-              @if (tile.size === 'lg' || tile.size === 'md') {
-                <span class="pct">{{ change(tile.stock.change) }}</span>
+              @if (tile.text; as text) {
+                <b [style.font-size.px]="text.ticker">{{ tile.stock.ticker }}</b>
+                @if (text.showPrice) {
+                  <span class="price" [style.font-size.px]="text.detail">{{ price(tile.stock.price) }}</span>
+                }
+                @if (text.showChange) {
+                  <span class="pct" [style.font-size.px]="text.detail">{{ change(tile.stock.change) }}</span>
+                }
               }
             </button>
           }

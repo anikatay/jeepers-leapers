@@ -1,12 +1,15 @@
 :host {
-  --hm-up: #1e9e55;
-  --hm-down: #d64545;
-  --hm-flat: #e4e7ec;
-  --hm-na: #d5d9e0;
-  --hm-gap: var(--card);
-  --hm-text: #1f2933;
-  --hm-text-strong: #ffffff;
-  --hm-head: color-mix(in srgb, var(--foreground) 70%, var(--card));
+  --hm-up: #4fb477;
+  --hm-down: #e26464;
+  --hm-flat: #e5e8ed;
+  --hm-na: #dadee4;
+  --hm-gap: #ffffff;
+  --hm-edge: rgb(15 23 42 / 0.1);
+  --hm-sector-line: rgb(15 23 42 / 0.28);
+  --hm-text: #12202c;
+  --hm-text-strong: #0b1a12;
+  --hm-text-shadow: none;
+  --hm-head: color-mix(in srgb, var(--foreground) 75%, var(--card));
   --up: #15803d;
   --down: #dc2626;
   --text-2: color-mix(in srgb, var(--foreground) 60%, var(--card));
@@ -20,8 +23,12 @@
   --hm-down: #f63538;
   --hm-flat: #414554;
   --hm-na: #2b2f3a;
-  --hm-gap: #14161c;
+  --hm-gap: #0f1115;
+  --hm-edge: rgb(0 0 0 / 0.22);
+  --hm-sector-line: rgb(255 255 255 / 0.16);
   --hm-text: #ffffff;
+  --hm-text-strong: #ffffff;
+  --hm-text-shadow: 0 1px 1px rgb(0 0 0 / 0.35);
   --hm-head: #c9ced8;
   --up: #4ade80;
   --down: #f87171;
@@ -133,16 +140,23 @@ h1 { font-family: "DM Sans", sans-serif; font-size: 1.75rem; font-weight: 700; l
 
 .canvas { position: relative; }
 
+.sector {
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--hm-sector-line);
+  pointer-events: none;
+  position: absolute;
+}
+
 .sector-head {
   color: var(--hm-head);
+  display: block;
   font-size: 0.68rem;
   font-weight: 700;
   height: 20px;
   letter-spacing: 0.06em;
   line-height: 20px;
   overflow: hidden;
-  padding: 0 0.3rem;
-  position: absolute;
+  padding: 0 0.35rem;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -152,31 +166,35 @@ h1 { font-family: "DM Sans", sans-serif; font-size: 1.75rem; font-weight: 700; l
   align-content: center;
   animation: fade 0.35s ease-out both;
   border: 0;
-  border-radius: 2px;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px var(--hm-edge);
   color: var(--hm-text);
   cursor: pointer;
   display: grid;
   font: inherit;
   justify-items: center;
-  line-height: 1.15;
   overflow: hidden;
-  padding: 2px;
+  padding: 3px;
   position: absolute;
   text-align: center;
+  text-shadow: var(--hm-text-shadow);
   transition: filter 0.12s, opacity 0.15s, box-shadow 0.12s;
 }
 
 .tile.strong { color: var(--hm-text-strong); }
 .tile:hover,
-.tile.active { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--hm-text-strong) 85%, transparent), 0 0 0 1px rgb(0 0 0 / 0.35); filter: brightness(1.08); z-index: 1; }
+.tile.active { box-shadow: inset 0 0 0 2px var(--hm-text), 0 0 0 1px var(--hm-gap); filter: brightness(1.06); z-index: 1; }
 .tile.dim { opacity: 0.22; }
 .tile.na { background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgb(127 127 127 / 0.08) 6px 12px); }
 
-.tile b { font-family: "DM Sans", sans-serif; font-weight: 700; letter-spacing: -0.01em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.tile b,
+.tile span { max-width: 100%; overflow: hidden; white-space: nowrap; }
+.tile b { font-family: "DM Sans", sans-serif; font-weight: 700; letter-spacing: -0.01em; line-height: 1.12; }
 .tile .price,
-.tile .pct { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.72rem; font-variant-numeric: tabular-nums; opacity: 0.92; }
-.tile.lg .pct { font-size: 0.85rem; font-weight: 600; }
-.tile.na .pct { opacity: 0.7; }
+.tile .pct { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.tile .price { opacity: 0.88; }
+.tile .pct { font-weight: 600; }
+.tile.na .pct { font-weight: 500; opacity: 0.7; }
 
 .state {
   align-items: center;
