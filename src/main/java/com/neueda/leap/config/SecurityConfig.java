@@ -4,15 +4,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Base64;
 import com.neueda.leap.util.JwtSecret;
 import java.util.Base64;
 
@@ -35,6 +36,17 @@ public class SecurityConfig {
     }
 
     @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        authoritiesConverter.setAuthoritiesClaimName("role");
+        authoritiesConverter.setAuthorityPrefix("");
+
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+        return converter;
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
@@ -45,15 +57,21 @@ public class SecurityConfig {
                         .requestMatchers("/public/**").permitAll()
                         
                         // Admin endpoints - ADMIN role only
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/**", "/api/admin/**").hasAuthority("ROLE_ADMIN")
                         
-                        // Analyst endpoints - ANALYST or ADMIN
+                        // Analyst endpoints - ANALYST or ADMIN role
                         .requestMatchers("/analyst/**").hasAnyRole("ANALYST", "ADMIN")
                         
                         // Live market quotes over websockets -public, same as /api/market
                         .requestMatchers("/ws/**").permitAll()
 
                         .requestMatchers("/internal/**").permitAll()
+
+                        // Administrative list and mutation operations.
+                        .requestMatchers(HttpMethod.GET, "/api/users", "/api/accounts/active").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/users", "/api/instruments", "/api/exchanges").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/instruments/*/price", "/api/exchanges/*").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/exchanges/*").hasAuthority("ROLE_ADMIN")
 
                         // Portfolio endpoints - authenticated users (CLIENT, ANALYST, ADMIN)
                         .requestMatchers("/api/holdings/**").authenticated()
@@ -64,7 +82,8 @@ public class SecurityConfig {
                         
                         // Everything else requires authentication
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->
+                    jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         
         return http.build();
     }

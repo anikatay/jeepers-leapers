@@ -4,6 +4,8 @@ import { Register } from './register/register';
 import { CLIENT_ROUTES } from './features/client/client.routes';
 import { ADMIN_ROUTES } from './features/admin/admin.routes';
 import { ANALYST_ROUTES } from './features/analyst/analyst.routes';
+import { adminGuard } from './core/guards/admin.guard';
+import { analystGuard } from './core/guards/analyst.guard';
 
 export const routes: Routes = [
   {
@@ -25,10 +27,12 @@ export const routes: Routes = [
   },
   {
     path: 'admin',
+    canActivate: [adminGuard],
     children: ADMIN_ROUTES
   },
   {
     path: 'analyst',
+    canActivate: [analystGuard],
     children: ANALYST_ROUTES
   },
   {

@@ -39,8 +39,13 @@ public class AuthController {
         User user = authService.login(request.email(), request.password());
         UUID accountId = accountService.getAccountIdByUserId(user.getUserId());
 
-        String token = jwtUtil.generateToken(request.email(), user.getRole(), user.getUserId(), accountId);
+        if ("ROLE_CUSTOMER".equals(user.getRole())) {
+            accountId = accountService.getAccountIdByUserId(user.getUserId()); // accountId must exist
+        } else {
+            accountId = accountService.findAccountIdByUserId(user.getUserId()); // staff: may be null
+        }
 
+        String token = jwtUtil.generateToken(request.email(), user.getRole(), user.getUserId(), accountId);
         return ResponseEntity.ok(new AuthResponse(token, user.getUserId(), accountId, user.getRole()));
     }
 

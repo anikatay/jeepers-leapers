@@ -23,7 +23,11 @@ export class Login {
 
     this.authService.login({ email: this.email, password: this.password }).subscribe({
       next: (response) => {
-        const target = response.role === 'ROLE_ADMIN' ? '/admin' : '/client';
+        const target = response.role === 'ROLE_ADMIN'
+          ? '/admin'
+          : response.role === 'ROLE_ANALYST'
+            ? '/analyst'
+            : '/client';
         this.router.navigateByUrl(target).then(ok => console.log('navigated:', ok));
         console.log(response); // token, userId, role
       },
