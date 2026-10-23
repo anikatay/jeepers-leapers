@@ -3,7 +3,7 @@ import { AppearanceService, TEXT_SIZES, THEMES } from '../../core/services/appea
 
 let nextId = 0;
 
-/** Appearance & Accessibility controls shared by the Client settings dialog and the Analyst header. */
+/** Appearance & Accessibility options shown in the shared header appearance dropdown. */
 @Component({
   selector: 'app-appearance-settings',
   standalone: true,

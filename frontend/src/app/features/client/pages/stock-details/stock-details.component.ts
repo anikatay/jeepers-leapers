@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, Subscription, catchError, map, shareReplay, throwError } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ExchangeService } from '../../../../core/services/exchange.service';
 import { HoldingService } from '../../../../core/services/holding.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { MarketDataService } from '../../../../core/services/market-data.service';
@@ -68,6 +69,7 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly instrumentService = inject(InstrumentService);
+  private readonly exchangeService = inject(ExchangeService);
   private readonly holdingService = inject(HoldingService);
   private readonly marketDataService = inject(MarketDataService);
   private readonly marketQuoteService = inject(MarketQuoteService);
@@ -86,6 +88,7 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly livePrice = signal<number | null>(null);
   readonly quoteStatus = signal<QuoteStatus | null>(null);
   readonly marketSession = signal<MarketSession | null>(null);
+  readonly exchangeName = signal<string | null>(null);
   readonly previousClose = signal<number | null>(null);
 
   readonly range = signal<ChartRange>('1M');
@@ -119,6 +122,14 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!prev || prev <= 0 || price <= 0) return null;
     const amount = price - prev;
     return { amount, pct: (amount / prev) * 100 };
+  });
+
+  /** e.g. "New York Stock Exchange (NYSE)", or just the instrument's exchange code. */
+  readonly exchangeLabel = computed(() => {
+    const code = this.instrument()?.exchangeId?.trim();
+    if (!code) return null;
+    const name = this.exchangeName()?.trim();
+    return name && name.toUpperCase() !== code.toUpperCase() ? `${name} (${code})` : code;
   });
 
   readonly marketClosedReason = computed(() => {
@@ -257,6 +268,7 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.livePrice.set(null);
     this.quoteStatus.set(null);
     this.marketSession.set(null);
+    this.exchangeName.set(null);
     this.previousClose.set(null);
     this.bars.set([]);
     this.hoverIndex.set(null);
@@ -281,6 +293,14 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
               .watch(instrument.ticker, instrument.exchangeId)
               .subscribe(session => this.marketSession.set(session))
           );
+          if (instrument.exchangeId) {
+            this.tickerSubs.add(
+              this.exchangeService.getExchangeById(instrument.exchangeId).subscribe({
+                next: exchange => this.exchangeName.set(exchange.name),
+                error: () => this.exchangeName.set(null)
+              })
+            );
+          }
           this.loadPreviousClose();
           this.loadRange(this.range());
           this.loadHoldings();

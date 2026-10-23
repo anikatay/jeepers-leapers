@@ -24,32 +24,7 @@
 
     <!-- Right controls: Appearance + Language + Profile -->
     <div class="navbar-controls">
-      <!-- Appearance shortcut: opens Settings → Appearance & Accessibility -->
-      <div class="appearance-container">
-        <button type="button" class="appearance-button" (click)="openSettings()" title="Appearance & Accessibility"
-                aria-label="Appearance and accessibility settings" aria-haspopup="dialog">
-          <!-- Sun/Moon icon -->
-          <svg *ngIf="!appearance.dark()" class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="12" cy="12" r="5"/>
-            <line x1="12" y1="1" x2="12" y2="3"/>
-            <line x1="12" y1="21" x2="12" y2="23"/>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-            <line x1="1" y1="12" x2="3" y2="12"/>
-            <line x1="21" y1="12" x2="23" y2="12"/>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-          </svg>
-          <svg *ngIf="appearance.dark()" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
-          </svg>
-          <!-- Color swatches -->
-          <span class="theme-swatches" aria-hidden="true">
-            <span class="swatch" style="background-color: var(--primary);"></span>
-            <span class="swatch" style="background-color: var(--accent);"></span>
-          </span>
-        </button>
-      </div>
+      <app-appearance-controls />
 
       <!-- Language Dropdown -->
       <div class="language-container" (click)="$event.stopPropagation()">
@@ -98,9 +73,6 @@
         <div class="profile-menu" *ngIf="profileOpen()" (click)="$event.stopPropagation()">
           <button class="menu-item" (click)="selectProfileOption('profile')">
             <span>Profile</span>
-          </button>
-          <button class="menu-item" (click)="selectProfileOption('settings')">
-            <span>Settings</span>
           </button>
           <div class="menu-divider"></div>
           <button class="menu-item logout" (click)="selectProfileOption('logout')">
@@ -157,21 +129,3 @@
     </div>
   </div>
 </header>
-
-<!-- Settings: native modal dialog provides focus trapping, Escape and focus return. -->
-<dialog #settingsDialog class="settings-dialog" aria-labelledby="settings-title" (click)="onSettingsBackdrop($event)">
-  <div class="settings-body">
-    <div class="settings-header">
-      <h2 id="settings-title" class="settings-title font-display">Settings</h2>
-      <button type="button" class="settings-close" aria-label="Close settings" (click)="settingsDialog.close()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M18 6L6 18M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-    <section aria-labelledby="settings-appearance-title">
-      <h3 id="settings-appearance-title" class="settings-section-title">Appearance &amp; Accessibility</h3>
-      <app-appearance-settings />
-    </section>
-  </div>
-</dialog>

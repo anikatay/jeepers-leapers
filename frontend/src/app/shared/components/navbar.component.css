@@ -153,51 +153,6 @@ button {
   flex-shrink: 0;
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   APPEARANCE DROPDOWN
-   ────────────────────────────────────────────────────────────────────────── */
-
-.appearance-container {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.appearance-button {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--foreground);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  transition: all 0.2s ease;
-}
-
-.appearance-button:hover {
-  background: var(--secondary);
-}
-
-.appearance-button svg {
-  color: currentColor;
-}
-
-.theme-swatches {
-  display: flex;
-  gap: 0.125rem;
-  flex-shrink: 0;
-}
-
-.swatch {
-  width: 0.875rem;
-  height: 0.875rem;
-  border-radius: 9999px;
-  display: block;
-  flex-shrink: 0;
-}
-
 .panel-title {
   font-size: 0.625rem;
   font-weight: 700;
@@ -485,71 +440,6 @@ button {
   .navbar-logo {
     min-width: auto;
   }
-
-  .appearance-button {
-    padding: 0.25rem 0.5rem;
-  }
-}
-
-/* ──────────────────────────────────────────────────────────────────────────
-   SETTINGS DIALOG
-   ────────────────────────────────────────────────────────────────────────── */
-
-.settings-dialog {
-  width: min(36rem, calc(100vw - 2rem));
-  max-height: calc(100vh - 2rem);
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  background: var(--surface-raised);
-  color: var(--foreground);
-  box-shadow: var(--shadow-raised);
-}
-
-.settings-dialog::backdrop {
-  background: rgb(0 0 0 / 0.45);
-}
-
-.settings-body {
-  display: grid;
-  gap: 1rem;
-  padding: 1.25rem;
-}
-
-.settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.settings-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.settings-section-title {
-  margin: 0 0 1rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
-}
-
-.settings-close {
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 9999px;
-  color: var(--muted-foreground);
-}
-
-.settings-close:hover {
-  background: var(--secondary);
-  color: var(--foreground);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────

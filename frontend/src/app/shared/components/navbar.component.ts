@@ -1,12 +1,11 @@
-import { Component, Input, Output, EventEmitter, signal, HostListener, effect, OnInit, ViewChild, ElementRef, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, HostListener, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InstrumentService } from '../../core/services/instrument.service';
 import { TranslationService, LANGUAGES, type Language, type LanguageOption } from '../../core/services/translation.service';
-import { AppearanceService } from '../../core/services/appearance.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
-import { AppearanceSettingsComponent } from './appearance-settings.component';
+import { AppearanceControlsComponent } from './appearance-controls.component';
 
 export interface NavItem {
   label: string;
@@ -22,7 +21,7 @@ export interface StockSymbol {
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule, AppearanceSettingsComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule, AppearanceControlsComponent],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css'
 })
@@ -38,10 +37,6 @@ export class NavbarComponent implements OnInit {
   @Input() brandName = 'Bull Exchange';
 
   @Output() profileOptionSelected = new EventEmitter<string>();
-
-  @ViewChild('settingsDialog') private settingsDialog?: ElementRef<HTMLDialogElement>;
-
-  readonly appearance = inject(AppearanceService);
 
   // Dropdown state signals
   searchOpen = signal(false);
@@ -216,23 +211,6 @@ export class NavbarComponent implements OnInit {
 
   selectProfileOption(option: string) {
     this.profileOpen.set(false);
-    if (option === 'settings') {
-      this.openSettings();
-      return;
-    }
     this.profileOptionSelected.emit(option);
-  }
-
-  openSettings() {
-    this.profileOpen.set(false);
-    this.languageOpen.set(false);
-    this.settingsDialog?.nativeElement.showModal();
-  }
-
-  onSettingsBackdrop(event: MouseEvent) {
-    // Clicks on the ::backdrop target the <dialog> element itself.
-    if (event.target === this.settingsDialog?.nativeElement) {
-      this.settingsDialog.nativeElement.close();
-    }
   }
 }
