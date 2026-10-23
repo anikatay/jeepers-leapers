@@ -17,6 +17,7 @@ import { MarketDataService } from '../../../../core/services/market-data.service
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
 import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../shared/utils/portfolio-calculation';
+import { combinePortfolioHistory } from '../../../../shared/utils/portfolio-history';
 
 
 export interface StockHolding {
@@ -91,6 +92,7 @@ export class ClientHomeComponent implements OnInit {
   chartLoading = signal<boolean>(false);
 
   private heldInstruments: Array<{ ticker: string; quantity: number }> = [];
+  private allTrades: TradeResponse[] = [];
   private quoteSubscription?: Subscription;
   private subscribedTickers = new Set<string>();
 
@@ -168,11 +170,13 @@ export class ClientHomeComponent implements OnInit {
           next: (holdingsData) => {
             this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
               next: (trades) => {
+                this.allTrades = trades;
                 this.computeTradesUI(trades);
                 this.computeHoldingsUI(holdingsData, instrumentMap, trades);
               },
               error: (err) => {
                 console.error('Failed to load trades:', err);
+                this.allTrades = [];
                 this.completedTrades.set([]);
                 this.computeHoldingsUI(holdingsData, instrumentMap, []);
               }
@@ -400,7 +404,7 @@ export class ClientHomeComponent implements OnInit {
   }
 
   private loadChartData(): void {
-    if (this.heldInstruments.length === 0) {
+    if (this.allTrades.length === 0) {
       this.chartLinePath.set('');
       this.chartAreaPath.set('');
       this.chartYAxisLabels.set(['N/A', 'N/A', 'N/A']);
@@ -409,28 +413,21 @@ export class ClientHomeComponent implements OnInit {
 
     this.chartLoading.set(true);
     const backendPeriod = this.periodMap[this.selectedPeriod()];
-    const requests = this.heldInstruments.map(h => this.marketDataService.getHistory(h.ticker, backendPeriod));
+    const tickers = Array.from(new Set(this.allTrades.map(trade => trade.ticker)));
+    const requests = tickers.map(ticker => this.marketDataService.getHistory(ticker, backendPeriod));
 
     forkJoin(requests).subscribe({
       next: (histories) => {
-        // Approximation: values current holdings' quantities against historical closes.
-        // Does not account for quantity changes over time (trades aren't backdated).
-        const totalsByDate = new Map<string, number>();
-        histories.forEach((history, idx) => {
-          const quantity = this.heldInstruments[idx].quantity;
-          history.bars.forEach(bar => {
-            totalsByDate.set(bar.date, (totalsByDate.get(bar.date) ?? 0) + quantity * bar.close);
-          });
-        });
-
-        let dates = Array.from(totalsByDate.keys()).sort();
+        const points = combinePortfolioHistory(this.allTrades, histories);
+        let dates = points.map(point => point.date);
         if (this.selectedPeriod() === '1D') {
           dates = dates.slice(-2);
         } else if (this.selectedPeriod() === '1W') {
           dates = dates.slice(-5);
         }
 
-        const values = dates.map(d => totalsByDate.get(d)!);
+        const valuesByDate = new Map(points.map(point => [point.date, point.value]));
+        const values = dates.map(date => valuesByDate.get(date)!);
         const { line, area } = this.buildChartPaths(values);
         this.chartLinePath.set(line);
         this.chartAreaPath.set(area);

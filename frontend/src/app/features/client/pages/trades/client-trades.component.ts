@@ -74,6 +74,7 @@ export class ClientTradesComponent implements OnInit {
   portfolioSparkline = signal<number[]>([]);
 
   private heldPositions: Array<{ ticker: string; quantity: number; currentPrice: number; avgCostBasis: number }> = [];
+  private allTradeResponses: TradeResponse[] = [];
   private quoteSubscription?: Subscription;
   private subscribedTickers = new Set<string>();
 
@@ -142,6 +143,7 @@ export class ClientTradesComponent implements OnInit {
 
   private computeOverallPnl(holdingsData: HoldingResponse[], instruments: InstrumentResponse[], trades: TradeResponse[]): void {
     const instrumentMap = new Map(instruments.map(i => [i.instrumentId, i]));
+    this.allTradeResponses = trades;
     this.heldPositions = [];
 
     holdingsData.forEach(h => {
@@ -201,18 +203,16 @@ export class ClientTradesComponent implements OnInit {
   }
 
   private loadPortfolioSparkline(): void {
-    if (this.heldPositions.length === 0) {
+    if (this.allTradeResponses.length === 0) {
       this.portfolioSparkline.set([]);
       return;
     }
 
-    const requests = this.heldPositions.map(p => this.marketDataService.getHistory(p.ticker, '1mo'));
+    const tickers = Array.from(new Set(this.allTradeResponses.map(trade => trade.ticker)));
+    const requests = tickers.map(ticker => this.marketDataService.getHistory(ticker, '1mo'));
     forkJoin(requests).subscribe({
       next: (histories) => {
-        const points = combinePortfolioHistory(
-          this.heldPositions.map(p => ({ ticker: p.ticker, quantity: p.quantity })),
-          histories
-        );
+        const points = combinePortfolioHistory(this.allTradeResponses, histories);
         this.portfolioSparkline.set(points.map(p => p.value));
       },
       error: (err) => {
