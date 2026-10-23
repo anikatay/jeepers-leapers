@@ -1,4 +1,4 @@
-import { Component, OnInit,OnDestroy, signal, effect, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AccountService } from '../../../../core/services/account.service';
@@ -17,7 +17,8 @@ import { MarketDataService } from '../../../../core/services/market-data.service
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
 import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../shared/utils/portfolio-calculation';
-import { combinePortfolioHistory } from '../../../../shared/utils/portfolio-history';
+import { combinePortfolioHistory, PortfolioHistoryPoint } from '../../../../shared/utils/portfolio-history';
+import { PortfolioChartComponent } from '../../../../shared/components/portfolio-chart.component';
 
 
 export interface StockHolding {
@@ -54,7 +55,7 @@ export interface PieSlice {
 @Component({
   selector: 'app-client-home',
   standalone: true,
-  imports: [CommonModule, TranslatePipe, ConnectionStatusComponent],
+  imports: [CommonModule, TranslatePipe, ConnectionStatusComponent, PortfolioChartComponent],
   templateUrl: './client-home.component.html',
   styleUrl: './client-home.component.css'
 })
@@ -85,11 +86,11 @@ export class ClientHomeComponent implements OnInit {
   overallGain = signal<string>('N/A');
   cashRemaining = signal<string>('N/A');
 
-    chartLinePath = signal<string>('');
-  chartAreaPath = signal<string>('');
-  chartYAxisLabels = signal<string[]>(['N/A', 'N/A', 'N/A']);
-  chartXAxisLabels = signal<string[]>(['Start', 'Mid', 'Now']);
+  chartPoints = signal<PortfolioHistoryPoint[]>([]);
   chartLoading = signal<boolean>(false);
+
+  @ViewChild(PortfolioChartComponent)
+  private portfolioChart?: PortfolioChartComponent;
 
   private heldInstruments: Array<{ ticker: string; quantity: number }> = [];
   private allTrades: TradeResponse[] = [];
@@ -398,6 +399,10 @@ export class ClientHomeComponent implements OnInit {
           );
           this.setGainSignal(this.overallGain, totalGain);
           this.generatePieSlices(withPct, totalValue);
+          this.portfolioChart?.updateLivePoint(
+            new Date().toISOString().slice(0, 10),
+            totalValue
+          );
         });
     }
 
@@ -405,9 +410,8 @@ export class ClientHomeComponent implements OnInit {
 
   private loadChartData(): void {
     if (this.allTrades.length === 0) {
-      this.chartLinePath.set('');
-      this.chartAreaPath.set('');
-      this.chartYAxisLabels.set(['N/A', 'N/A', 'N/A']);
+      this.chartPoints.set([]);
+      this.chartLoading.set(false);
       return;
     }
 
@@ -423,74 +427,22 @@ export class ClientHomeComponent implements OnInit {
       toArray()
     ).subscribe({
       next: (histories) => {
-        const points = combinePortfolioHistory(this.allTrades, histories);
-        let dates = points.map(point => point.date);
+        let points = combinePortfolioHistory(this.allTrades, histories);
         if (this.selectedPeriod() === '1D') {
-          dates = dates.slice(-2);
+          points = points.slice(-2);
         } else if (this.selectedPeriod() === '1W') {
-          dates = dates.slice(-5);
+          points = points.slice(-5);
         }
 
-        const valuesByDate = new Map(points.map(point => [point.date, point.value]));
-        const values = dates.map(date => valuesByDate.get(date)!);
-        const { line, area } = this.buildChartPaths(values);
-        this.chartLinePath.set(line);
-        this.chartAreaPath.set(area);
-        this.updateAxisLabels(values, dates);
+        this.chartPoints.set(points);
         this.chartLoading.set(false);
       },
       error: (err) => {
         console.error('Failed to load chart history:', err);
-        this.chartLinePath.set('');
-        this.chartAreaPath.set('');
+        this.chartPoints.set([]);
         this.chartLoading.set(false);
       }
     });
-  }
-
-  private buildChartPaths(values: number[]): { line: string; area: string } {
-    const width = 800;
-    const top = 20;
-    const bottom = 200;
-    const n = values.length;
-
-    if (n === 0) {
-      return { line: '', area: '' };
-    }
-    if (n === 1) {
-      const y = (top + bottom) / 2;
-      return { line: `M0,${y} L${width},${y}`, area: `M0,${y} L${width},${y} L${width},220 L0,220 Z` };
-    }
-
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-    const stepX = width / (n - 1);
-
-    const points = values.map((v, i) => ({
-      x: i * stepX,
-      y: top + (1 - (v - min) / range) * (bottom - top)
-    }));
-
-    const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    return { line, area: `${line} L${width},220 L0,220 Z` };
-  }
-
-  private updateAxisLabels(values: number[], dates: string[]): void {
-    if (values.length === 0) {
-      this.chartYAxisLabels.set(['N/A', 'N/A', 'N/A']);
-      this.chartXAxisLabels.set(['Start', 'Mid', 'Now']);
-      return;
-    }
-
-    const max = Math.max(...values);
-    const min = Math.min(...values);
-    const fmt = (v: number) => `$${Math.round(v / 1000)}k`;
-    this.chartYAxisLabels.set([fmt(max), fmt((max + min) / 2), fmt(min)]);
-
-    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const n = dates.length;
-    this.chartXAxisLabels.set([fmtDate(dates[0]), fmtDate(dates[Math.floor(n / 2)]), fmtDate(dates[n - 1])]);
   }
 
   ngOnDestroy(): void {

@@ -430,36 +430,7 @@ button {
 /* Chart Container */
 .chart-container {
   position: relative;
-  display: flex;
-  gap: 1rem;
   min-height: 220px;
-}
-
-.chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-end;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-  padding: 0.5rem 0;
-  min-width: 3rem;
-}
-
-.area-chart {
-  flex: 1;
-  min-height: 220px;
-}
-
-.chart-x-axis {
-  position: absolute;
-  bottom: -1.5rem;
-  left: 3rem;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
 }
 
 /* Trades Section */
@@ -642,4 +613,3 @@ button {
 
 
 }
-
