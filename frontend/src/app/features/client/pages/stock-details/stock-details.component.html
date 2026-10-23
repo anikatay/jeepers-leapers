@@ -1,0 +1,199 @@
+<div class="sd-shell">
+  <div class="sd-content">
+    <div class="sd-topbar">
+      <a routerLink="/client" class="sd-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Back
+      </a>
+      <app-connection-status></app-connection-status>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="instrumentStatus() === 'loading'" class="sd-card sd-state" aria-busy="true">
+      <p>Loading {{ ticker() || 'stock' }}…</p>
+    </div>
+
+    <!-- Not found / failed -->
+    <div *ngIf="instrumentStatus() === 'error'" class="sd-card sd-state" role="alert">
+      <p class="sd-state-title">We couldn't load {{ ticker() || 'this stock' }}.</p>
+      <p>Check the symbol and try searching again from the bar above.</p>
+    </div>
+
+    <ng-container *ngIf="instrument() as inst">
+      <!-- Header: identity, live price, today's change, actions -->
+      <section class="sd-card sd-hero" aria-labelledby="sd-name">
+        <div class="sd-identity">
+          <div class="sd-logo" role="img" [attr.aria-label]="inst.ticker + ' logo'"
+               [style.background]="icon().background" [style.color]="icon().color">
+            {{ icon().label }}
+          </div>
+          <div class="sd-identity-text">
+            <h1 id="sd-name" class="sd-name font-display">{{ inst.name }}</h1>
+            <p class="sd-meta">
+              <span class="sd-ticker font-mono-data">{{ inst.ticker }}</span>
+              <span *ngIf="inst.exchangeId" class="sd-dot" aria-hidden="true">·</span>
+              <span *ngIf="inst.exchangeId">{{ inst.exchangeId }}</span>
+              <span class="sd-dot" aria-hidden="true">·</span>
+              <span>{{ currency() }}</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="sd-hero-main">
+          <div class="sd-price-block">
+            <p class="sd-price font-mono-data" aria-live="polite">{{ price() > 0 ? formatCurrency(price(), 4) : '—' }}</p>
+            <p *ngIf="todayChange() as change; else noChange" class="sd-change font-mono-data"
+               [class.up]="change.amount >= 0" [class.down]="change.amount < 0">
+              {{ change.amount >= 0 ? '▲ +' : '▼ −' }}{{ formatCurrency(Math.abs(change.amount)) }}
+              ({{ change.amount >= 0 ? '+' : '−' }}{{ Math.abs(change.pct) | number:'1.2-2' }}%)
+              <span class="sd-change-label">Today</span>
+            </p>
+            <ng-template #noChange><p class="sd-change muted">Today's change unavailable</p></ng-template>
+            <span *ngIf="quoteStatus() && quoteStatus() !== 'LIVE'" class="sd-quote-chip">
+              {{ quoteStatus() === 'CLOSED' ? 'Market closed' : quoteStatus() === 'STALE' ? 'Delayed quote' : 'Quote unavailable' }}
+            </span>
+          </div>
+
+          <div class="sd-actions">
+            <button type="button" class="sd-btn sd-btn-buy" (click)="openTrade('BUY')">Buy</button>
+            <button type="button" class="sd-btn sd-btn-sell" [disabled]="!canSell()"
+                    [attr.aria-describedby]="sellDisabledReason() ? 'sd-sell-reason' : null"
+                    (click)="openTrade('SELL')">
+              <svg *ngIf="!canSell()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.25" aria-hidden="true">
+                <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+              Sell
+            </button>
+            <p *ngIf="sellDisabledReason() as reason" id="sd-sell-reason" class="sd-sell-reason">{{ reason }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Price history chart -->
+      <section class="sd-card sd-chart-card" aria-labelledby="sd-chart-title">
+        <div class="sd-chart-head">
+          <div>
+            <h2 id="sd-chart-title" class="sd-section-title font-display">Price history</h2>
+            <p *ngIf="chartStatus() === 'ready' && periodChange() as pc" class="sd-period-change font-mono-data"
+               [class.up]="pc.amount >= 0" [class.down]="pc.amount < 0">
+              {{ pc.amount >= 0 ? '+' : '−' }}{{ formatCurrency(Math.abs(pc.amount)) }}
+              ({{ pc.amount >= 0 ? '+' : '−' }}{{ Math.abs(pc.pct) | number:'1.2-2' }}%)
+              <span class="sd-change-label">{{ rangeLabel() }}</span>
+            </p>
+          </div>
+          <div class="sd-ranges" role="group" aria-label="Chart time range">
+            <button *ngFor="let r of ranges" type="button" class="sd-range"
+                    [class.active]="range() === r" [attr.aria-pressed]="range() === r"
+                    (click)="selectRange(r)">{{ r }}</button>
+          </div>
+        </div>
+
+        <div #chartBox class="sd-chart-box"
+             [class.trend-down]="!trendUp()"
+             [attr.tabindex]="chartStatus() === 'ready' ? 0 : null"
+             [attr.role]="chartStatus() === 'ready' ? 'img' : null"
+             [attr.aria-label]="chartStatus() === 'ready' ? chartSummary() : null"
+             (pointermove)="onChartPointer($event)"
+             (pointerdown)="onChartPointer($event)"
+             (pointerleave)="clearHover()"
+             (keydown)="onChartKey($event)"
+             (blur)="clearHover()">
+
+          <svg *ngIf="chartStatus() === 'ready' && chart() as c" class="sd-chart-svg"
+               [attr.width]="c.width" [attr.height]="c.height" [attr.viewBox]="'0 0 ' + c.width + ' ' + c.height"
+               aria-hidden="true">
+            <defs>
+              <linearGradient id="sd-area-gradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" class="sd-grad-top" />
+                <stop offset="100%" class="sd-grad-bottom" />
+              </linearGradient>
+            </defs>
+            <g class="sd-grid">
+              <line *ngFor="let t of c.yTicks" [attr.x1]="0" [attr.x2]="c.plotRight" [attr.y1]="t.y" [attr.y2]="t.y" />
+            </g>
+            <path class="sd-area" [attr.d]="c.area" fill="url(#sd-area-gradient)" />
+            <path class="sd-line" [attr.d]="c.line" />
+            <g class="sd-axis-y">
+              <text *ngFor="let t of c.yTicks" [attr.x]="c.plotRight + 8" [attr.y]="t.y + 4">{{ formatCurrency(t.value) }}</text>
+            </g>
+            <g class="sd-axis-x">
+              <text *ngFor="let t of c.xTicks; let i = index; let last = last"
+                    [attr.x]="t.x" [attr.y]="c.height - 8"
+                    [attr.text-anchor]="i === 0 ? 'start' : last ? 'end' : 'middle'">{{ t.label }}</text>
+            </g>
+            <g *ngIf="hoverPoint() as hp" class="sd-hover">
+              <line [attr.x1]="hp.x" [attr.x2]="hp.x" [attr.y1]="12" [attr.y2]="c.baseY" />
+              <circle [attr.cx]="hp.x" [attr.cy]="hp.y" r="5" />
+            </g>
+          </svg>
+
+          <div *ngIf="chartStatus() === 'ready' && hoverPoint() as hp" class="sd-tooltip" aria-live="polite"
+               [style.left.px]="Math.min(Math.max(hp.x, 80), chartSize().width - 80)">
+            <span class="sd-tooltip-price font-mono-data">{{ formatCurrency(hp.bar.close) }}</span>
+            <span class="sd-tooltip-date">{{ formatFullDate(hp.bar.date) }} · close</span>
+          </div>
+
+          <div *ngIf="chartStatus() === 'loading'" class="sd-chart-overlay" aria-busy="true">
+            <span class="sd-spinner" aria-hidden="true"></span>
+            <span>Loading price history…</span>
+          </div>
+
+          <div *ngIf="chartStatus() === 'error'" class="sd-chart-overlay" role="alert">
+            <span>Price history isn't available for this range right now.</span>
+            <button type="button" class="sd-retry" (click)="retryChart()">Try again</button>
+          </div>
+
+          <!-- 1D: no intraday endpoint exists, so show a labeled placeholder instead of invented data -->
+          <div *ngIf="chartStatus() === 'unsupported'" class="sd-chart-overlay sd-placeholder">
+            <svg class="sd-placeholder-art" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="0" y1="60" x2="400" y2="60" />
+            </svg>
+            <span class="sd-placeholder-badge">UI-only placeholder · no data</span>
+            <p class="sd-placeholder-text">
+              Intraday (1D) price history isn't provided by the market data API. Use 5D, 1M, 1Y or All for real
+              daily closes.
+            </p>
+            <dl class="sd-placeholder-stats font-mono-data">
+              <div><dt>Previous close</dt><dd>{{ previousClose() ? formatCurrency(previousClose()) : '—' }}</dd></div>
+              <div><dt>Live price</dt><dd>{{ price() > 0 ? formatCurrency(price(), 4) : '—' }}</dd></div>
+            </dl>
+          </div>
+        </div>
+        <p *ngIf="chartStatus() === 'ready'" class="sd-chart-foot">Daily closing prices. Hover, touch or use arrow keys to inspect.</p>
+      </section>
+
+      <!-- Position -->
+      <section class="sd-card sd-position" aria-labelledby="sd-position-title">
+        <h2 id="sd-position-title" class="sd-section-title font-display">Your position</h2>
+        <ng-container [ngSwitch]="holdingsStatus()">
+          <p *ngSwitchCase="'loading'" class="sd-muted">Loading your holdings…</p>
+          <p *ngSwitchCase="'error'" class="sd-muted">Your holdings couldn't be loaded. Selling is disabled until they can be confirmed.</p>
+          <ng-container *ngSwitchDefault>
+            <dl *ngIf="canSell(); else noPosition" class="sd-position-grid">
+              <div><dt>Shares owned</dt><dd class="font-mono-data">{{ formatShares(ownedShares()) }}</dd></div>
+              <div><dt>Market value</dt><dd class="font-mono-data">{{ formatCurrency(positionValue()) }}</dd></div>
+            </dl>
+            <ng-template #noPosition>
+              <p class="sd-muted">You don't own any {{ inst.ticker }} shares yet.</p>
+            </ng-template>
+          </ng-container>
+        </ng-container>
+      </section>
+    </ng-container>
+  </div>
+
+  <app-trade-panel
+    *ngIf="panelOpen() && panelInstrument() as pi"
+    [instrument]="pi"
+    [price]="price()"
+    [previousClose]="previousClose()"
+    [initialSide]="panelSide()"
+    [ownedShares]="ownedShares()"
+    [holdingsStatus]="holdingsStatus()"
+    (closed)="closeTrade()"
+    (tradeCompleted)="onTradeCompleted()">
+  </app-trade-panel>
+</div>

@@ -155,142 +155,16 @@
     </div>
   </div>
 
-  <!-- Buy/Sell Modal (Figma-compliant) -->
-  <div *ngIf="isModalOpen()" class="modal-overlay" (click)="closeModal()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <!-- Success State -->
-      <div *ngIf="tradeSuccess()" class="success-state">
-        <div class="success-icon">
-          <svg width="28" height="28" fill="none" stroke="#22c55e" stroke-width="2.5" viewBox="0 0 24 24">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <p class="success-message font-display">Success</p>
-      </div>
-
-      <!-- Trade Form -->
-      <div *ngIf="!tradeSuccess()" class="trade-form">
-        <!-- Header with Symbol and Price -->
-        <div class="modal-header">
-          <div>
-            <div class="symbol-line">
-              <span class="symbol-name font-mono-data">{{ selectedHolding()?.symbol }}</span>
-              <span class="company-name">{{ selectedHolding()?.name }}</span>
-            </div>
-            <p class="current-price font-mono-data">
-              {{ formatCurrency(selectedHolding()?.currentPrice, selectedHolding()?.currency) }}
-            </p>
-          </div>
-          <button class="close-button" (click)="closeModal()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Buy / Sell Toggle -->
-        <div class="mode-toggle">
-          <button class="toggle-btn"
-                  [class.active]="modalMode() === 'BUY'"
-                  (click)="modalMode.set('BUY')">
-            {{ 'portfolio.buy_shares' | translate }}
-          </button>
-          <button class="toggle-btn sell-mode"
-                  [class.active]="modalMode() === 'SELL'"
-                  (click)="modalMode.set('SELL')">
-            {{ 'portfolio.sell_shares' | translate }}
-          </button>
-        </div>
-
-        <!-- Order Type (Market/Limit placeholder) -->
-        <div class="order-type-section">
-          <p class="section-label">Order Type</p>
-          <div class="order-buttons">
-            <button class="order-btn active">Market</button>
-            <button class="order-btn">Limit</button>
-          </div>
-        </div>
-
-        <!-- Shares vs Dollar Amount Toggle -->
-        <div class="order-type-section">
-          <p class="section-label">Buy By</p>
-          <div class="order-buttons">
-            <button class="order-btn" [class.active]="orderInputMode() === 'shares'" (click)="setOrderInputMode('shares')">Shares</button>
-            <button class="order-btn" [class.active]="orderInputMode() === 'cash'" (click)="setOrderInputMode('cash')">Dollar Amount</button>
-          </div>
-        </div>
-
-        <!-- Shares Input -->
-        <div class="input-section" *ngIf="orderInputMode() === 'shares'">
-          <p class="section-label">{{ 'portfolio.shares_input' | translate }}</p>
-          <input
-            type="number"
-            min="0"
-            step="0.000001"
-            class="quantity-input"
-            placeholder="0"
-            [ngModel]="modalQuantity()"
-            (ngModelChange)="modalQuantity.set($event)" />
-        </div>
-
-        <!-- Cash Amount Input -->
-        <div class="input-section" *ngIf="orderInputMode() === 'cash'">
-          <p class="section-label">Amount ({{ account()?.currency || 'USD' }})</p>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            class="quantity-input"
-            placeholder="0.00"
-            [ngModel]="modalCashAmount()"
-            (ngModelChange)="modalCashAmount.set($event)" />
-          <p class="section-label" style="margin-top: 0.5rem;">
-            ≈ {{ resolvedQuantity() | number:'1.0-6' }} shares
-          </p>
-        </div>
-
-        <!-- Estimated Total -->
-        <div class="estimated-total">
-          <span class="total-label">{{ 'portfolio.estimated_total' | translate }}</span>
-          <span class="total-value font-mono-data">
-            {{ formatCurrency(
-              resolvedQuantity() * (selectedHolding()?.currentPrice || 0),
-              selectedHolding()?.currency
-            ) }}
-            <small *ngIf="selectedHolding()?.currency !== (account()?.currency || 'USD')">
-              ≈ {{ formatCurrency(
-                resolvedQuantity() * (selectedHolding()?.currentPrice || 0) * settlementFxRate(),
-                account()?.currency
-              ) }}
-            </small>
-          </span>
-        </div>
-
-        <div *ngIf="settlementRateLoading()" class="section-label">
-          Loading currency conversion rate…
-        </div>
-        <div *ngIf="settlementRateError()" class="error-message">
-          {{ settlementRateError() }}
-        </div>
-
-        <!-- Error Message -->
-        <div *ngIf="tradeError()" class="error-message" style="color: var(--destructive); text-align: center; font-size: 0.875rem; margin: 1rem 0; padding: 0.75rem; background: rgba(220, 38, 38, 0.1); border-radius: 0.5rem; border-left: 3px solid var(--destructive);">
-          {{ tradeError() }}
-        </div>
-
-        <!-- Confirm Button -->
-        <button class="confirm-button"
-                [class.buy-mode]="modalMode() === 'BUY'"
-                [class.sell-mode]="modalMode() === 'SELL'"
-                [disabled]="resolvedQuantity() <= 0 || isSubmitting()"
-                (click)="confirmTrade()">
-          <span *ngIf="isSubmitting()" class="spinner"></span>
-          {{ isSubmitting() ? ('common.processing' | translate) : (modalMode() === 'BUY' ? ('portfolio.confirm_buy' | translate) : ('portfolio.confirm_sell' | translate)) }}
-        </button>
-
-        <!-- Cancel Button -->
-        <button class="cancel-button" (click)="closeModal()">{{ 'common.cancel' | translate }}</button>
-      </div>
-    </div>
-  </div>
+  <!-- Buy/Sell trade panel -->
+  <app-trade-panel
+    *ngIf="isModalOpen() && panelInstrument() as pi"
+    [instrument]="pi"
+    [price]="panelPrice()"
+    [previousClose]="panelPreviousClose()"
+    [initialSide]="modalMode()"
+    [ownedShares]="panelOwnedShares()"
+    [holdingsStatus]="panelHoldingsStatus()"
+    (closed)="closeModal()"
+    (tradeCompleted)="onTradeCompleted()">
+  </app-trade-panel>
 </div>

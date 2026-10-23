@@ -2,7 +2,6 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router } from '@angular/router';
 import { NavbarComponent, NavItem } from '../../shared/components/navbar.component';
-import { TradeModalService } from '../../core/services/trade-modal.service';
 import { InstrumentService } from '../../core/services/instrument.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -33,7 +32,6 @@ export class ClientLayoutComponent implements OnInit {
   private allInstruments = signal<InstrumentResponse[]>([]);
 
   constructor(
-    private tradeModalService: TradeModalService,
     private instrumentService: InstrumentService,
     private router: Router,
     private authService: AuthService
@@ -94,7 +92,6 @@ export class ClientLayoutComponent implements OnInit {
   }
 
   private openTrade(instrument: InstrumentResponse) {
-    this.tradeModalService.openTradeModal(instrument, 'BUY');
-    this.router.navigate(['/client/portfolio']);
+    this.router.navigate(['/client/stock', instrument.ticker]);
   }
 }
