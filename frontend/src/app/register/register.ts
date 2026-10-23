@@ -44,7 +44,11 @@ export class Register {
 
     this.authService.register(request).subscribe({
       next: (response) => {
-        const target = response.role === 'ROLE_ADMIN' ? '/admin' : '/client';
+        const target = response.role === 'ROLE_ADMIN'
+          ? '/admin'
+          : response.role === 'ROLE_ANALYST'
+            ? '/analyst'
+            : '/client';
         this.router.navigateByUrl(target);
       },
       error: (err: HttpErrorResponse) => {
