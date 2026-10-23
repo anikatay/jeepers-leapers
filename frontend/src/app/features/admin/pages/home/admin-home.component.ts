@@ -1,26 +1,19 @@
-import { Component, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule, formatDate } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap, takeUntil, tap } from 'rxjs';
 import { AdminDashboardRow } from '../../../../core/models/admin-dashboard.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
-import { AuthService } from '../../../../core/services/auth.service';
 import { AdminDashboardService } from '../../../../core/services/admin-dashboard.service';
 
 @Component({
   selector: 'app-admin-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, FormsModule],
   templateUrl: './admin-home.component.html',
   styleUrl: './admin-home.component.css'
 })
 export class AdminHomeComponent implements OnInit, OnDestroy {
-  readonly themes = ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight'];
-  private readonly root = document.documentElement;
-  readonly dark = signal(this.root.classList.contains('dark'));
-  readonly theme = signal(this.themes.find(item => this.root.classList.contains(item)) ?? 'bull');
-  readonly menuOpen = signal(false);
   readonly rows = signal<AdminDashboardRow[]>([]);
   readonly selectedUser = signal<AdminDashboardRow | null>(null);
   readonly selectedUserTrades = signal<TradeResponse[]>([]);
@@ -55,32 +48,8 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
   private readonly loadedTradeAccountIds = new Set<string>();
 
   constructor(
-    private readonly adminDashboardService: AdminDashboardService,
-    private readonly authService: AuthService,
-    private readonly router: Router
+    private readonly adminDashboardService: AdminDashboardService
   ) {}
-
-  @HostListener('document:click')
-  @HostListener('document:keydown.escape')
-  closeMenu(): void {
-    this.menuOpen.set(false);
-  }
-
-  toggleDark(): void {
-    this.dark.set(this.root.classList.toggle('dark'));
-  }
-
-  setTheme(theme: string): void {
-    this.root.classList.remove(...this.themes);
-    this.root.classList.add(theme);
-    this.theme.set(theme);
-    this.menuOpen.set(false);
-  }
-
-  logout(): void {
-    this.authService.logout();
-    this.router.navigateByUrl('/auth/login');
-  }
 
   ngOnInit(): void {
     this.searchChanges.pipe(
