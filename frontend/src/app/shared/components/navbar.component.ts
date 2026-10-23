@@ -9,6 +9,7 @@ import { InstrumentResponse } from '../../core/models/instrument.model';
 export interface NavItem {
   label: string;
   path: string;
+  exact?: boolean;
 }
 
 export interface StockSymbol {
@@ -32,6 +33,8 @@ export class NavbarComponent implements OnInit {
     { label: 'Portfolio', path: '/client/portfolio' },
     { label: 'Trades', path: '/client/trades' }
   ];
+  @Input() homePath = '/client';
+  @Input() showSearch = true;
   @Input() userName = 'User';
   @Input() brandName = 'Bull Exchange';
 
@@ -85,7 +88,9 @@ export class NavbarComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loadInstruments();
+    if (this.showSearch) {
+      this.loadInstruments();
+    }
   }
 
   private loadInstruments() {
