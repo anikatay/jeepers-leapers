@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.IntradayHistoryResponse;
 import com.neueda.leap.dto.response.MarketHeatmapResponse;
 import com.neueda.leap.dto.response.MarketHeatmapSector;
 import com.neueda.leap.dto.response.MarketHeatmapTicker;
@@ -178,6 +179,9 @@ public class MarketDataService implements IService {
         }
         return result;
     }
+    public IntradayHistoryResponse getIntradayHistory(String rawTicker) {
+        return client.fetchIntradayHistory(normalizeTicker(rawTicker));
+    }
 
     public MarketQuote cacheLatestQuote(MarketQuote quote) {
         if (quote == null || quote.ticker() == null || quote.price() == null
@@ -216,6 +220,11 @@ public class MarketDataService implements IService {
                 .map(cached -> withStatus(
                         cached.quote(),
                         cached.live() ? QuoteStatus.LIVE : QuoteStatus.STALE));
+    }
+
+    public MarketQuote fetchLiveQuote(String rawTicker) {
+        String ticker = normalizeTicker(rawTicker);
+        return cacheLatestQuote(client.fetchLatestQuote(ticker));
     }
 
     public MarketQuote getQuoteSnapshot(String rawTicker) {

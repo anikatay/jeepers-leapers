@@ -2,6 +2,7 @@ package com.neueda.leap.controller;
 
 import com.neueda.leap.service.MarketDataService;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.IntradayHistoryResponse;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketHeatmapResponse;
 import com.neueda.leap.dto.response.MarketQuote;
@@ -39,6 +40,11 @@ public class MarketDataController {
 	public HistoryResponse history(@PathVariable String ticker,
 									@RequestParam(defaultValue = "1y") String period) {
 		return marketDataService.getHistory(ticker, period);
+	}
+
+	@GetMapping("/{ticker}/intraday-history")
+	public IntradayHistoryResponse intradayHistory(@PathVariable String ticker) {
+		return marketDataService.getIntradayHistory(ticker);
 	}
 
 	@GetMapping("/{ticker}/quote")

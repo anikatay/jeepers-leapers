@@ -494,6 +494,53 @@ def lookup_ticker(ticker: str):
     return market_instrument_metadata(validate_ticker(ticker))
 
 
+@app.get("/quote")
+def quote(ticker: str = Query(...)):
+    ticker = validate_ticker(ticker)
+    try:
+        frame = yf.Ticker(ticker).history(
+            period="1d",
+            interval="1m",
+            auto_adjust=False,
+            timeout=10,
+        )
+    except Exception as exc:
+        log.warning("Market quote lookup failed for %s", ticker, exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Market data provider unavailable",
+        ) from exc
+
+    if frame.empty or "Close" not in frame:
+        raise HTTPException(status_code=404, detail=f"No current quote for {ticker}")
+
+    closes = frame["Close"].dropna()
+    if closes.empty:
+        raise HTTPException(status_code=404, detail=f"No current quote for {ticker}")
+
+    price = scale_price(closes.iloc[-1], ticker)
+    if not math.isfinite(price) or price <= 0:
+        raise HTTPException(status_code=502, detail=f"Invalid current quote for {ticker}")
+
+    quote_time = closes.index[-1]
+    if hasattr(quote_time, "to_pydatetime"):
+        quote_time = quote_time.to_pydatetime()
+    if quote_time.tzinfo is None:
+        quote_time = quote_time.replace(tzinfo=timezone.utc)
+    else:
+        quote_time = quote_time.astimezone(timezone.utc)
+
+    return {
+        "type": "QUOTE",
+        "ticker": ticker,
+        "price": price,
+        "quoteTime": quote_time.isoformat(),
+        "receivedTime": datetime.now(timezone.utc).isoformat(),
+        "source": "yfinance-rest",
+        "status": "LIVE",
+    }
+
+
 def validate_currency(raw: str) -> str:
     currency = raw.strip().upper()
     if not CURRENCY_RE.fullmatch(currency) or currency not in SUPPORTED_CURRENCIES:
@@ -566,26 +613,63 @@ def history(ticker: str = Query(...), period: str = Query("1y")):
     ticker = validate_ticker(ticker)
     if period not in ALLOWED_PERIODS:
         raise HTTPException(status_code=400, detail="Invalid period")
+    return _fetch_history(ticker, period, "1d")
+
+
+@app.get("/history/intraday")
+def intraday_history(ticker: str = Query(...)):
+    ticker = validate_ticker(ticker)
+    return _fetch_history(ticker, "1d", "1m")
+
+
+def _fetch_history(ticker: str, period: str, interval: str) -> dict:
     try:
-        df = yf.Ticker(ticker).history(period=period, interval="1d", timeout=10)
+        request_period = "5d" if interval == "1m" else period
+        df = yf.Ticker(ticker).history(period=request_period, interval=interval, timeout=10)
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Market data upstream failure") from exc
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+    frame = df
+    opening_bar = None
+    if interval == "1m":
+        session_date = max(index.date() for index in df.index)
+        frame = df[df.index.date == session_date]
+        previous_frame = df[df.index.date < session_date]
+        previous_closes = previous_frame["Close"].dropna()
+        if not previous_closes.empty:
+            previous_close = round(
+                scale_price(previous_closes.iloc[-1], ticker),
+                4,
+            )
+            opening_bar = {
+                "date": f"{session_date.isoformat()}T00:00:00Z",
+                "open": previous_close,
+                "high": previous_close,
+                "low": previous_close,
+                "close": previous_close,
+                "volume": 0,
+            }
+
+    bars = [
+        {
+            "date": idx.isoformat() if interval != "1d" else idx.strftime("%Y-%m-%d"),
+            "open": round(scale_price(row["Open"], ticker), 4),
+            "high": round(scale_price(row["High"], ticker), 4),
+            "low": round(scale_price(row["Low"], ticker), 4),
+            "close": round(scale_price(row["Close"], ticker), 4),
+            "volume": int(row["Volume"]),
+        }
+        for idx, row in frame.iterrows()
+    ]
+    if opening_bar is not None:
+        bars.insert(0, opening_bar)
+
     return {
         "ticker": ticker,
         "period": period,
-        "bars": [
-            {
-                "date": idx.strftime("%Y-%m-%d"),
-                "open": round(scale_price(row["Open"], ticker), 4),
-                "high": round(scale_price(row["High"], ticker), 4),
-                "low": round(scale_price(row["Low"], ticker), 4),
-                "close": round(scale_price(row["Close"], ticker), 4),
-                "volume": int(row["Volume"]),
-            }
-            for idx, row in df.iterrows()
-        ],
+        "bars": bars,
     }
 
 

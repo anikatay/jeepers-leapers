@@ -38,6 +38,9 @@ export class MarketDataService{
 			.set('period', period);
 		return this.http.get<Record<string, HistoryResponse>>(`${this.apiUrl}/history/batch`, { params });
 	}
+	getIntradayHistory(ticker: string): Observable<HistoryResponse>{
+		return this.http.get<HistoryResponse>(`${this.apiUrl}/${ticker}/intraday-history`);
+	}
 
 	getQuote(ticker: string): Observable<MarketQuote> {
 		return this.http.get<MarketQuote>(`${this.apiUrl}/${ticker}/quote`);

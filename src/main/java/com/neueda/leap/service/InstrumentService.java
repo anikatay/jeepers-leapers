@@ -4,12 +4,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.neueda.leap.client.MarketDataClient;
-import com.neueda.leap.dto.response.HistoryResponse;
 import com.neueda.leap.dto.response.InstrumentResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.dto.response.QuoteStatus;
-import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
@@ -188,12 +186,11 @@ public class InstrumentService implements IService {
         Instrument instrument = getInstrumentById(instrumentId);
 
         Optional<MarketQuote> latestQuote = marketDataService.getLatestQuote(instrument.getTicker());
+        boolean cachedQuoteIsStale = latestQuote.isPresent()
+                && !QuoteStatus.LIVE.equals(latestQuote.get().status());
         if (latestQuote.isPresent()
-                && !QuoteStatus.LIVE.equals(latestQuote.get().status())) {
-            throw new ObjectInvalidException(
-                    "Unable to make trade at the moment; live quote unavailable");
-        }
-        if (latestQuote.isPresent() && isFresh(latestQuote.get().quoteTime())
+                && QuoteStatus.LIVE.equals(latestQuote.get().status())
+                && isFresh(latestQuote.get().quoteTime())
                 && isNewerThanInstrument(latestQuote.get(), instrument)) {
             MarketQuote quote = latestQuote.get();
             instrument.setCurrentPrice(quote.price());
@@ -207,7 +204,7 @@ public class InstrumentService implements IService {
 
         if (instrument.getUpdatedAt() != null) {
             long ageSeconds = Duration.between(instrument.getUpdatedAt(), OffsetDateTime.now()).getSeconds();
-            if (ageSeconds <= quoteRefreshThresholdSeconds) {
+            if (!cachedQuoteIsStale && ageSeconds <= quoteRefreshThresholdSeconds) {
                 return instrument;
             }
         }
@@ -221,15 +218,18 @@ public class InstrumentService implements IService {
         }
 
         try {
-            HistoryResponse history = marketDataService.getHistory(instrument.getTicker(), "1mo");
-            if (history.bars() == null || history.bars().isEmpty()) {
-                return instrument;
+            MarketQuote liveQuote = marketDataService.fetchLiveQuote(instrument.getTicker());
+            if (liveQuote == null
+                    || !QuoteStatus.LIVE.equals(liveQuote.status())
+                    || !isFresh(liveQuote.quoteTime())
+                    || !isNewerThanInstrument(liveQuote, instrument)) {
+                throw new ObjectInvalidException(
+                        "Unable to make trade at the moment; live quote unavailable");
             }
 
-            PriceBar latest = history.bars().get(history.bars().size() - 1);
-            instrument.setCurrentPrice(latest.close());
+            instrument.setCurrentPrice(liveQuote.price());
             instrument.setUpdatedAt(
-                    latest.date().atStartOfDay(ZoneOffset.UTC).toOffsetDateTime());
+                    liveQuote.quoteTime().atOffset(ZoneOffset.UTC));
 
             int updated = instrumentMapper.updatePrice(instrument);
             if (updated < 1) {
