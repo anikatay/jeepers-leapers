@@ -17,8 +17,14 @@ interface TimedTrade {
   quantity: number;
 }
 
+interface TimedBar {
+  date: string;
+  timestamp: number;
+  close: number;
+}
+
 interface TickerPriceState {
-  bars: HistoryResponse['bars'];
+  bars: TimedBar[];
   index: number;
   close: number | null;
 }
@@ -51,23 +57,42 @@ export function combinePortfolioHistory(
 
   const priceStateByTicker = new Map<string, TickerPriceState>();
   const dates = new Set<string>();
+  const intraday = histories.some(history =>
+    history.bars.some(bar => bar.date.includes('T'))
+  );
+
   histories.forEach(history => {
     history.bars.forEach(bar => {
-      dates.add(bar.date);
+      if (Number.isFinite(parseBarTimestamp(bar.date))) {
+        dates.add(bar.date);
+      }
     });
+
     priceStateByTicker.set(history.ticker, {
-      bars: [...history.bars].sort((a, b) => a.date.localeCompare(b.date)),
+      bars: history.bars
+        .map(bar => ({
+          date: bar.date,
+          timestamp: parseBarTimestamp(bar.date),
+          close: bar.close
+        }))
+        .filter(bar => Number.isFinite(bar.timestamp))
+        .sort((a, b) => a.timestamp - b.timestamp),
       index: 0,
       close: null
     });
   });
 
-  const sortedDates = Array.from(dates).sort((a, b) => a.localeCompare(b));
+  const sortedDates = Array.from(dates).sort(
+    (a, b) => parseBarTimestamp(a) - parseBarTimestamp(b)
+  );
   const quantitiesByTicker = new Map<string, number>();
   const tradeIndexesByTicker = new Map<string, number>();
 
   return sortedDates.map(date => {
-    const endOfDay = new Date(`${date}T23:59:59.999Z`).getTime();
+    const dateTimestamp = parseBarTimestamp(date);
+    const tradeCutoff = intraday
+      ? dateTimestamp
+      : endOfDayTimestamp(date);
     let value = 0;
 
     priceStateByTicker.forEach((priceState, ticker) => {
@@ -77,7 +102,7 @@ export function combinePortfolioHistory(
 
       while (
         tradeIndex < tickerTrades.length &&
-        tickerTrades[tradeIndex].timestamp <= endOfDay
+        tickerTrades[tradeIndex].timestamp <= tradeCutoff
       ) {
         quantity += tickerTrades[tradeIndex].quantity;
         tradeIndex += 1;
@@ -88,7 +113,7 @@ export function combinePortfolioHistory(
 
       while (
         priceState.index < priceState.bars.length &&
-        priceState.bars[priceState.index].date <= date
+        priceState.bars[priceState.index].timestamp <= dateTimestamp
       ) {
         priceState.close = priceState.bars[priceState.index].close;
         priceState.index += 1;
@@ -101,4 +126,13 @@ export function combinePortfolioHistory(
 
     return { date, value };
   });
+}
+
+function parseBarTimestamp(date: string): number {
+  const normalized = date.length === 10 ? `${date}T00:00:00Z` : date;
+  return new Date(normalized).getTime();
+}
+
+function endOfDayTimestamp(date: string): number {
+  return new Date(`${date.slice(0, 10)}T23:59:59.999Z`).getTime();
 }

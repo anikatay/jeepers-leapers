@@ -129,4 +129,30 @@ describe('combinePortfolioHistory', () => {
       { date: '2025-01-06', value: 53110 }
     ]);
   });
+
+  it('replays quantities at intraday bar timestamps', () => {
+    const points = combinePortfolioHistory(
+      [
+        {
+          ticker: 'AAPL',
+          side: 'BUY',
+          quantity: 2,
+          executedAt: '2025-01-02T14:31:00Z'
+        }
+      ],
+      [
+        makeHistory('AAPL', {
+          '2025-01-02T14:30:00Z': 100,
+          '2025-01-02T14:31:00Z': 105,
+          '2025-01-02T14:32:00Z': 110
+        })
+      ]
+    );
+
+    expect(points).toEqual([
+      { date: '2025-01-02T14:30:00Z', value: 0 },
+      { date: '2025-01-02T14:31:00Z', value: 210 },
+      { date: '2025-01-02T14:32:00Z', value: 220 }
+    ]);
+  });
 });

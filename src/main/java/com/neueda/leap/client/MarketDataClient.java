@@ -2,6 +2,7 @@ package com.neueda.leap.client;
 
 import com.neueda.leap.exception.MarketDataUnavailableException;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.IntradayHistoryResponse;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketSectorCatalog;
@@ -56,6 +57,30 @@ public class MarketDataClient {
 			throw new ObjectInvalidException("Invalid market data request for " + ticker);
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException("Market data service failed for " + ticker, e);
+		}
+	}
+
+	public IntradayHistoryResponse fetchIntradayHistory(String ticker){
+		try{
+			IntradayHistoryResponse response = restClient.get()
+					.uri(uri -> uri.path("/history/intraday")
+							.queryParam("ticker", ticker)
+							.build())
+					.retrieve()
+					.body(IntradayHistoryResponse.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException(
+						"Market data service returned empty intraday response for " + ticker);
+			}
+			return response;
+		}catch (HttpClientErrorException.NotFound e) {
+			throw new ObjectNotFoundException("No intraday market data for " + ticker);
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException("Invalid intraday market data request for " + ticker);
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market data service failed for intraday history " + ticker, e);
 		}
 	}
 

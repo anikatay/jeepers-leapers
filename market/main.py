@@ -607,26 +607,63 @@ def history(ticker: str = Query(...), period: str = Query("1y")):
     ticker = validate_ticker(ticker)
     if period not in ALLOWED_PERIODS:
         raise HTTPException(status_code=400, detail="Invalid period")
+    return _fetch_history(ticker, period, "1d")
+
+
+@app.get("/history/intraday")
+def intraday_history(ticker: str = Query(...)):
+    ticker = validate_ticker(ticker)
+    return _fetch_history(ticker, "1d", "1m")
+
+
+def _fetch_history(ticker: str, period: str, interval: str) -> dict:
     try:
-        df = yf.Ticker(ticker).history(period=period, interval="1d", timeout=10)
+        request_period = "5d" if interval == "1m" else period
+        df = yf.Ticker(ticker).history(period=request_period, interval=interval, timeout=10)
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Market data upstream failure") from exc
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+    frame = df
+    opening_bar = None
+    if interval == "1m":
+        session_date = max(index.date() for index in df.index)
+        frame = df[df.index.date == session_date]
+        previous_frame = df[df.index.date < session_date]
+        previous_closes = previous_frame["Close"].dropna()
+        if not previous_closes.empty:
+            previous_close = round(
+                scale_price(previous_closes.iloc[-1], ticker),
+                4,
+            )
+            opening_bar = {
+                "date": f"{session_date.isoformat()}T00:00:00Z",
+                "open": previous_close,
+                "high": previous_close,
+                "low": previous_close,
+                "close": previous_close,
+                "volume": 0,
+            }
+
+    bars = [
+        {
+            "date": idx.isoformat() if interval != "1d" else idx.strftime("%Y-%m-%d"),
+            "open": round(scale_price(row["Open"], ticker), 4),
+            "high": round(scale_price(row["High"], ticker), 4),
+            "low": round(scale_price(row["Low"], ticker), 4),
+            "close": round(scale_price(row["Close"], ticker), 4),
+            "volume": int(row["Volume"]),
+        }
+        for idx, row in frame.iterrows()
+    ]
+    if opening_bar is not None:
+        bars.insert(0, opening_bar)
+
     return {
         "ticker": ticker,
         "period": period,
-        "bars": [
-            {
-                "date": idx.strftime("%Y-%m-%d"),
-                "open": round(scale_price(row["Open"], ticker), 4),
-                "high": round(scale_price(row["High"], ticker), 4),
-                "low": round(scale_price(row["Low"], ticker), 4),
-                "close": round(scale_price(row["Close"], ticker), 4),
-                "volume": int(row["Volume"]),
-            }
-            for idx, row in df.iterrows()
-        ],
+        "bars": bars,
     }
 
 

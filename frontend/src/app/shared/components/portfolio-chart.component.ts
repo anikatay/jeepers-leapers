@@ -11,6 +11,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { PortfolioHistoryPoint } from '../utils/portfolio-history';
 
+const MINUTE_MS = 60_000;
+
 interface ChartColors {
   primary: string;
   border: string;
@@ -23,6 +25,12 @@ interface TooltipState {
   top: number;
   date: string;
   value: string;
+}
+
+interface RenderedPoint {
+  index: number;
+  x: number;
+  y: number;
 }
 
 @Component({
@@ -184,11 +192,47 @@ export class PortfolioChartComponent implements AfterViewInit, OnChanges, OnDest
   updateLivePoint(date: string, value: number): void {
     if (!date || !Number.isFinite(value)) return;
 
+    const timestamp = new Date(date).getTime();
+    if (!Number.isFinite(timestamp)) return;
+
+    const minuteTimestamp = Math.floor(timestamp / MINUTE_MS) * MINUTE_MS;
     const lastIndex = this.chartPoints.length - 1;
-    if (lastIndex >= 0 && this.chartPoints[lastIndex].date === date) {
-      this.chartPoints[lastIndex] = { date, value };
-    } else {
+    const matchingIndex = this.chartPoints.findIndex(point =>
+      this.minuteTimestamp(point.date) === minuteTimestamp
+    );
+
+    if (matchingIndex >= 0) {
+      this.chartPoints[matchingIndex] = {
+        date: this.chartPoints[matchingIndex].date,
+        value
+      };
+    } else if (
+      lastIndex < 0 ||
+      minuteTimestamp > this.minuteTimestamp(this.chartPoints[lastIndex].date)
+    ) {
+      const isIntraday = date.includes('T') || this.chartPoints.some(point => point.date.includes('T'));
+      const lastTimestamp = lastIndex >= 0
+        ? this.minuteTimestamp(this.chartPoints[lastIndex].date)
+        : null;
+
+      if (
+        isIntraday &&
+        lastTimestamp !== null &&
+        this.isSameUtcDate(lastTimestamp, minuteTimestamp)
+      ) {
+        for (let backfillTimestamp = lastTimestamp + MINUTE_MS;
+             backfillTimestamp < minuteTimestamp;
+             backfillTimestamp += MINUTE_MS) {
+          this.chartPoints.push({
+            date: new Date(backfillTimestamp).toISOString(),
+            value: this.chartPoints[lastIndex].value
+          });
+        }
+      }
+
       this.chartPoints.push({ date, value });
+    } else {
+      return;
     }
 
     if (this.followLatest) {
@@ -371,8 +415,7 @@ export class PortfolioChartComponent implements AfterViewInit, OnChanges, OnDest
       max += 1;
     }
 
-    this.drawAxes(context, plot, min, max, start, end);
-    const points = [];
+    const points: RenderedPoint[] = [];
     for (let index = start; index <= end; index += 1) {
       points.push({
         index,
@@ -380,6 +423,7 @@ export class PortfolioChartComponent implements AfterViewInit, OnChanges, OnDest
         y: this.yForValue(this.chartPoints[index].value, min, max, plot)
       });
     }
+    this.drawAxes(context, plot, min, max, points);
 
     if (points.length > 0) {
       const gradient = context.createLinearGradient(0, plot.top, 0, plot.bottom);
@@ -403,6 +447,14 @@ export class PortfolioChartComponent implements AfterViewInit, OnChanges, OnDest
       context.lineCap = 'round';
       context.lineJoin = 'round';
       context.stroke();
+
+      const latestPoint = points[points.length - 1];
+      if (this.chartPoints[latestPoint.index].date.includes('T')) {
+        context.fillStyle = this.colors.primary;
+        context.beginPath();
+        context.arc(latestPoint.x, latestPoint.y, 3, 0, Math.PI * 2);
+        context.fill();
+      }
     }
 
     if (this.hoverIndex !== null && this.hoverIndex >= start && this.hoverIndex <= end) {
@@ -431,8 +483,7 @@ export class PortfolioChartComponent implements AfterViewInit, OnChanges, OnDest
     plot: { left: number; right: number; top: number; bottom: number; width: number; height: number },
     min: number,
     max: number,
-    start: number,
-    end: number
+    points: RenderedPoint[]
   ): void {
     context.save();
     context.font = '12px Inter, sans-serif';
@@ -458,17 +509,29 @@ export class PortfolioChartComponent implements AfterViewInit, OnChanges, OnDest
 
     context.globalAlpha = 1;
     context.textBaseline = 'top';
-    const middle = Math.round(start + (end - start) / 2);
-    const labels = [
-      { index: start, align: 'left' as CanvasTextAlign },
-      { index: middle, align: 'center' as CanvasTextAlign },
-      { index: end, align: 'right' as CanvasTextAlign }
-    ];
+    const labelCount = points.length === 1
+      ? 1
+      : Math.min(8, Math.max(2, Math.floor(plot.width / 90) + 1));
+    const candidates = Array.from({ length: labelCount }, (_, labelIndex) => {
+      const pointIndex = labelCount === 1
+        ? 0
+        : Math.round(labelIndex * (points.length - 1) / (labelCount - 1));
+      const align = labelIndex === 0
+        ? 'left'
+        : labelIndex === labelCount - 1 ? 'right' : 'center';
+      return {
+        point: points[pointIndex],
+        align: align as CanvasTextAlign
+      };
+    });
+    const labels = candidates.filter((label, index, all) =>
+      all.findIndex(candidate => candidate.point.index === label.point.index) === index
+    );
     labels.forEach(label => {
       context.textAlign = label.align;
       context.fillText(
-        this.formatDate(this.chartPoints[label.index].date),
-        this.xForIndex(label.index, plot),
+        this.formatAxisDate(this.chartPoints[label.point.index].date),
+        label.point.x,
         plot.bottom + 8
       );
     });
@@ -514,13 +577,41 @@ export class PortfolioChartComponent implements AfterViewInit, OnChanges, OnDest
     return plot.top + (1 - (value - min) / (max - min)) * plot.height;
   }
 
-  private formatDate(date: string): string {
-    const parsed = new Date(`${date}T00:00:00Z`);
+  private formatAxisDate(date: string): string {
+    const parsed = new Date(date.length === 10 ? `${date}T00:00:00Z` : date);
     if (Number.isNaN(parsed.getTime())) return date;
+    if (date.includes('T')) {
+      return parsed.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'UTC'
+      });
+    }
     return parsed.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      timeZone: 'UTC'
+    });
+  }
+
+  private formatDate(date: string): string {
+    const parsed = new Date(date.length === 10 ? `${date}T00:00:00Z` : date);
+    if (Number.isNaN(parsed.getTime())) return date;
+    if (date.includes('T')) {
+      return parsed.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'UTC'
+      });
+    }
+    return parsed.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC'
     });
   }
 
@@ -554,5 +645,16 @@ export class PortfolioChartComponent implements AfterViewInit, OnChanges, OnDest
 
   private clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
+  }
+
+  private minuteTimestamp(date: string): number {
+    const timestamp = new Date(date).getTime();
+    return Math.floor(timestamp / MINUTE_MS) * MINUTE_MS;
+  }
+
+  private isSameUtcDate(leftTimestamp: number, rightTimestamp: number): boolean {
+    const leftDate = new Date(leftTimestamp).toISOString().slice(0, 10);
+    const rightDate = new Date(rightTimestamp).toISOString().slice(0, 10);
+    return leftDate === rightDate;
   }
 }

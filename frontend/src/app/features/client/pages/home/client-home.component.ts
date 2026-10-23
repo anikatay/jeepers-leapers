@@ -11,7 +11,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
-import { Subscription, from, forkJoin } from 'rxjs';
+import { Subscription, from, forkJoin, timer } from 'rxjs';
 import { mergeMap, throttleTime, toArray } from 'rxjs/operators';
 import { MarketDataService } from '../../../../core/services/market-data.service';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
@@ -95,11 +95,12 @@ export class ClientHomeComponent implements OnInit {
   private heldInstruments: Array<{ ticker: string; quantity: number }> = [];
   private allTrades: TradeResponse[] = [];
   private quoteSubscription?: Subscription;
+  private liveChartSubscription?: Subscription;
   private subscribedTickers = new Set<string>();
 
-  // Backend only supports these periods; 1D/1W are approximated by slicing the 1mo result
+  // 1D uses minute history; 1W is approximated by slicing the 1mo result.
   private readonly periodMap: Record<Period, string> = {
-    '1D': '1mo', '1W': '1mo', '1M': '1mo', '3M': '3mo', '1Y': '1y', 'All': 'max'
+    '1D': '1d', '1W': '1mo', '1M': '1mo', '3M': '3mo', '1Y': '1y', 'All': 'max'
   };
 
 
@@ -360,6 +361,35 @@ export class ClientHomeComponent implements OnInit {
   setPeriod(period: Period) {
     this.selectedPeriod.set(period);
     this.loadChartData();
+    this.refreshLiveChartTimer();
+  }
+
+  private refreshLiveChartTimer(): void {
+    this.liveChartSubscription?.unsubscribe();
+    this.liveChartSubscription = undefined;
+
+    if (this.selectedPeriod() !== '1D' || this.heldInstruments.length === 0) {
+      return;
+    }
+
+    const totalValue = this.holdings().reduce((sum, holding) => sum + holding.value, 0);
+    this.updateLiveChartPoint(totalValue);
+
+    const millisecondsUntilNextFiveSeconds = 5_000 - (Date.now() % 5_000);
+    this.liveChartSubscription = timer(millisecondsUntilNextFiveSeconds, 5_000).subscribe(() => {
+      const totalValue = this.holdings().reduce((sum, holding) => sum + holding.value, 0);
+      this.updateLiveChartPoint(totalValue);
+    });
+  }
+
+  private updateLiveChartPoint(value: number): void {
+    if (this.selectedPeriod() !== '1D') {
+      return;
+    }
+
+    const date = new Date();
+    date.setSeconds(0, 0);
+    this.portfolioChart?.updateLivePoint(date.toISOString(), value);
   }
 
   private subscribeToLiveQuotes(): void {
@@ -399,13 +429,10 @@ export class ClientHomeComponent implements OnInit {
           );
           this.setGainSignal(this.overallGain, totalGain);
           this.generatePieSlices(withPct, totalValue);
-          this.portfolioChart?.updateLivePoint(
-            new Date().toISOString().slice(0, 10),
-            totalValue
-          );
         });
     }
 
+    this.refreshLiveChartTimer();
   }
 
   private loadChartData(): void {
@@ -416,20 +443,29 @@ export class ClientHomeComponent implements OnInit {
     }
 
     this.chartLoading.set(true);
+    const isIntraday = this.selectedPeriod() === '1D';
     const backendPeriod = this.periodMap[this.selectedPeriod()];
     const tickers = Array.from(new Set(this.allTrades.map(trade => trade.ticker)));
 
     from(tickers).pipe(
       mergeMap(
-        ticker => this.marketDataService.getHistory(ticker, backendPeriod),
+        ticker => isIntraday
+          ? this.marketDataService.getIntradayHistory(ticker)
+          : this.marketDataService.getHistory(ticker, backendPeriod),
         3
       ),
       toArray()
     ).subscribe({
       next: (histories) => {
         let points = combinePortfolioHistory(this.allTrades, histories);
-        if (this.selectedPeriod() === '1D') {
-          points = points.slice(-2);
+        if (this.selectedPeriod() === 'All') {
+          const oldestTrade = this.allTrades.reduce((oldest, trade) =>
+            new Date(trade.executedAt).getTime() < new Date(oldest.executedAt).getTime()
+              ? trade
+              : oldest
+          );
+          const oldestTradeDate = oldestTrade.executedAt.slice(0, 10);
+          points = points.filter(point => point.date.slice(0, 10) >= oldestTradeDate);
         } else if (this.selectedPeriod() === '1W') {
           points = points.slice(-5);
         }
@@ -447,6 +483,7 @@ export class ClientHomeComponent implements OnInit {
 
   ngOnDestroy(): void {
     this.quoteSubscription?.unsubscribe();
+    this.liveChartSubscription?.unsubscribe();
     this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker));
   }
 

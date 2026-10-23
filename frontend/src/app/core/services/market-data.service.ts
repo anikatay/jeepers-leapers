@@ -32,6 +32,10 @@ export class MarketDataService{
 		});
 	}
 
+	getIntradayHistory(ticker: string): Observable<HistoryResponse>{
+		return this.http.get<HistoryResponse>(`${this.apiUrl}/${ticker}/intraday-history`);
+	}
+
 	getQuote(ticker: string): Observable<MarketQuote> {
 		return this.http.get<MarketQuote>(`${this.apiUrl}/${ticker}/quote`);
 	}
