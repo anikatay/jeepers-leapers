@@ -17,6 +17,12 @@ interface TimedTrade {
   quantity: number;
 }
 
+interface TickerPriceState {
+  bars: HistoryResponse['bars'];
+  index: number;
+  close: number | null;
+}
+
 /**
  * Replays trades through each historical bar date to value the quantities held
  * on that date rather than applying today's holdings to the entire history.
@@ -43,15 +49,17 @@ export function combinePortfolioHistory(
     tickerTrades.sort((a, b) => a.timestamp - b.timestamp);
   });
 
-  const historiesByTicker = new Map<string, Map<string, number>>();
+  const priceStateByTicker = new Map<string, TickerPriceState>();
   const dates = new Set<string>();
   histories.forEach(history => {
-    const barsByDate = new Map<string, number>();
     history.bars.forEach(bar => {
       dates.add(bar.date);
-      barsByDate.set(bar.date, bar.close);
     });
-    historiesByTicker.set(history.ticker, barsByDate);
+    priceStateByTicker.set(history.ticker, {
+      bars: [...history.bars].sort((a, b) => a.date.localeCompare(b.date)),
+      index: 0,
+      close: null
+    });
   });
 
   const sortedDates = Array.from(dates).sort((a, b) => a.localeCompare(b));
@@ -62,7 +70,7 @@ export function combinePortfolioHistory(
     const endOfDay = new Date(`${date}T23:59:59.999Z`).getTime();
     let value = 0;
 
-    historiesByTicker.forEach((barsByDate, ticker) => {
+    priceStateByTicker.forEach((priceState, ticker) => {
       const tickerTrades = tradesByTicker.get(ticker) ?? [];
       let tradeIndex = tradeIndexesByTicker.get(ticker) ?? 0;
       let quantity = quantitiesByTicker.get(ticker) ?? 0;
@@ -78,9 +86,16 @@ export function combinePortfolioHistory(
       tradeIndexesByTicker.set(ticker, tradeIndex);
       quantitiesByTicker.set(ticker, quantity);
 
-      const close = barsByDate.get(date);
-      if (close !== undefined) {
-        value += quantity * close;
+      while (
+        priceState.index < priceState.bars.length &&
+        priceState.bars[priceState.index].date <= date
+      ) {
+        priceState.close = priceState.bars[priceState.index].close;
+        priceState.index += 1;
+      }
+
+      if (priceState.close !== null) {
+        value += quantity * priceState.close;
       }
     });
 

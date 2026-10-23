@@ -11,8 +11,8 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
-import { Subscription, forkJoin } from 'rxjs';
-import { throttleTime } from 'rxjs/operators';
+import { Subscription, from, forkJoin } from 'rxjs';
+import { mergeMap, throttleTime, toArray } from 'rxjs/operators';
 import { MarketDataService } from '../../../../core/services/market-data.service';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
@@ -414,9 +414,14 @@ export class ClientHomeComponent implements OnInit {
     this.chartLoading.set(true);
     const backendPeriod = this.periodMap[this.selectedPeriod()];
     const tickers = Array.from(new Set(this.allTrades.map(trade => trade.ticker)));
-    const requests = tickers.map(ticker => this.marketDataService.getHistory(ticker, backendPeriod));
 
-    forkJoin(requests).subscribe({
+    from(tickers).pipe(
+      mergeMap(
+        ticker => this.marketDataService.getHistory(ticker, backendPeriod),
+        3
+      ),
+      toArray()
+    ).subscribe({
       next: (histories) => {
         const points = combinePortfolioHistory(this.allTrades, histories);
         let dates = points.map(point => point.date);

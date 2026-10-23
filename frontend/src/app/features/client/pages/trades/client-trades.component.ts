@@ -1,8 +1,8 @@
 import { Component, inject , OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription, forkJoin } from 'rxjs';
-import { throttleTime } from 'rxjs/operators';
+import { Subscription, from } from 'rxjs';
+import { mergeMap, throttleTime, toArray } from 'rxjs/operators';
 import { TradesService } from '../../../../core/services/trades.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { PortfolioService } from '../../../../core/services/portfolio.service';
@@ -209,8 +209,13 @@ export class ClientTradesComponent implements OnInit {
     }
 
     const tickers = Array.from(new Set(this.allTradeResponses.map(trade => trade.ticker)));
-    const requests = tickers.map(ticker => this.marketDataService.getHistory(ticker, '1mo'));
-    forkJoin(requests).subscribe({
+    from(tickers).pipe(
+      mergeMap(
+        ticker => this.marketDataService.getHistory(ticker, '1mo'),
+        3
+      ),
+      toArray()
+    ).subscribe({
       next: (histories) => {
         const points = combinePortfolioHistory(this.allTradeResponses, histories);
         this.portfolioSparkline.set(points.map(p => p.value));

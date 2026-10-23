@@ -91,4 +91,42 @@ describe('combinePortfolioHistory', () => {
       { date: '2025-01-03', value: 0 }
     ]);
   });
+
+  it('carries the last close across dates without a bar', () => {
+    const points = combinePortfolioHistory(
+      [
+        {
+          ticker: 'TSLA',
+          side: 'BUY',
+          quantity: 1,
+          executedAt: '2025-01-02T09:00:00Z'
+        },
+        {
+          ticker: 'BTC-USD',
+          side: 'BUY',
+          quantity: 1,
+          executedAt: '2025-01-02T09:00:00Z'
+        }
+      ],
+      [
+        makeHistory('TSLA', {
+          '2025-01-03': 100,
+          '2025-01-06': 110
+        }),
+        makeHistory('BTC-USD', {
+          '2025-01-03': 50000,
+          '2025-01-04': 51000,
+          '2025-01-05': 52000,
+          '2025-01-06': 53000
+        })
+      ]
+    );
+
+    expect(points).toEqual([
+      { date: '2025-01-03', value: 50100 },
+      { date: '2025-01-04', value: 51100 },
+      { date: '2025-01-05', value: 52100 },
+      { date: '2025-01-06', value: 53110 }
+    ]);
+  });
 });
