@@ -31,6 +31,9 @@ public interface  AccountMapper {
     @Select("SELECT * FROM accounts  WHERE account_id = #{accountId}")
     Account findByAccountId(@Param("accountId")UUID accountId);
 
+    @Select("SELECT * FROM accounts WHERE account_id = #{accountId} FOR UPDATE")
+    Account findByAccountIdForUpdate(@Param("accountId") UUID accountId);
+
     // find all accounts for a user -> List<account>
     @Select("SELECT * FROM accounts  WHERE user_id = #{userId}")
     List<Account> findAllByUserId(@Param("userId")UUID userId); 
@@ -58,6 +61,15 @@ public interface  AccountMapper {
     // update status
     @Update("UPDATE accounts  SET status = #{status} WHERE account_id = #{accountId}")
     int updateStatus(@Param("accountId") UUID accountId,@Param("status") String status);
+
+        @Update("UPDATE accounts SET status = 'FROZEN', freeze_reason = #{reason}, updated_at = #{updatedAt} "
+            + "WHERE account_id = #{accountId} AND status = 'ACTIVE'")
+        int freezeAccount(@Param("accountId") UUID accountId, @Param("reason") String reason,
+            @Param("updatedAt") OffsetDateTime updatedAt);
+
+        @Update("UPDATE accounts SET status = 'ACTIVE', freeze_reason = NULL, updated_at = #{updatedAt} "
+            + "WHERE account_id = #{accountId} AND status = 'FROZEN'")
+        int unfreezeAccount(@Param("accountId") UUID accountId, @Param("updatedAt") OffsetDateTime updatedAt);
 
     // increment balance
     @Update("UPDATE accounts  SET balance = balance + #{amount} WHERE account_id = #{accountId}")

@@ -387,6 +387,10 @@ export class ClientPortfolioComponent implements OnInit {
   }
 
   openTradeModal(holding: Holding, mode: 'BUY' | 'SELL'): void {
+    if (this.isAccountFrozen()) {
+      this.tradeError.set(this.account()?.freezeReason || 'Trading is disabled for this account.');
+      return;
+    }
     this.selectedHolding.set(holding);
     this.modalMode.set(mode);
     this.isModalOpen.set(true);
@@ -457,6 +461,11 @@ export class ClientPortfolioComponent implements OnInit {
 
 
   confirmTrade(): void {
+    if (this.isAccountFrozen()) {
+      this.tradeError.set(this.account()?.freezeReason || 'Trading is disabled for this account.');
+      return;
+    }
+
     const holding = this.selectedHolding();
     const qty = this.resolvedQuantity();
 
@@ -491,13 +500,18 @@ export class ClientPortfolioComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const errorMessage = err?.error?.message || 
+        const errorMessage = err?.error?.details ||
+               err?.error?.message ||
                            err?.message || 
                            'Trade failed';
         this.tradeError.set(errorMessage);
         console.error('Trade error:', err);
       }
     });
+  }
+
+  isAccountFrozen(): boolean {
+    return this.account()?.status === 'FROZEN';
   }
 
   // Expose Math for template

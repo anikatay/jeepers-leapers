@@ -34,9 +34,9 @@ public class HoldingController {
     }
 
     @GetMapping("/{accountId}")
-    public ResponseEntity<List<HoldingResponse>> getPortfolio(@PathVariable UUID accountId, @AuthenticationPrincipal Jwt jwt) {
-        UUID userId = authorizationService.getAuthenticatedUserId(jwt);
-        authorizationService.requireAccountOwner(accountId, userId);
+        public ResponseEntity<List<HoldingResponse>> getPortfolio(
+            @PathVariable(name = "accountId") UUID accountId, @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
 
         List<HoldingResponse> response = holdingService.getHoldingsByAccountId(accountId);
 
@@ -48,10 +48,11 @@ public class HoldingController {
     }
 
     @GetMapping("/{accountId}/{instrumentId}")
-    public ResponseEntity<HoldingResponse> getHolding(@PathVariable UUID accountId, @PathVariable UUID instrumentId,
+        public ResponseEntity<HoldingResponse> getHolding(
+            @PathVariable(name = "accountId") UUID accountId,
+            @PathVariable(name = "instrumentId") UUID instrumentId,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID userId = authorizationService.getAuthenticatedUserId(jwt);
-        authorizationService.requireAccountOwner(accountId, userId);
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
 
         HoldingResponse response = holdingService.getHoldingByAccountIdAndInstrumentId(accountId, instrumentId);
 
@@ -65,8 +66,7 @@ public class HoldingController {
     @PostMapping
     public ResponseEntity<HoldingResponse> createHolding(@Valid @RequestBody HoldingRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID userId = authorizationService.getAuthenticatedUserId(jwt);
-        authorizationService.requireAccountOwner(request.accountId(), userId);
+        authorizationService.requireAccountOwnerOrAdmin(request.accountId(), jwt);
 
         HoldingResponse response = holdingService.createHolding(request);
 
@@ -78,11 +78,11 @@ public class HoldingController {
     }
 
     @PatchMapping("/{accountId}/{instrumentId}")
-    public ResponseEntity<HoldingResponse> updateHoldingQuantity(@PathVariable UUID accountId,
-            @PathVariable UUID instrumentId, @Valid @RequestBody HoldingRequest request,
+        public ResponseEntity<HoldingResponse> updateHoldingQuantity(
+            @PathVariable(name = "accountId") UUID accountId,
+            @PathVariable(name = "instrumentId") UUID instrumentId, @Valid @RequestBody HoldingRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID userId = authorizationService.getAuthenticatedUserId(jwt);
-        authorizationService.requireAccountOwner(accountId, userId);
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
         if (!accountId.equals(request.accountId()) || !instrumentId.equals(request.instrumentId())) {
             throw new ObjectInvalidException("Path IDs must match request IDs");
         }

@@ -18,6 +18,8 @@ public class Account {
 
     private String status = "ACTIVE";
 
+    private String freezeReason;
+
     private OffsetDateTime createdAt;
 
     private OffsetDateTime updatedAt;
@@ -40,6 +42,9 @@ public class Account {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getFreezeReason() { return freezeReason; }
+    public void setFreezeReason(String freezeReason) { this.freezeReason = freezeReason; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
