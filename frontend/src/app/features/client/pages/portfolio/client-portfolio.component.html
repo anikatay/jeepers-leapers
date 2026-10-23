@@ -23,7 +23,7 @@
     <div class="summary-cards-grid">
       <div *ngFor="let card of summaryCards()" class="summary-card">
         <p class="summary-label">{{ card.label }}</p>
-        <p class="summary-value" [class.positive]="card.isPositive === true">{{ card.value }}</p>
+        <p class="summary-value" [class.positive]="card.isPositive === true" [class.negative]="card.isPositive === false">{{ card.value }}</p>
       </div>
     </div>
 

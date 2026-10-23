@@ -15,7 +15,7 @@
     <!-- Total Bought Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
       <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.total_bought' | translate }}</p>
-      <p class="font-bold text-2xl mt-1 font-mono text-green-600 dark:text-green-400">
+      <p class="font-bold text-2xl mt-1 font-mono value-buy">
         ${{ (totalBought).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
       </p>
     </div>
@@ -23,7 +23,7 @@
     <!-- Total Sold Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
       <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.total_sold' | translate }}</p>
-      <p class="font-bold text-2xl mt-1 font-mono text-red-500">
+      <p class="font-bold text-2xl mt-1 font-mono value-sell">
         ${{ (totalSold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
       </p>
     </div>
@@ -157,8 +157,7 @@
         <tbody>
           <!-- Trade Rows -->
           <tr *ngFor="let trade of filteredTrades; let i = index" 
-            class="border-b last:border-0 hover:bg-secondary/40 transition-colors"
-            style="border-color: rgba(200,230,210,0.4);">
+            class="border-b last:border-0 transition-colors">
             <td class="py-3 pr-4 text-xs" style="color: var(--muted-foreground);">{{ trade.date }}</td>
             <td class="py-3 pr-4 text-xs" style="color: var(--muted-foreground);">{{ trade.time }}</td>
             <td class="py-3 pr-4">
@@ -179,10 +178,8 @@
               </div>
             </td>
             <td class="py-3 pr-4">
-              <span [ngClass]="{
-                'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': trade.type === 'Buy',
-                'bg-red-100 dark:bg-red-900/30 text-red-600': trade.type === 'Sell'
-              }" class="px-2 py-0-5 rounded-full text-xs font-semibold">
+              <span [class.pill-buy]="trade.type === 'Buy'" [class.pill-sell]="trade.type === 'Sell'"
+                    class="px-2 py-0-5 rounded-full text-xs font-semibold">
                 {{ trade.type === 'Buy' ? 'Buy' : 'Sell' }}
               </span>
             </td>

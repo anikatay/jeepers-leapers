@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
          [attr.viewBox]="'0 0 ' + width + ' ' + height"
          [attr.width]="width" [attr.height]="height"
          preserveAspectRatio="none" class="sparkline">
-      <path [attr.d]="linePath" fill="none" [attr.stroke]="color" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path [attr.d]="linePath" fill="none" [style.stroke]="color" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
   `,
   styles: [`.sparkline { display: block; }`]
@@ -24,7 +24,7 @@ export class SparklineComponent {
 
   get color(): string {
     if (this.points.length < 2) return 'var(--muted-foreground)';
-    return this.points[this.points.length - 1] >= this.points[0] ? '#16a34a' : '#dc2626';
+    return this.points[this.points.length - 1] >= this.points[0] ? 'var(--gain)' : 'var(--loss)';
   }
 
   get linePath(): string {

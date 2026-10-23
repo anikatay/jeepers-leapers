@@ -74,23 +74,22 @@ let nextSwipeId = 0;
     :host { display: block; }
 
     .swipe {
-      --swipe-color: #16a34a;
-      --swipe-label: #15803d;
-      --swipe-tint: rgba(22, 163, 74, 0.12);
-      --swipe-fill: rgba(22, 163, 74, 0.28);
-      --swipe-border: rgba(22, 163, 74, 0.45);
-      --handle-size: 52px;
+      --swipe-color: var(--buy);
+      --swipe-on-color: var(--buy-foreground);
+      --swipe-label: var(--gain);
+      --handle-size: 3.25rem;
       --inset: 4px;
     }
     .swipe.sell {
-      --swipe-color: #dc2626;
-      --swipe-label: #b91c1c;
-      --swipe-tint: rgba(220, 38, 38, 0.1);
-      --swipe-fill: rgba(220, 38, 38, 0.26);
-      --swipe-border: rgba(220, 38, 38, 0.45);
+      --swipe-color: var(--sell);
+      --swipe-on-color: var(--sell-foreground);
+      --swipe-label: var(--loss);
     }
-    :host-context(.dark) .swipe.buy { --swipe-color: #22c55e; --swipe-label: #4ade80; }
-    :host-context(.dark) .swipe.sell { --swipe-color: #ef4444; --swipe-label: #f87171; }
+    .swipe {
+      --swipe-tint: color-mix(in srgb, var(--swipe-color) 12%, transparent);
+      --swipe-fill: color-mix(in srgb, var(--swipe-color) 28%, transparent);
+      --swipe-border: color-mix(in srgb, var(--swipe-color) 50%, transparent);
+    }
 
     .track {
       position: relative;
@@ -137,7 +136,7 @@ let nextSwipeId = 0;
       height: var(--handle-size);
       border-radius: 9999px;
       background: var(--swipe-color);
-      color: #ffffff;
+      color: var(--swipe-on-color);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -174,8 +173,8 @@ let nextSwipeId = 0;
     .spinner {
       width: 20px;
       height: 20px;
-      border: 2.5px solid rgba(255, 255, 255, 0.35);
-      border-top-color: #ffffff;
+      border: 2.5px solid color-mix(in srgb, currentColor 35%, transparent);
+      border-top-color: currentColor;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
     }

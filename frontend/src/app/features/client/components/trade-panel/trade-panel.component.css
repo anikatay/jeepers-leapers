@@ -1,17 +1,13 @@
 :host {
-  --tp-up: #15803d;
-  --tp-down: #b91c1c;
-  --tp-buy: #16a34a;
-  --tp-sell: #dc2626;
-  --tp-width: 440px;
   display: contents;
 }
 
-:host-context(.dark) {
-  --tp-up: #4ade80;
-  --tp-down: #f87171;
-  --tp-buy: #22c55e;
-  --tp-sell: #ef4444;
+.tp-panel {
+  --tp-up: var(--gain);
+  --tp-down: var(--loss);
+  --tp-buy: var(--buy);
+  --tp-sell: var(--sell);
+  --tp-width: 27.5rem;
 }
 
 * {
@@ -32,7 +28,7 @@ button {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(0, 0, 0, 0.18);
+  background: color-mix(in srgb, #000 22%, transparent);
   animation: tp-fade 0.2s ease;
 }
 
@@ -48,7 +44,7 @@ button {
   background: var(--card);
   color: var(--card-foreground);
   border-left: 1px solid var(--border);
-  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--shadow-raised);
   font-family: 'Inter', sans-serif;
   animation: tp-slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -194,9 +190,11 @@ button {
 .tp-stats {
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: 0.625rem;
 }
+
+.tp-stats dd { overflow-wrap: anywhere; }
 
 .tp-stats > div {
   padding: 0.75rem;
@@ -233,8 +231,10 @@ button {
 
 .tp-label-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .tp-hint {
@@ -254,6 +254,7 @@ button {
 
 .tp-seg-btn {
   flex: 1;
+  min-height: 2.75rem;
   padding: 0.55rem 0.75rem;
   border-radius: 0.55rem;
   font-size: 0.875rem;
@@ -273,8 +274,8 @@ button {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-.tp-seg-btn.buy.active { background: var(--tp-buy); color: #ffffff; }
-.tp-seg-btn.sell.active { background: var(--tp-sell); color: #ffffff; }
+.tp-seg-btn.buy.active { background: var(--tp-buy); color: var(--buy-foreground); }
+.tp-seg-btn.sell.active { background: var(--tp-sell); color: var(--sell-foreground); }
 
 .tp-seg-btn:disabled {
   cursor: not-allowed;
@@ -411,19 +412,19 @@ button {
 
 .tp-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 1rem;
+  gap: 0.25rem 1rem;
   font-size: 0.8125rem;
 }
 
 .tp-row dt {
   color: var(--muted-foreground);
-  flex-shrink: 0;
 }
 
 .tp-row dd {
-  margin: 0;
+  margin: 0 0 0 auto;
   text-align: right;
   color: var(--foreground);
   font-weight: 600;
@@ -454,11 +455,11 @@ button {
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--buy-foreground);
   background: var(--tp-buy);
 }
 
-.tp-side-pill.sell { background: var(--tp-sell); }
+.tp-side-pill.sell { background: var(--tp-sell); color: var(--sell-foreground); }
 
 .tp-footnote {
   margin: 0.625rem 0 0;

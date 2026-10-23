@@ -1,10 +1,12 @@
-import { Component, Input, Output, EventEmitter, signal, HostListener, effect, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, HostListener, effect, OnInit, ViewChild, ElementRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InstrumentService } from '../../core/services/instrument.service';
 import { TranslationService, LANGUAGES, type Language, type LanguageOption } from '../../core/services/translation.service';
+import { AppearanceService } from '../../core/services/appearance.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
+import { AppearanceSettingsComponent } from './appearance-settings.component';
 
 export interface NavItem {
   label: string;
@@ -20,7 +22,7 @@ export interface StockSymbol {
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule],
+  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule, AppearanceSettingsComponent],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css'
 })
@@ -37,10 +39,13 @@ export class NavbarComponent implements OnInit {
 
   @Output() profileOptionSelected = new EventEmitter<string>();
 
+  @ViewChild('settingsDialog') private settingsDialog?: ElementRef<HTMLDialogElement>;
+
+  readonly appearance = inject(AppearanceService);
+
   // Dropdown state signals
   searchOpen = signal(false);
   profileOpen = signal(false);
-  appearanceOpen = signal(false);
   languageOpen = signal(false);
   
   // Search state
@@ -112,9 +117,6 @@ export class NavbarComponent implements OnInit {
     }
     if (!target.closest('.language-container') && !target.closest('.language-menu')) {
       this.languageOpen.set(false);
-    }
-    if (!target.closest('.appearance-container') && !target.closest('.appearance-menu')) {
-      this.appearanceOpen.set(false);
     }
   }
 
@@ -213,26 +215,24 @@ export class NavbarComponent implements OnInit {
   }
 
   selectProfileOption(option: string) {
-    this.profileOptionSelected.emit(option);
     this.profileOpen.set(false);
+    if (option === 'settings') {
+      this.openSettings();
+      return;
+    }
+    this.profileOptionSelected.emit(option);
   }
 
-  // Appearance handlers
-  toggleAppearance() {
-    this.appearanceOpen.set(!this.appearanceOpen());
+  openSettings() {
+    this.profileOpen.set(false);
+    this.languageOpen.set(false);
+    this.settingsDialog?.nativeElement.showModal();
   }
 
-  toggleDarkMode() {
-    const html = document.documentElement;
-    html.classList.toggle('dark');
-  }
-
-  changeTheme(theme: string) {
-    const html = document.documentElement;
-    // Remove all theme classes
-    html.className = html.className.replace(/(bull|ocean|lavender|rose|sage|mono|midnight|a11y-bo|a11y-bg|a11y-hc)\s*/g, '');
-    // Add new theme
-    html.classList.add(theme);
-    this.appearanceOpen.set(false);
+  onSettingsBackdrop(event: MouseEvent) {
+    // Clicks on the ::backdrop target the <dialog> element itself.
+    if (event.target === this.settingsDialog?.nativeElement) {
+      this.settingsDialog.nativeElement.close();
+    }
   }
 }

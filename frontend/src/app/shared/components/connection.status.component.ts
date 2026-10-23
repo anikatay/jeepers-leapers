@@ -19,9 +19,9 @@ import { MarketQuoteService } from '../../core/services/market-quote.service';
   styles: [`
     .connection-status { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--muted-foreground); }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-foreground); flex-shrink: 0; }
-    .connection-status.connected .dot { background: #16a34a; }
+    .connection-status.connected .dot { background: var(--gain); }
     .connection-status.reconnecting .dot { background: #f59e0b; animation: pulse 1s infinite; }
-    .connection-status.offline .dot { background: #dc2626; }
+    .connection-status.offline .dot { background: var(--loss); }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
   `]
 })

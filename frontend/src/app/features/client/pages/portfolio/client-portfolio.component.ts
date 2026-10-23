@@ -36,6 +36,7 @@ export interface Holding {
   symbol: string;
   name: string;
   currency: string;
+  exchangeId?: string;
   shares: number;
   currentPrice: number;
   currentValue: number;
@@ -131,6 +132,7 @@ export class ClientPortfolioComponent implements OnInit {
           symbol: instrumentToTrade.ticker,
           name: instrumentToTrade.name,
           currency: instrumentToTrade.currency || 'USD',
+          exchangeId: instrumentToTrade.exchangeId,
           shares: 0,
           currentPrice: instrumentToTrade.currentPrice,
           currentValue: 0,
@@ -201,6 +203,7 @@ export class ClientPortfolioComponent implements OnInit {
           symbol: instrument.ticker,
           name: instrument.name,
           currency: instrument.currency || 'USD',
+          exchangeId: instrument.exchangeId,
           shares: h.quantity,
           currentPrice: instrument.currentPrice,
           currentValue: currentValue,
@@ -313,7 +316,13 @@ export class ClientPortfolioComponent implements OnInit {
   panelInstrument = computed<TradePanelInstrument | null>(() => {
     const holding = this.selectedHolding();
     if (!holding) return null;
-    return { instrumentId: holding.instrumentId, ticker: holding.symbol, name: holding.name, currency: holding.currency };
+    return {
+      instrumentId: holding.instrumentId,
+      ticker: holding.symbol,
+      name: holding.name,
+      currency: holding.currency,
+      exchangeId: holding.exchangeId
+    };
   });
 
   // Live row for the selected holding, so the panel tracks WebSocket price updates.

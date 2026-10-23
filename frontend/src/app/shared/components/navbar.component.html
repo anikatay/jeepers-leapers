@@ -24,11 +24,12 @@
 
     <!-- Right controls: Appearance + Language + Profile -->
     <div class="navbar-controls">
-      <!-- Appearance Dropdown -->
-      <div class="appearance-container" (click)="$event.stopPropagation()">
-        <button class="appearance-button" (click)="toggleAppearance()" title="Appearance & Language">
+      <!-- Appearance shortcut: opens Settings → Appearance & Accessibility -->
+      <div class="appearance-container">
+        <button type="button" class="appearance-button" (click)="openSettings()" title="Appearance & Accessibility"
+                aria-label="Appearance and accessibility settings" aria-haspopup="dialog">
           <!-- Sun/Moon icon -->
-          <svg *ngIf="true" class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg *ngIf="!appearance.dark()" class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="12" cy="12" r="5"/>
             <line x1="12" y1="1" x2="12" y2="3"/>
             <line x1="12" y1="21" x2="12" y2="23"/>
@@ -39,45 +40,15 @@
             <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
             <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
           </svg>
+          <svg *ngIf="appearance.dark()" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+          </svg>
           <!-- Color swatches -->
-          <span class="theme-swatches">
+          <span class="theme-swatches" aria-hidden="true">
             <span class="swatch" style="background-color: var(--primary);"></span>
             <span class="swatch" style="background-color: var(--accent);"></span>
           </span>
-          <!-- Dropdown arrow -->
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
         </button>
-
-        <!-- Appearance Dropdown Menu -->
-        <div class="appearance-menu" *ngIf="appearanceOpen()" (click)="$event.stopPropagation()">
-          <div class="appearance-panel">
-            <p class="panel-title">Appearance</p>
-            
-            <!-- Light/Dark Mode -->
-            <div class="mode-section">
-              <p class="section-label">Mode</p>
-              <div class="mode-buttons">
-                <button class="mode-btn light-btn" (click)="toggleDarkMode()" title="Light Mode">☀️</button>
-                <button class="mode-btn dark-btn" (click)="toggleDarkMode()" title="Dark Mode">🌙</button>
-              </div>
-            </div>
-
-            <!-- Color Themes -->
-            <div class="theme-section">
-              <p class="section-label">Theme</p>
-              <div class="theme-grid">
-                <button *ngFor="let theme of ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']"
-                        class="theme-btn"
-                        (click)="changeTheme(theme)"
-                        [title]="theme | titlecase">
-                  {{ theme | slice:0:2 | uppercase }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Language Dropdown -->
@@ -154,7 +125,8 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Enter company or symbol"
+          placeholder="Search Apple, Tesla, Nvidia…"
+          aria-label="Search stocks by company name or symbol"
           [ngModel]="searchQuery()"
           (input)="onSearchInput($event)"
           (focus)="onSearchFocus()"
@@ -166,9 +138,6 @@
           Trade
         </button>
       </div>
-
-      <!-- Search hint -->
-      <p class="search-hint">e.g. AAPL, TSLA, NVDA</p>
 
       <!-- Search dropdown results -->
       <div class="search-dropdown" *ngIf="searchOpen() && searchQuery().length > 0" (click)="$event.stopPropagation()">
@@ -188,3 +157,21 @@
     </div>
   </div>
 </header>
+
+<!-- Settings: native modal dialog provides focus trapping, Escape and focus return. -->
+<dialog #settingsDialog class="settings-dialog" aria-labelledby="settings-title" (click)="onSettingsBackdrop($event)">
+  <div class="settings-body">
+    <div class="settings-header">
+      <h2 id="settings-title" class="settings-title font-display">Settings</h2>
+      <button type="button" class="settings-close" aria-label="Close settings" (click)="settingsDialog.close()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <section aria-labelledby="settings-appearance-title">
+      <h3 id="settings-appearance-title" class="settings-section-title">Appearance &amp; Accessibility</h3>
+      <app-appearance-settings />
+    </section>
+  </div>
+</dialog>

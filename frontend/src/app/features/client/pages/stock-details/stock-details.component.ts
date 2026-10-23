@@ -17,6 +17,8 @@ import { HoldingService } from '../../../../core/services/holding.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { MarketDataService } from '../../../../core/services/market-data.service';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
+import { MarketSession, MarketSessionService } from '../../../../core/services/market-session.service';
+import { AppearanceService } from '../../../../core/services/appearance.service';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { PriceBar, QuoteStatus } from '../../../../core/models/market.model';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
@@ -69,6 +71,8 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly holdingService = inject(HoldingService);
   private readonly marketDataService = inject(MarketDataService);
   private readonly marketQuoteService = inject(MarketQuoteService);
+  private readonly marketSessionService = inject(MarketSessionService);
+  private readonly appearance = inject(AppearanceService);
 
   @ViewChild('chartBox') private chartBox?: ElementRef<HTMLElement>;
 
@@ -81,6 +85,7 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly livePrice = signal<number | null>(null);
   readonly quoteStatus = signal<QuoteStatus | null>(null);
+  readonly marketSession = signal<MarketSession | null>(null);
   readonly previousClose = signal<number | null>(null);
 
   readonly range = signal<ChartRange>('1M');
@@ -116,6 +121,11 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     return { amount, pct: (amount / prev) * 100 };
   });
 
+  readonly marketClosedReason = computed(() => {
+    const session = this.marketSession();
+    return session?.state === 'closed' ? session.detail : null;
+  });
+
   readonly canSell = computed(() => this.holdingsStatus() === 'ready' && (this.ownedShares() ?? 0) > 0);
   readonly sellDisabledReason = computed(() => {
     if (this.holdingsStatus() === 'loading') return 'Checking your holdings…';
@@ -129,7 +139,13 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly panelInstrument = computed<TradePanelInstrument | null>(() => {
     const inst = this.instrument();
     if (!inst) return null;
-    return { instrumentId: inst.instrumentId, ticker: inst.ticker, name: inst.name, currency: inst.currency || 'USD' };
+    return {
+      instrumentId: inst.instrumentId,
+      ticker: inst.ticker,
+      name: inst.name,
+      currency: inst.currency || 'USD',
+      exchangeId: inst.exchangeId
+    };
   });
 
   readonly rangeLabel = computed(() => RANGES[this.range()].label);
@@ -148,8 +164,12 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly chart = computed(() => {
     const bars = this.bars();
     const { width, height } = this.chartSize();
-    const plotW = Math.max(0, width - CHART_PAD.left - CHART_PAD.right);
-    const plotH = Math.max(0, height - CHART_PAD.top - CHART_PAD.bottom);
+    // Axis labels are rem-sized, so their gutters grow with the text-size setting.
+    const textScale = this.appearance.textScale();
+    const padRight = Math.round(CHART_PAD.right * textScale);
+    const padBottom = Math.round(CHART_PAD.bottom * textScale);
+    const plotW = Math.max(0, width - CHART_PAD.left - padRight);
+    const plotH = Math.max(0, height - CHART_PAD.top - padBottom);
     if (bars.length === 0 || plotW <= 0 || plotH <= 0) return null;
 
     const closes = bars.map(b => b.close);
@@ -236,6 +256,7 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.instrumentStatus.set('loading');
     this.livePrice.set(null);
     this.quoteStatus.set(null);
+    this.marketSession.set(null);
     this.previousClose.set(null);
     this.bars.set([]);
     this.hoverIndex.set(null);
@@ -255,6 +276,11 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
           this.instrumentStatus.set('ready');
           this.marketQuoteService.subscribe(instrument.ticker);
           this.subscribedTicker = instrument.ticker.trim().toUpperCase();
+          this.tickerSubs.add(
+            this.marketSessionService
+              .watch(instrument.ticker, instrument.exchangeId)
+              .subscribe(session => this.marketSession.set(session))
+          );
           this.loadPreviousClose();
           this.loadRange(this.range());
           this.loadHoldings();
@@ -368,7 +394,7 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   // ── Trading ────────────────────────────────────────────────────
 
   openTrade(side: TradeSide): void {
-    if (!this.instrument()) return;
+    if (!this.instrument() || this.marketClosedReason()) return;
     if (side === 'SELL' && !this.canSell()) return;
     this.panelSide.set(side);
     this.panelOpen.set(true);

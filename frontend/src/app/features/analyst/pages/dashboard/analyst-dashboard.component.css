@@ -7,8 +7,8 @@
   --hairline: color-mix(in srgb, var(--foreground) 8%, transparent);
   --surface-2: color-mix(in srgb, var(--foreground) 3.5%, var(--card));
   --shadow: 0 12px 32px color-mix(in srgb, var(--foreground) 14%, transparent);
-  --up: #16a34a;
-  --down: #dc2626;
+  --up: var(--gain);
+  --down: var(--loss);
   --flat: #94a3b8;
   --s1: #2563eb;
   --s2: #8b5cf6;
@@ -28,8 +28,6 @@
   --hairline: color-mix(in srgb, var(--foreground) 10%, transparent);
   --surface-2: color-mix(in srgb, var(--foreground) 5%, var(--card));
   --shadow: 0 12px 32px rgb(0 0 0 / 0.45);
-  --up: #4ade80;
-  --down: #f87171;
   --flat: #64748b;
   --s1: #60a5fa;
   --s2: #a78bfa;

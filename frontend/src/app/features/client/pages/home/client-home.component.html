@@ -43,7 +43,7 @@
             </div>
             <div class="stat-content">
               <p class="stat-label">{{ 'home.todays_gain' | translate }}</p>
-              <p class="stat-value font-mono-data" [class.positive]="!todaysGain().startsWith('-')" [class.negative]="todaysGain().startsWith('-')">{{ todaysGain() }}</p>
+              <p class="stat-value font-mono-data" [class.positive]="todaysGain().startsWith('+')" [class.negative]="todaysGain().startsWith('-')">{{ todaysGain() }}</p>
             </div>
           </div>
 
@@ -58,7 +58,7 @@
             </div>
             <div class="stat-content">
               <p class="stat-label">{{ 'home.overall_gain' | translate }}</p>
-              <p class="stat-value font-mono-data" [class.positive]="!overallGain().startsWith('-')" [class.negative]="overallGain().startsWith('-')">{{ overallGain() }}</p>
+              <p class="stat-value font-mono-data" [class.positive]="overallGain().startsWith('+')" [class.negative]="overallGain().startsWith('-')">{{ overallGain() }}</p>
             </div>
           </div>
           <!-- Cash Remaining -->

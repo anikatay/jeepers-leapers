@@ -46,13 +46,25 @@
   --secondary: #e6f5ec;
   --secondary-foreground: #1a6b3c;
   --muted: #d4edde;
-  --muted-foreground: #4a7c5a;
+  --muted-foreground: #3f6e4e;
   --accent: #22c55e;
   --accent-foreground: #ffffff;
   --border: #c8e6d2;
   --ring: #22c55e;
   --radius: 0.75rem;
   --bg-wave: linear-gradient(135deg, #f0faf4 0%, #d4f0e0 40%, #e8f8f0 70%, #f0faf4 100%);
+
+  /* Semantic trading tokens shared by every theme (accessible themes override them below). */
+  --gain: #15803d;
+  --loss: #b91c1c;
+  --buy: #15803d;
+  --buy-foreground: #ffffff;
+  --sell: #b91c1c;
+  --sell-foreground: #ffffff;
+  --destructive: var(--loss);
+  --surface-raised: var(--card);
+  --shadow-raised: 0 12px 28px rgb(0 0 0 / 0.14);
+  color-scheme: light;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -72,9 +84,19 @@
   --muted-foreground: #6db88a;
   --accent: #16a34a;
   --accent-foreground: #ffffff;
-  --border: #1f3d2a;
+  --border: #2b5239;
   --ring: #22c55e;
   --bg-wave: linear-gradient(135deg, #0e1f14 0%, #112318 40%, #0d1d12 70%, #0e1f14 100%);
+
+  --gain: #4ade80;
+  --loss: #f87171;
+  --buy: #22c55e;
+  --buy-foreground: #052e16;
+  --sell: #f87171;
+  --sell-foreground: #450a0a;
+  --surface-raised: color-mix(in srgb, var(--card) 90%, var(--foreground));
+  --shadow-raised: 0 16px 36px rgb(0 0 0 / 0.55);
+  color-scheme: dark;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -91,7 +113,7 @@
   --secondary: #dbeafe;
   --secondary-foreground: #1d4ed8;
   --muted: #bfdbfe;
-  --muted-foreground: #2563eb;
+  --muted-foreground: #1e55d6;
   --accent: #38bdf8;
   --accent-foreground: #0f1e3a;
   --border: #bfdbfe;
@@ -105,15 +127,15 @@
   --foreground: #c8dcf8;
   --card: #101f3a;
   --card-foreground: #c8dcf8;
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
+  --primary: #60a5fa;
+  --primary-foreground: #0a1628;
   --secondary: #152545;
   --secondary-foreground: #93c5fd;
   --muted: #1a2d50;
   --muted-foreground: #60a5fa;
   --accent: #0ea5e9;
   --accent-foreground: #ffffff;
-  --border: #1e3058;
+  --border: #2a4272;
   --ring: #3b82f6;
   --bg-wave: linear-gradient(135deg, #0a1628 0%, #0d1e3a 40%, #0a1a32 70%, #0a1628 100%);
 }
@@ -154,7 +176,7 @@
   --muted-foreground: #a78bfa;
   --accent: #8b5cf6;
   --accent-foreground: #ffffff;
-  --border: #2e1e62;
+  --border: #3d2a7a;
   --ring: #a78bfa;
   --bg-wave: linear-gradient(135deg, #130d2e 0%, #1a1038 40%, #120c2a 70%, #130d2e 100%);
 }
@@ -195,7 +217,7 @@
   --muted-foreground: #f472b6;
   --accent: #ec4899;
   --accent-foreground: #ffffff;
-  --border: #4a1830;
+  --border: #5c2440;
   --ring: #f472b6;
   --bg-wave: linear-gradient(135deg, #200a12 0%, #2a0e1a 40%, #1e0a10 70%, #200a12 100%);
 }
@@ -212,9 +234,9 @@
   --primary: #4a7c59;
   --primary-foreground: #ffffff;
   --secondary: #e2ede4;
-  --secondary-foreground: #4a7c59;
+  --secondary-foreground: #3f6b4c;
   --muted: #c8ddc8;
-  --muted-foreground: #4a7c59;
+  --muted-foreground: #3f6b4c;
   --accent: #6aaa7e;
   --accent-foreground: #ffffff;
   --border: #c8ddc8;
@@ -236,7 +258,7 @@
   --muted-foreground: #86c99a;
   --accent: #4a7c59;
   --accent-foreground: #ffffff;
-  --border: #223224;
+  --border: #304632;
   --ring: #6aaa7e;
   --bg-wave: linear-gradient(135deg, #101a0f 0%, #141e12 40%, #0f180e 70%, #101a0f 100%);
 }
@@ -255,7 +277,7 @@
   --secondary: #f1f1f1;
   --secondary-foreground: #374151;
   --muted: #e5e5e5;
-  --muted-foreground: #6b7280;
+  --muted-foreground: #5b6170;
   --accent: #6b7280;
   --accent-foreground: #ffffff;
   --border: #e5e7eb;
@@ -277,7 +299,7 @@
   --muted-foreground: #9ca3af;
   --accent: #9ca3af;
   --accent-foreground: #0f0f0f;
-  --border: #333333;
+  --border: #3d3d3d;
   --ring: #d1d5db;
   --bg-wave: linear-gradient(135deg, #0f0f0f 0%, #141414 40%, #111111 70%, #0f0f0f 100%);
 }
@@ -318,7 +340,7 @@
   --muted-foreground: #7ea8e8;
   --accent: #2d7dd2;
   --accent-foreground: #ffffff;
-  --border: #192254;
+  --border: #26306a;
   --ring: #4a8fd4;
   --bg-wave: linear-gradient(135deg, #07091a 0%, #0c1030 40%, #090c22 70%, #07091a 100%);
 }
@@ -344,6 +366,12 @@
   --ring: #1a4d8a;
   --radius: 0.75rem;
   --bg-wave: linear-gradient(135deg, #f8f8f4 0%, #eef0f8 40%, #f4f6f8 70%, #f8f8f4 100%);
+  --gain: #1a4d8a;
+  --loss: #b45309;
+  --buy: #1a4d8a;
+  --buy-foreground: #ffffff;
+  --sell: #b45309;
+  --sell-foreground: #ffffff;
 }
 
 :root.a11y-bo.dark {
@@ -359,9 +387,15 @@
   --muted-foreground: #90b8e8;
   --accent: #f08030;
   --accent-foreground: #0a0e18;
-  --border: #1e2c48;
+  --border: #2b3d60;
   --ring: #5b9bd5;
   --bg-wave: linear-gradient(135deg, #0a0e18 0%, #0e1428 40%, #0c1220 70%, #0a0e18 100%);
+  --gain: #7cb3ea;
+  --loss: #f59a52;
+  --buy: #7cb3ea;
+  --buy-foreground: #0a0e18;
+  --sell: #f59a52;
+  --sell-foreground: #0a0e18;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -385,6 +419,12 @@
   --ring: #0c2d6b;
   --radius: 0.75rem;
   --bg-wave: linear-gradient(135deg, #f8f6ee 0%, #eeecdc 40%, #f4f2e8 70%, #f8f6ee 100%);
+  --gain: #0c2d6b;
+  --loss: #855d00;
+  --buy: #0c2d6b;
+  --buy-foreground: #ffffff;
+  --sell: #855d00;
+  --sell-foreground: #ffffff;
 }
 
 :root.a11y-bg.dark {
@@ -392,7 +432,7 @@
   --foreground: #e4ecf4;
   --card: #0e1430;
   --card-foreground: #e4ecf4;
-  --primary: #4a80c8;
+  --primary: #5a8fd6;
   --primary-foreground: #080c1c;
   --secondary: #141e40;
   --secondary-foreground: #80a8e4;
@@ -400,9 +440,15 @@
   --muted-foreground: #80a8e4;
   --accent: #d4a020;
   --accent-foreground: #080c1c;
-  --border: #182248;
-  --ring: #4a80c8;
+  --border: #283563;
+  --ring: #5a8fd6;
   --bg-wave: linear-gradient(135deg, #080c1c 0%, #0c1230 40%, #0a1028 70%, #080c1c 100%);
+  --gain: #80a8e4;
+  --loss: #e0b040;
+  --buy: #80a8e4;
+  --buy-foreground: #080c1c;
+  --sell: #e0b040;
+  --sell-foreground: #080c1c;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -426,6 +472,12 @@
   --ring: #0060c0;
   --radius: 0.75rem;
   --bg-wave: #ffffff;
+  --gain: #005c00;
+  --loss: #a00000;
+  --buy: #005c00;
+  --buy-foreground: #ffffff;
+  --sell: #a00000;
+  --sell-foreground: #ffffff;
 }
 
 :root.a11y-hc.dark {
@@ -444,7 +496,23 @@
   --border: #ffffff;
   --ring: #60c0ff;
   --bg-wave: #000000;
+  --gain: #7dff7d;
+  --loss: #ff8a8a;
+  --buy: #7dff7d;
+  --buy-foreground: #000000;
+  --sell: #ff8a8a;
+  --sell-foreground: #000000;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ACCESSIBILITY: TEXT SIZE
+   Scales the root font size so every rem-based size follows. Percentages keep
+   the user's browser font-size preference and zoom. "normal" sets nothing.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root[data-text-size='small'] { font-size: 87.5%; }
+:root[data-text-size='large'] { font-size: 112.5%; }
+:root[data-text-size='x-large'] { font-size: 125%; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    BASE ELEMENT STYLING

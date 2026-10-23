@@ -15,7 +15,7 @@ thead tr {
 }
 
 tbody tr:hover {
-  background-color: rgba(34, 197, 94, 0.1);
+  background-color: var(--secondary);
 }
 
 /* Stats Cards */
@@ -296,10 +296,6 @@ tbody tr:hover {
   opacity: 0.9;
 }
 
-.hover\:bg-secondary\/40:hover {
-  background-color: rgba(230, 245, 236, 0.4);
-}
-
 /* Focus States */
 .focus\:outline-none:focus {
   outline: 2px solid transparent;
@@ -332,45 +328,18 @@ select:focus {
   display: inline-flex;
 }
 
-/* Text Colors */
-.text-green-600 {
-  color: rgb(22, 163, 74);
+/* Buy / Sell colors (shared theme tokens) */
+.value-buy { color: var(--gain); }
+.value-sell { color: var(--loss); }
+
+.pill-buy {
+  color: var(--gain);
+  background-color: color-mix(in srgb, var(--gain) 14%, transparent);
 }
 
-.dark\:text-green-400 {
-  color: rgb(74, 222, 128);
-}
-
-.text-red-500 {
-  color: rgb(239, 68, 68);
-}
-
-.bg-green-100 {
-  background-color: rgb(220, 252, 231);
-}
-
-.dark\:bg-green-900\/30 {
-  background-color: rgba(20, 83, 45, 0.3);
-}
-
-.text-green-700 {
-  color: rgb(20, 83, 45);
-}
-
-.dark\:text-green-400 {
-  color: rgb(74, 222, 128);
-}
-
-.bg-red-100 {
-  background-color: rgb(254, 226, 226);
-}
-
-.dark\:bg-red-900\/30 {
-  background-color: rgba(127, 29, 29, 0.3);
-}
-
-.text-red-600 {
-  color: rgb(220, 38, 38);
+.pill-sell {
+  color: var(--loss);
+  background-color: color-mix(in srgb, var(--loss) 14%, transparent);
 }
 
 /* Overflow */

@@ -48,7 +48,7 @@ button {
 
 .grid-row-1 {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
   margin-bottom: 0.5rem;
 }
@@ -80,6 +80,7 @@ button {
 
 .profile-card:hover {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
 }
 
 .profile-avatar {
@@ -178,9 +179,6 @@ button {
   font-weight: 500;
   color: var(--muted-foreground);
   margin: 0 0 0.25rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .stat-value {
@@ -188,14 +186,15 @@ button {
   font-weight: 700;
   color: var(--foreground);
   margin: 0.25rem 0 0 0;
+  overflow-wrap: anywhere;
 }
 
 .stat-value.positive {
-  color: #22c55e;
+  color: var(--gain);
 }
 
 .stat-value.negative {
-  color: #dc2626;
+  color: var(--loss);
 }
 
 
@@ -231,8 +230,8 @@ button {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 200px;
-  height: 200px;
+  width: 12.5rem;
+  height: 12.5rem;
 }
 
 .pie-chart {
@@ -345,7 +344,7 @@ button {
 
 .grid-row-2 {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
 }
 
@@ -532,11 +531,11 @@ button {
 }
 
 .type-cell.buy {
-  color: #22c55e;
+  color: var(--gain);
 }
 
 .type-cell.sell {
-  color: #ef4444;
+  color: var(--loss);
 }
 
 .qty-cell,
@@ -579,8 +578,8 @@ button {
   }
 
   .pie-chart-wrapper {
-    width: 150px;
-    height: 150px;
+    width: 9.375rem;
+    height: 9.375rem;
   }
 
   .trades-table {
@@ -608,8 +607,8 @@ button {
   }
 
   .pie-chart-wrapper {
-    width: 120px;
-    height: 120px;
+    width: 7.5rem;
+    height: 7.5rem;
   }
 
   .holdings-list {
@@ -625,13 +624,11 @@ button {
   .section-title {
     font-size: 0.8rem;
   }
+}
 
-  .chart-empty-state {
-    text-align: center;
-    color: var(--muted-foreground);
-    padding: 2rem 0;
-  }
-
-
+.chart-empty-state {
+  text-align: center;
+  color: var(--muted-foreground);
+  padding: 2rem 0;
 }
 

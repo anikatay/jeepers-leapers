@@ -14,10 +14,12 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { EMPTY, Subscription, catchError, map, of, switchMap } from 'rxjs';
 import { AccountService } from '../../../../core/services/account.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { InstrumentService } from '../../../../core/services/instrument.service';
 import { MarketDataService } from '../../../../core/services/market-data.service';
+import { MarketSession, MarketSessionService } from '../../../../core/services/market-session.service';
 import { TradesService } from '../../../../core/services/trades.service';
 import { TradeModalService } from '../../../../core/services/trade-modal.service';
 import { AccountResponse } from '../../../../core/models/account.model';
@@ -34,6 +36,8 @@ export interface TradePanelInstrument {
   ticker: string;
   name: string;
   currency: string;
+  /** Looked up by ticker when the opener doesn't know it. */
+  exchangeId?: string;
 }
 
 interface PanelNotice {
@@ -63,6 +67,8 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly marketDataService = inject(MarketDataService);
   private readonly tradesService = inject(TradesService);
   private readonly tradeModalService = inject(TradeModalService);
+  private readonly instrumentService = inject(InstrumentService);
+  private readonly marketSessionService = inject(MarketSessionService);
 
   readonly instrument = input.required<TradePanelInstrument>();
   readonly price = input(0);
@@ -70,6 +76,13 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly initialSide = input<TradeSide>('BUY');
   readonly ownedShares = input<number | null>(null);
   readonly holdingsStatus = input<LoadStatus>('loading');
+
+  /** Only a confirmed close blocks submission; unknown status is left to backend validation. */
+  readonly marketSession = signal<MarketSession | null>(null);
+  readonly marketClosedReason = computed(() => {
+    const session = this.marketSession();
+    return session?.state === 'closed' ? session.detail : null;
+  });
 
   readonly closed = output<void>();
   readonly tradeCompleted = output<TradeResponse>();
@@ -161,6 +174,8 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly notice = computed<PanelNotice | null>(() => {
     const isBuy = this.isBuy();
+    const closedReason = this.marketClosedReason();
+    if (closedReason) return { text: closedReason, tone: 'error' };
     if (!this.accountId) return { text: 'No active trading account is selected.', tone: 'error' };
     if (this.accountStatus() === 'loading') return { text: 'Loading your available cash…', tone: 'info' };
     if (this.accountStatus() === 'error') {
@@ -226,6 +241,7 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.side.set(this.initialSide() === 'SELL' && this.canSell() ? 'SELL' : 'BUY');
     this.loadAccount();
+    this.watchMarketSession();
   }
 
   ngAfterViewInit(): void {
@@ -306,7 +322,7 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
       },
       error: err => {
         this.submitting.set(false);
-        this.submitError.set(err?.error?.message || err?.message || 'Trade failed');
+        this.submitError.set(err?.error?.details || err?.error?.message || err?.message || 'Trade failed');
         this.failedAttempts.update(n => n + 1);
         console.error('Trade error:', err);
       }
@@ -360,6 +376,22 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
           this.accountStatus.set('error');
         }
       })
+    );
+  }
+
+  private watchMarketSession(): void {
+    const { ticker, exchangeId } = this.instrument();
+    const exchange$ = exchangeId
+      ? of(exchangeId)
+      : this.instrumentService.getInstrumentByTicker(ticker).pipe(map(found => found.exchangeId));
+
+    this.subscriptions.add(
+      exchange$
+        .pipe(
+          catchError(() => EMPTY),
+          switchMap(exchange => this.marketSessionService.watch(ticker, exchange))
+        )
+        .subscribe(session => this.marketSession.set(session))
     );
   }
 

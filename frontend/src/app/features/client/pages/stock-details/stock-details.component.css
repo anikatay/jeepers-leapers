@@ -1,20 +1,14 @@
 :host {
-  --sd-up: #15803d;
-  --sd-down: #b91c1c;
-  --sd-buy: #16a34a;
-  --sd-sell: #dc2626;
-  --sd-line-up: #16a34a;
-  --sd-line-down: #dc2626;
   display: block;
 }
 
-:host-context(.dark) {
-  --sd-up: #4ade80;
-  --sd-down: #f87171;
-  --sd-buy: #22c55e;
-  --sd-sell: #ef4444;
-  --sd-line-up: #22c55e;
-  --sd-line-down: #f87171;
+.sd-shell {
+  --sd-up: var(--gain);
+  --sd-down: var(--loss);
+  --sd-buy: var(--buy);
+  --sd-sell: var(--sell);
+  --sd-line-up: var(--gain);
+  --sd-line-down: var(--loss);
 }
 
 * {
@@ -210,20 +204,19 @@
 
 .sd-btn-buy {
   background: var(--sd-buy);
-  color: #ffffff;
+  color: var(--buy-foreground);
 }
 
 .sd-btn-sell {
   background: var(--sd-sell);
-  color: #ffffff;
+  color: var(--sell-foreground);
 }
 
-.sd-btn-buy:hover,
-.sd-btn-sell:hover:not(:disabled) {
+.sd-btn:hover:not(:disabled) {
   filter: brightness(0.94);
 }
 
-.sd-btn-sell:disabled {
+.sd-btn:disabled {
   opacity: 1;
   cursor: not-allowed;
   background: var(--secondary);
@@ -237,6 +230,36 @@
   font-size: 0.75rem;
   color: var(--muted-foreground);
   text-align: right;
+}
+
+/* Market session */
+.sd-market {
+  align-self: flex-start;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0.25rem 0.7rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.sd-market[data-state='open'] {
+  color: var(--gain);
+  background: color-mix(in srgb, var(--gain) 12%, var(--card));
+  border-color: color-mix(in srgb, var(--gain) 40%, var(--border));
+}
+
+.sd-market svg { flex-shrink: 0; width: 1em; height: 1em; }
+
+.sd-market-detail {
+  font-weight: 500;
+  color: var(--muted-foreground);
 }
 
 /* Chart */
@@ -339,7 +362,7 @@
 .sd-axis-x text {
   fill: var(--muted-foreground);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 .sd-hover line {
@@ -363,9 +386,9 @@
   align-items: center;
   padding: 0.375rem 0.625rem;
   border-radius: 0.5rem;
-  background: var(--card);
+  background: var(--surface-raised);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-raised);
   pointer-events: none;
   white-space: nowrap;
 }
@@ -395,6 +418,7 @@
   color: var(--muted-foreground);
   border-radius: 0.75rem;
   background: color-mix(in srgb, var(--secondary) 45%, transparent);
+  overflow-y: auto;
 }
 
 .sd-spinner {
