@@ -3,7 +3,7 @@ import { Component, HostListener, WritableSignal, computed, signal } from '@angu
 import { FormsModule } from '@angular/forms';
 import {
   AnalystDataSource,
-  AnalystMockDataSource,
+  AnalystApiDataSource,
   AnalystSnapshot,
   AnalystTrade,
   PriceBar
@@ -63,7 +63,7 @@ const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFra
   selector: 'app-analyst-dashboard',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  providers: [{ provide: AnalystDataSource, useClass: AnalystMockDataSource }],
+  providers: [{ provide: AnalystDataSource, useClass: AnalystApiDataSource }],
   templateUrl: './analyst-dashboard.component.html',
   styleUrl: './analyst-dashboard.component.css'
 })

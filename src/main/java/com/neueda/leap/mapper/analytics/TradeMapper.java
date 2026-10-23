@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.apache.ibatis.annotations.Select;
 
-import com.neueda.leap.dto.request.analytics.TradeSearchRequest;
+import com.neueda.leap.model.analytics.TradeSearchQuery;
 import com.neueda.leap.model.analytics.projection.TradeProjection;
 
 public interface TradeMapper {
@@ -42,7 +42,7 @@ public interface TradeMapper {
             </choose>
             </script>
             """)
-    List<TradeProjection> findTrades(TradeSearchRequest request);
+    List<TradeProjection> findTrades(TradeSearchQuery request);
 
     @Select("""
             <script>
@@ -58,5 +58,5 @@ public interface TradeMapper {
             </where>
             </script>
             """)
-    long countTrades(TradeSearchRequest request);
+    long countTrades(TradeSearchQuery request);
 }

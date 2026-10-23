@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 
@@ -41,6 +42,17 @@ export interface AnalystSnapshot {
 
 export abstract class AnalystDataSource {
   abstract load(): Observable<AnalystSnapshot>;
+}
+
+@Injectable()
+export class AnalystApiDataSource implements AnalystDataSource {
+  private readonly snapshotUrl = '/api/analytics/dashboard/snapshot';
+
+  constructor(private readonly http: HttpClient) {}
+
+  load(): Observable<AnalystSnapshot> {
+    return this.http.get<AnalystSnapshot>(this.snapshotUrl);
+  }
 }
 
 const SESSIONS = 520;
