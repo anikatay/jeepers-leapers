@@ -1,16 +1,17 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, catchError, from, map, mergeMap, of, retry, shareReplay, throwError, timer } from 'rxjs';
+import { Observable, catchError, from, map, mergeMap, of, retry, shareReplay, tap, throwError, timer } from 'rxjs';
 import { MarketDataService } from '../../core/services/market-data.service';
-import { PriceBar, QuoteStatus } from '../../core/models/market.model';
+import { HistoryResponse, PriceBar, QuoteStatus } from '../../core/models/market.model';
 
 export type PerformancePeriod = '1D' | '1W' | '1M';
 
 // Largest calendar gap between a reference session and the date it stands in for
 // (a weekend plus one market holiday). Larger gaps mean missing history.
 const MAX_SESSION_GAP_DAYS = 4;
-const HISTORY_PERIOD = '3mo';
+const HISTORY_PERIOD = '1mo';
 export const HISTORY_TTL_MS = 30 * 60 * 1000;
+const HISTORY_BATCH_SIZE = 50;
 const HISTORY_CONCURRENCY = 4;
 // Status 0 is a network error; 503 is also what the backend returns while another request holds its fetch lock.
 const RETRYABLE_STATUS = new Set([0, 429, 502, 503, 504]);
@@ -119,19 +120,31 @@ export class HeatmapHistoryCache {
 
   constructor(private market: MarketDataService) {}
 
-  /** Emits [ticker, bars] as each history arrives, with at most HISTORY_CONCURRENCY requests in flight. */
+  /** Emits [ticker, bars] as each batch history response arrives. */
   load(tickers: string[]): Observable<[string, PriceBar[] | null]> {
-    return from(tickers).pipe(
-      mergeMap(ticker => this.history(ticker).pipe(map(bars => [ticker, bars] as [string, PriceBar[] | null])), HISTORY_CONCURRENCY)
+    const uniqueTickers = [...new Set(tickers)];
+    const missing = uniqueTickers.filter(ticker => {
+      const cached = this.entries.get(ticker);
+      return !cached || Date.now() >= cached.expiresAt;
+    });
+
+    for (let start = 0; start < missing.length; start += HISTORY_BATCH_SIZE) {
+      this.createBatch(missing.slice(start, start + HISTORY_BATCH_SIZE));
+    }
+
+    return from(uniqueTickers).pipe(
+      mergeMap(ticker => {
+        const entry = this.entries.get(ticker);
+        if (!entry) {
+          return of<[string, PriceBar[] | null]>([ticker, null]);
+        }
+        return entry.bars$.pipe(map(bars => [ticker, bars] as [string, PriceBar[] | null]));
+      }, HISTORY_CONCURRENCY)
     );
   }
 
-  private history(ticker: string): Observable<PriceBar[] | null> {
-    const cached = this.entries.get(ticker);
-    if (cached && Date.now() < cached.expiresAt) return cached.bars$;
-
-    const entry = { expiresAt: Date.now() + HISTORY_TTL_MS, bars$: of<PriceBar[] | null>(null) };
-    entry.bars$ = this.market.getHistory(ticker, HISTORY_PERIOD).pipe(
+  private createBatch(tickers: string[]): void {
+    const batch$ = this.market.getHistoryBatch(tickers, HISTORY_PERIOD).pipe(
       retry({
         count: RETRY_LIMIT,
         delay: (error, attempt) => {
@@ -139,17 +152,35 @@ export class HeatmapHistoryCache {
           return wait === null ? throwError(() => error) : timer(wait);
         }
       }),
-      map(response => {
-        entry.expiresAt = Date.now() + HISTORY_TTL_MS;
-        return response.bars ?? [];
-      }),
-      catchError(error => {
-        entry.expiresAt = Date.now() + failureTtl(error);
-        return of(null);
-      }),
+      map(histories => ({ histories }) as HistoryBatchResult),
+      catchError(error => of({ error } as HistoryBatchResult)),
       shareReplay(1)
     );
-    this.entries.set(ticker, entry);
-    return entry.bars$;
+
+    tickers.forEach(ticker => {
+      const entry = { expiresAt: Date.now() + HISTORY_TTL_MS, bars$: of<PriceBar[] | null>(null) };
+      entry.bars$ = batch$.pipe(
+        mergeMap(result => {
+          if ('error' in result) {
+            return throwError(() => result.error);
+          }
+          const history = result.histories[ticker];
+          return of(history?.bars?.length ? history.bars : null);
+        }),
+        tap(() => {
+          entry.expiresAt = Date.now() + HISTORY_TTL_MS;
+        }),
+        catchError(error => {
+          entry.expiresAt = Date.now() + failureTtl(error);
+          return of(null);
+        }),
+        shareReplay(1)
+      );
+      this.entries.set(ticker, entry);
+    });
   }
 }
+
+type HistoryBatchResult =
+  | { histories: Record<string, HistoryResponse> }
+  | { error: unknown };

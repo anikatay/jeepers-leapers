@@ -28,6 +28,13 @@ public class MarketDataController {
 		this.marketDataService = marketDataService;
 	}
 
+	@GetMapping("/history/batch")
+	public Map<String, HistoryResponse> historyBatch(
+			@RequestParam String tickers,
+			@RequestParam(defaultValue = "1y") String period) {
+		return marketDataService.getHistoryBatch(tickers, period);
+	}
+
 	@GetMapping("/{ticker}/history")
 	public HistoryResponse history(@PathVariable String ticker,
 									@RequestParam(defaultValue = "1y") String period) {

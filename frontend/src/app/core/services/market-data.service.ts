@@ -32,6 +32,13 @@ export class MarketDataService{
 		});
 	}
 
+	getHistoryBatch(tickers: string[], period: string = '1y'): Observable<Record<string, HistoryResponse>> {
+		const params = new HttpParams()
+			.set('tickers', tickers.join(','))
+			.set('period', period);
+		return this.http.get<Record<string, HistoryResponse>>(`${this.apiUrl}/history/batch`, { params });
+	}
+
 	getQuote(ticker: string): Observable<MarketQuote> {
 		return this.http.get<MarketQuote>(`${this.apiUrl}/${ticker}/quote`);
 	}

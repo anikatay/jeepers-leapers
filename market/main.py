@@ -315,7 +315,7 @@ class YahooStream:
         async with self.lock:
             self.desired.add(ticker)
             websocket = self.websocket
-            if websocket is None:
+            if websocket is None or ticker in self.active:
                 return
             try:
                 await websocket.subscribe(ticker)
@@ -436,6 +436,12 @@ async def health():
 @app.post("/stream/subscribe/{ticker}")
 async def subscribe_stream(ticker: str):
     normalized = validate_ticker(ticker)
+    if SECTOR_STREAM_ENABLED and normalized in SECTOR_TICKER_SET:
+        return {
+            "ticker": normalized,
+            "subscribed": True,
+            "persistent": True,
+        }
     await stream.add(normalized)
     return {"ticker": normalized, "subscribed": True}
 

@@ -35,7 +35,10 @@ import java.time.LocalDate;
 import java.time.Instant;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,6 +55,8 @@ public class MarketDataService implements IService {
     private static final String NOT_FOUND_MARKER = "NOT_FOUND";
     private static final Duration HISTORY_TTL = Duration.ofHours(6);
     private static final Duration NOT_FOUND_TTL = Duration.ofMinutes(10);
+    private static final int HISTORY_BATCH_SIZE = 50;
+    private static final String BATCH_HISTORY_PREFIX = "history:batch:";
     private static final String SUBSCRIPTION_SET_KEY = "market:subscriptions";
     private static final String SUBSCRIPTION_COUNT_PREFIX = "market:subscription:count:";
     private static final String SUBSCRIPTION_HOT_UNTIL_PREFIX = "market:subscription:hot-until:";
@@ -113,6 +118,65 @@ public class MarketDataService implements IService {
         String ticker = normalizeTicker(rawTicker);
         HistoryResponse full = loadFullHistory(ticker);
         return slice(full, period);
+    }
+
+    public Map<String, HistoryResponse> getHistoryBatch(String rawTickers, String period) {
+        String fetchPeriod = batchFetchPeriod(period);
+        Set<String> tickers = normalizeTickers(rawTickers);
+        Map<String, HistoryResponse> result = new LinkedHashMap<>();
+        Set<String> missing = new LinkedHashSet<>();
+
+        for (String ticker : tickers) {
+            String cacheKey = batchHistoryCacheKey(ticker, fetchPeriod);
+            String cached = readCache(cacheKey);
+            if (NOT_FOUND_MARKER.equals(cached)) {
+                result.put(ticker, emptyHistory(ticker, period));
+                continue;
+            }
+            if (cached != null) {
+                try {
+                    HistoryResponse full = objectMapper.readValue(cached, HistoryResponse.class);
+                    if (full.bars() != null && !full.bars().isEmpty()) {
+                        result.put(ticker, slice(full, period));
+                        continue;
+                    }
+                    log.warn("Cached history has no bars for {}", ticker);
+                } catch (JsonProcessingException e) {
+                    log.warn("Discarding unreadable cache entry {}", cacheKey, e);
+                }
+            }
+            missing.add(ticker);
+        }
+
+        List<String> pending = new ArrayList<>(missing);
+        for (int start = 0; start < pending.size(); start += HISTORY_BATCH_SIZE) {
+            int end = Math.min(start + HISTORY_BATCH_SIZE, pending.size());
+            Set<String> batch = new LinkedHashSet<>(pending.subList(start, end));
+            Map<String, HistoryResponse> fresh = client.fetchHistoryBatch(batch, fetchPeriod);
+
+            for (String ticker : batch) {
+                HistoryResponse full = fresh.get(ticker);
+                if (full == null || full.bars() == null || full.bars().isEmpty()) {
+                    log.warn("No batch history returned for {}", ticker);
+                    writeCache(
+                            batchHistoryCacheKey(ticker, fetchPeriod),
+                            NOT_FOUND_MARKER,
+                            NOT_FOUND_TTL);
+                    result.put(ticker, emptyHistory(ticker, period));
+                    continue;
+                }
+
+                validateHistory(full, ticker);
+                String cacheKey = batchHistoryCacheKey(ticker, fetchPeriod);
+                writeJson(cacheKey, full);
+                writeCache(
+                        "cooldown:" + cacheKey,
+                        "1",
+                        Duration.ofSeconds(refreshCooldownSeconds));
+                result.put(ticker, slice(full, period));
+            }
+        }
+        return result;
     }
 
     public MarketQuote cacheLatestQuote(MarketQuote quote) {
@@ -323,6 +387,46 @@ public class MarketDataService implements IService {
             throw new ObjectInvalidException("Invalid ticker: " + rawTicker);
         }
         return ticker;
+    }
+
+    private Set<String> normalizeTickers(String rawTickers) {
+        if (rawTickers == null || rawTickers.isBlank()) {
+            throw new ObjectInvalidException("Tickers cannot be empty");
+        }
+
+        Set<String> tickers = new LinkedHashSet<>();
+        for (String rawTicker : rawTickers.split(",")) {
+            if (!rawTicker.isBlank()) {
+                tickers.add(normalizeTicker(rawTicker));
+            }
+        }
+        if (tickers.isEmpty()) {
+            throw new ObjectInvalidException("Tickers cannot be empty");
+        }
+        return tickers;
+    }
+
+    private String batchFetchPeriod(String rawPeriod) {
+        if (rawPeriod == null) {
+            throw new ObjectInvalidException("Unsupported period: null");
+        }
+        return switch (rawPeriod.trim().toLowerCase()) {
+            case "1m", "1mo" -> "1mo";
+            case "3m", "3mo" -> "3mo";
+            case "6m", "6mo" -> "6mo";
+            case "1y" -> "1y";
+            case "2y" -> "2y";
+            case "all", "max", "5y" -> FETCH_PERIOD;
+            default -> throw new ObjectInvalidException("Unsupported period: " + rawPeriod);
+        };
+    }
+
+    private String batchHistoryCacheKey(String ticker, String fetchPeriod) {
+        return BATCH_HISTORY_PREFIX + fetchPeriod + ":" + ticker;
+    }
+
+    private HistoryResponse emptyHistory(String ticker, String period) {
+        return new HistoryResponse(ticker, period, List.of());
     }
 
     private String normalizeCurrency(String rawCurrency) {
