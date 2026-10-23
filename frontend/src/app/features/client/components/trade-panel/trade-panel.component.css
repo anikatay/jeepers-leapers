@@ -34,16 +34,15 @@ button {
 
 .tp-panel {
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  inset-block: 0;
+  inset-inline-end: 0;
   z-index: 61;
   width: min(var(--tp-width), 100vw);
   display: flex;
   flex-direction: column;
   background: var(--card);
   color: var(--card-foreground);
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
   box-shadow: var(--shadow-raised);
   font-family: 'Inter', sans-serif;
   animation: tp-slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
@@ -51,6 +50,15 @@ button {
 
 @keyframes tp-slide-in {
   from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+:host-context([dir='rtl']) .tp-panel {
+  animation-name: tp-slide-in-rtl;
+}
+
+@keyframes tp-slide-in-rtl {
+  from { transform: translateX(-100%); }
   to { transform: translateX(0); }
 }
 
@@ -181,7 +189,7 @@ button {
 .tp-change.muted { color: var(--muted-foreground); font-weight: 500; }
 
 .tp-change-label {
-  margin-left: 0.25rem;
+  margin-inline-start: 0.25rem;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   color: var(--muted-foreground);
@@ -424,8 +432,8 @@ button {
 }
 
 .tp-row dd {
-  margin: 0 0 0 auto;
-  text-align: right;
+  margin-inline-start: auto;
+  text-align: end;
   color: var(--foreground);
   font-weight: 600;
   min-width: 0;
@@ -480,7 +488,7 @@ button {
 .tp-notice.error {
   color: var(--tp-down);
   background: color-mix(in srgb, var(--tp-sell) 10%, transparent);
-  border-left: 3px solid var(--tp-sell);
+  border-inline-start: 3px solid var(--tp-sell);
 }
 
 .tp-error {
@@ -560,7 +568,7 @@ button {
   padding: 0.875rem 1rem;
   border: 1px solid var(--border);
   border-radius: 0.875rem;
-  text-align: left;
+  text-align: start;
 }
 
 .tp-success-actions {
@@ -575,7 +583,7 @@ button {
 @media (max-width: 640px) {
   .tp-panel {
     width: 100vw;
-    border-left: none;
+    border-inline-start: none;
     box-shadow: none;
     animation-name: tp-slide-up;
   }

@@ -110,7 +110,7 @@ button {
 
 .search-icon {
   position: absolute;
-  left: 0.75rem;
+  inset-inline-start: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
   width: 0.875rem;
@@ -121,7 +121,8 @@ button {
 
 .search-input {
   width: 100%;
-  padding: 0.5rem 0.75rem 0.5rem 2rem;
+  padding-block: 0.5rem;
+  padding-inline: 2rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--secondary);
@@ -158,13 +159,13 @@ button {
   color: var(--muted-foreground);
   background: transparent;
   border: none;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   transition: all 0.2s ease;
   cursor: pointer;
 }
 
 .filter-button:last-child {
-  border-right: none;
+  border-inline-end: none;
 }
 
 .filter-button:hover {
@@ -198,7 +199,7 @@ button {
 
 .holdings-table th {
   padding: 0.75rem 0.625rem;
-  text-align: left;
+  text-align: start;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted-foreground);
@@ -293,12 +294,12 @@ button {
   width: 13%;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.875rem;
-  text-align: right;
-  padding-right: 0.625rem;
+  text-align: end;
+  padding-inline-end: 0.625rem;
 }
 
 /* Gain/Loss */
-.col-gain { width: 13%; text-align: right; padding-right: 1.5rem; }
+.col-gain { width: 13%; text-align: end; padding-inline-end: 1.5rem; }
 
 .gain-content {
   display: flex;
@@ -314,7 +315,7 @@ button {
 .gain-tooltip {
   position: absolute;
   bottom: calc(100% + 6px);
-  right: 0;
+  inset-inline-end: 0;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
@@ -355,7 +356,7 @@ button {
 }
 
 /* Actions */
-.col-actions { width: 18%; text-align: right; padding-right: 0.625rem; }
+.col-actions { width: 18%; text-align: end; padding-inline-end: 0.625rem; }
 
 .action-buttons {
   display: flex;

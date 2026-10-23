@@ -14,12 +14,12 @@
       </div>
       <div class="tp-identity-text">
         <h2 id="tp-title" class="tp-title font-display">
-          {{ isBuy() ? 'Buy' : 'Sell' }} <span class="font-mono-data">{{ instrument().ticker }}</span>
+          {{ (isBuy() ? 'trade.buy' : 'trade.sell') | translate }} <span class="font-mono-data">{{ instrument().ticker }}</span>
         </h2>
         <p class="tp-name">{{ instrument().name }}</p>
       </div>
     </div>
-    <button #closeButton type="button" class="tp-close" aria-label="Close trading panel"
+    <button #closeButton type="button" class="tp-close" [attr.aria-label]="'trade.close_panel' | translate"
             [disabled]="submitting()" (click)="requestClose()">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M18 6L6 18M6 6l12 12" />
@@ -34,57 +34,58 @@
         <polyline points="20 6 9 17 4 12" />
       </svg>
     </div>
-    <p class="tp-success-title font-display">Order executed</p>
+    <p class="tp-success-title font-display">{{ 'trade.order_executed' | translate }}</p>
     <p class="tp-success-text">
-      {{ res.side === 'SELL' ? 'Sold' : 'Bought' }}
+      {{ (res.side === 'SELL' ? 'trade.sold' : 'trade.bought') | translate }}
       <strong class="font-mono-data">{{ formatShares(res.quantity) }}</strong>
-      {{ res.quantity === 1 ? 'share' : 'shares' }} of {{ res.ticker || instrument().ticker }}
+      {{ (res.quantity === 1 ? 'trade.share' : 'trade.shares') | translate }}
+      {{ 'trade.of' | translate }} {{ res.ticker || instrument().ticker }}
     </p>
     <dl class="tp-summary">
-      <div class="tp-row"><dt>Execution price</dt><dd class="font-mono-data">{{ formatCurrency(res.executionPrice, res.instrumentCurrency || instrumentCurrency(), 4) }}</dd></div>
-      <div class="tp-row"><dt>Order amount</dt><dd class="font-mono-data">{{ formatCurrency(res.tradeValue, res.instrumentCurrency || instrumentCurrency(), 4) }}</dd></div>
-      <div class="tp-row"><dt>Available cash</dt><dd class="font-mono-data">{{ formatCurrency(cash(), accountCurrency()) }}</dd></div>
+      <div class="tp-row"><dt>{{ 'trade.execution_price' | translate }}</dt><dd class="font-mono-data">{{ formatCurrency(res.executionPrice, res.instrumentCurrency || instrumentCurrency(), 4) }}</dd></div>
+      <div class="tp-row"><dt>{{ 'trade.order_amount' | translate }}</dt><dd class="font-mono-data">{{ formatCurrency(res.tradeValue, res.instrumentCurrency || instrumentCurrency(), 4) }}</dd></div>
+      <div class="tp-row"><dt>{{ 'trade.available_cash' | translate }}</dt><dd class="font-mono-data">{{ formatCurrency(cash(), accountCurrency()) }}</dd></div>
     </dl>
     <div class="tp-success-actions">
-      <button type="button" class="tp-btn tp-btn-primary" (click)="requestClose()">Done</button>
-      <button type="button" class="tp-btn tp-btn-ghost" (click)="startNewOrder()">Place another order</button>
+      <button type="button" class="tp-btn tp-btn-primary" (click)="requestClose()">{{ 'trade.done' | translate }}</button>
+      <button type="button" class="tp-btn tp-btn-ghost" (click)="startNewOrder()">{{ 'trade.place_another' | translate }}</button>
     </div>
   </div>
 
   <ng-template #orderForm>
     <div class="tp-body">
       <!-- Live quote -->
-      <section class="tp-quote" aria-label="Current market price">
+      <section class="tp-quote" [attr.aria-label]="'trade.current_price_aria' | translate">
         <div>
-          <p class="tp-eyebrow">Market price</p>
+          <p class="tp-eyebrow">{{ 'trade.market_price' | translate }}</p>
           <p class="tp-price font-mono-data">{{ price() > 0 ? formatCurrency(price(), instrumentCurrency(), 4) : '—' }}</p>
         </div>
         <p *ngIf="todayChange() as change; else noChange" class="tp-change font-mono-data"
            [class.up]="change.amount >= 0" [class.down]="change.amount < 0">
           {{ change.amount >= 0 ? '▲ +' : '▼ −' }}{{ formatCurrency(Math.abs(change.amount), instrumentCurrency()) }}
           ({{ change.amount >= 0 ? '+' : '−' }}{{ Math.abs(change.pct) | number:'1.2-2' }}%)
-          <span class="tp-change-label">Today</span>
+          <span class="tp-change-label">{{ 'trade.today' | translate }}</span>
         </p>
-        <ng-template #noChange><p class="tp-change muted">Today's change unavailable</p></ng-template>
+        <ng-template #noChange><p class="tp-change muted">{{ 'trade.today_change_unavailable' | translate }}</p></ng-template>
       </section>
 
       <dl class="tp-stats">
         <div>
-          <dt>Shares owned</dt>
+          <dt>{{ 'trade.shares_owned' | translate }}</dt>
           <dd class="font-mono-data">
             <ng-container [ngSwitch]="holdingsStatus()">
-              <span *ngSwitchCase="'loading'">Loading…</span>
-              <span *ngSwitchCase="'error'">Unavailable</span>
+              <span *ngSwitchCase="'loading'">{{ 'trade.loading' | translate }}</span>
+              <span *ngSwitchCase="'error'">{{ 'trade.unavailable' | translate }}</span>
               <span *ngSwitchDefault>{{ formatShares(owned()) }}</span>
             </ng-container>
           </dd>
         </div>
         <div>
-          <dt>Available cash</dt>
+          <dt>{{ 'trade.available_cash' | translate }}</dt>
           <dd class="font-mono-data">
             <ng-container [ngSwitch]="accountStatus()">
-              <span *ngSwitchCase="'loading'">Loading…</span>
-              <span *ngSwitchCase="'error'">Unavailable</span>
+              <span *ngSwitchCase="'loading'">{{ 'trade.loading' | translate }}</span>
+              <span *ngSwitchCase="'error'">{{ 'trade.unavailable' | translate }}</span>
               <span *ngSwitchDefault>{{ formatCurrency(cash(), accountCurrency()) }}</span>
             </ng-container>
           </dd>
@@ -93,40 +94,40 @@
 
       <!-- Buy / Sell -->
       <div class="tp-field">
-        <span class="tp-label" id="tp-side-label">Order</span>
+        <span class="tp-label" id="tp-side-label">{{ 'trade.order' | translate }}</span>
         <div class="tp-segment" role="group" aria-labelledby="tp-side-label">
           <button type="button" class="tp-seg-btn buy" [class.active]="isBuy()" [attr.aria-pressed]="isBuy()"
-                  [disabled]="submitting()" (click)="setSide('BUY')">Buy</button>
+                  [disabled]="submitting()" (click)="setSide('BUY')">{{ 'trade.buy' | translate }}</button>
           <button type="button" class="tp-seg-btn sell" [class.active]="!isBuy()" [attr.aria-pressed]="!isBuy()"
                   [disabled]="submitting() || !canSell()" (click)="setSide('SELL')"
-                  [attr.aria-describedby]="!canSell() ? 'tp-sell-reason' : null">Sell</button>
+                  [attr.aria-describedby]="!canSell() ? 'tp-sell-reason' : null">{{ 'trade.sell' | translate }}</button>
         </div>
         <p *ngIf="!canSell()" id="tp-sell-reason" class="tp-hint">
           <ng-container [ngSwitch]="holdingsStatus()">
-            <span *ngSwitchCase="'loading'">Selling is available once your holdings load.</span>
-            <span *ngSwitchCase="'error'">Selling is unavailable because your holdings couldn't be loaded.</span>
-            <span *ngSwitchDefault>Selling is unavailable — you don't own shares of {{ instrument().ticker }}.</span>
+            <span *ngSwitchCase="'loading'">{{ 'trade.sell_once_loaded' | translate }}</span>
+            <span *ngSwitchCase="'error'">{{ 'trade.sell_holdings_error' | translate }}</span>
+            <span *ngSwitchDefault>{{ 'trade.sell_no_shares' | translate:{ ticker: instrument().ticker } }}</span>
           </ng-container>
         </p>
       </div>
 
       <!-- Shares / Dollar Amount -->
       <div class="tp-field">
-        <span class="tp-label" id="tp-entry-label">{{ isBuy() ? 'Buy in' : 'Sell in' }}</span>
+        <span class="tp-label" id="tp-entry-label">{{ (isBuy() ? 'trade.buy_in' : 'trade.sell_in') | translate }}</span>
         <div class="tp-segment" role="group" aria-labelledby="tp-entry-label">
           <button type="button" class="tp-seg-btn" [class.active]="entryMode() === 'shares'"
                   [attr.aria-pressed]="entryMode() === 'shares'" [disabled]="submitting()"
-                  (click)="setEntryMode('shares')">Shares</button>
+                  (click)="setEntryMode('shares')">{{ 'trade.entry_shares' | translate }}</button>
           <button type="button" class="tp-seg-btn" [class.active]="entryMode() === 'amount'"
                   [attr.aria-pressed]="entryMode() === 'amount'" [disabled]="submitting()"
-                  (click)="setEntryMode('amount')">Dollar Amount</button>
+                  (click)="setEntryMode('amount')">{{ 'trade.dollar_amount' | translate }}</button>
         </div>
       </div>
 
       <!-- Shares entry -->
       <div *ngIf="entryMode() === 'shares'" class="tp-field">
-        <label class="tp-label" for="tp-shares">Number of shares</label>
-        <input id="tp-shares" class="tp-input font-mono-data" type="text" inputmode="decimal" autocomplete="off"
+        <label class="tp-label" for="tp-shares">{{ 'trade.number_of_shares' | translate }}</label>
+        <input id="tp-shares" class="tp-input font-mono-data" type="text" inputmode="decimal" autocomplete="off" dir="ltr"
                placeholder="0" [disabled]="submitting()"
                [ngModel]="sharesText()" (ngModelChange)="onSharesChange($event)" />
       </div>
@@ -134,18 +135,18 @@
       <!-- Dollar amount entry + slider -->
       <div *ngIf="entryMode() === 'amount'" class="tp-field">
         <div class="tp-label-row">
-          <label class="tp-label" for="tp-amount">Amount ({{ accountCurrency() }})</label>
-          <button type="button" class="tp-max" [disabled]="submitting() || maxAmount() <= 0" (click)="setMaxAmount()">Max</button>
+          <label class="tp-label" for="tp-amount">{{ 'trade.amount' | translate:{ currency: accountCurrency() } }}</label>
+          <button type="button" class="tp-max" [disabled]="submitting() || maxAmount() <= 0" (click)="setMaxAmount()">{{ 'trade.max' | translate }}</button>
         </div>
         <div class="tp-input-wrap">
           <input id="tp-amount" class="tp-input font-mono-data" type="text" inputmode="decimal" autocomplete="off"
-                 placeholder="0.00" [disabled]="submitting()"
+                 placeholder="0.00" [disabled]="submitting()" dir="ltr"
                  [ngModel]="amountText()" (ngModelChange)="onAmountChange($event)" />
         </div>
-        <input class="tp-slider" type="range" min="0" step="0.01"
+        <input class="tp-slider" type="range" min="0" step="0.01" dir="ltr"
                [max]="maxAmount()" [value]="sliderValue()" [disabled]="submitting() || maxAmount() <= 0"
                [style.--fill]="sliderPercent() + '%'"
-               [attr.aria-label]="'Dollar amount, up to ' + formatCurrency(maxAmount(), accountCurrency())"
+               [attr.aria-label]="'trade.amount_aria' | translate:{ max: formatCurrency(maxAmount(), accountCurrency()) }"
                [attr.aria-valuetext]="formatCurrency(sliderValue(), accountCurrency())"
                (input)="onSliderInput($event)" />
         <div class="tp-slider-scale font-mono-data" aria-hidden="true">
@@ -156,51 +157,51 @@
 
       <!-- Review before swipe -->
       <section class="tp-review" aria-labelledby="tp-review-title">
-        <h3 id="tp-review-title" class="tp-review-title">Review order</h3>
+        <h3 id="tp-review-title" class="tp-review-title">{{ 'trade.review_order' | translate }}</h3>
         <dl class="tp-summary">
-          <div class="tp-row"><dt>Order</dt><dd><span class="tp-side-pill" [class.sell]="!isBuy()">{{ isBuy() ? 'Buy' : 'Sell' }}</span></dd></div>
-          <div class="tp-row"><dt>Company</dt><dd>{{ instrument().name }} <span class="font-mono-data tp-muted">({{ instrument().ticker }})</span></dd></div>
+          <div class="tp-row"><dt>{{ 'trade.order' | translate }}</dt><dd><span class="tp-side-pill" [class.sell]="!isBuy()">{{ (isBuy() ? 'trade.buy' : 'trade.sell') | translate }}</span></dd></div>
+          <div class="tp-row"><dt>{{ 'trade.company' | translate }}</dt><dd>{{ instrument().name }} <span class="font-mono-data tp-muted">({{ instrument().ticker }})</span></dd></div>
           <div class="tp-row">
-            <dt>{{ entryMode() === 'amount' ? 'Estimated shares' : 'Shares' }}</dt>
+            <dt>{{ (entryMode() === 'amount' ? 'trade.estimated_shares' : 'trade.entry_shares') | translate }}</dt>
             <dd class="font-mono-data">{{ formatShares(quantity()) }}</dd>
           </div>
-          <div class="tp-row"><dt>Estimated price</dt><dd class="font-mono-data">{{ formatCurrency(price(), instrumentCurrency(), 4) }}</dd></div>
+          <div class="tp-row"><dt>{{ 'trade.estimated_price' | translate }}</dt><dd class="font-mono-data">{{ formatCurrency(price(), instrumentCurrency(), 4) }}</dd></div>
           <div class="tp-row tp-row-strong">
-            <dt>Estimated total</dt>
+            <dt>{{ 'trade.estimated_total' | translate }}</dt>
             <dd class="font-mono-data">
               {{ formatCurrency(estimatedTotal(), instrumentCurrency()) }}
               <small *ngIf="needsFx()" class="tp-muted">≈ {{ formatCurrency(estimatedSettlement(), accountCurrency()) }}</small>
             </dd>
           </div>
-          <div class="tp-row" *ngIf="isBuy()"><dt>Available cash</dt><dd class="font-mono-data">{{ formatCurrency(cash(), accountCurrency()) }}</dd></div>
+          <div class="tp-row" *ngIf="isBuy()"><dt>{{ 'trade.available_cash' | translate }}</dt><dd class="font-mono-data">{{ formatCurrency(cash(), accountCurrency()) }}</dd></div>
           <div class="tp-row" *ngIf="isBuy()">
-            <dt>Remaining buying power</dt>
+            <dt>{{ 'trade.remaining_buying_power' | translate }}</dt>
             <dd class="font-mono-data" [class.negative]="remainingBuyingPower() < 0">{{ formatCurrency(remainingBuyingPower(), accountCurrency()) }}</dd>
           </div>
-          <div class="tp-row" *ngIf="!isBuy()"><dt>Shares owned</dt><dd class="font-mono-data">{{ formatShares(owned()) }}</dd></div>
-          <div class="tp-row" *ngIf="!isBuy()"><dt>Shares remaining</dt><dd class="font-mono-data">{{ formatShares(Math.max(0, owned() - quantity())) }}</dd></div>
+          <div class="tp-row" *ngIf="!isBuy()"><dt>{{ 'trade.shares_owned' | translate }}</dt><dd class="font-mono-data">{{ formatShares(owned()) }}</dd></div>
+          <div class="tp-row" *ngIf="!isBuy()"><dt>{{ 'trade.shares_remaining' | translate }}</dt><dd class="font-mono-data">{{ formatShares(Math.max(0, owned() - quantity())) }}</dd></div>
         </dl>
-        <p class="tp-footnote">Estimates use the latest live price. The final price is set when the order executes.</p>
+        <p class="tp-footnote">{{ 'trade.footnote' | translate }}</p>
       </section>
 
       <p *ngIf="notice() as n" class="tp-notice" [class.error]="n.tone === 'error'" aria-live="polite">{{ n.text }}</p>
 
       <div *ngIf="submitError()" class="tp-error" role="alert">
-        <strong>Order not placed.</strong> {{ submitError() }}
-        <span class="tp-error-hint">Review the order and swipe again to retry.</span>
+        <strong>{{ 'trade.order_not_placed' | translate }}</strong> {{ submitError() }}
+        <span class="tp-error-hint">{{ 'trade.retry_hint' | translate }}</span>
       </div>
 
       <app-swipe-to-confirm
-        [label]="isBuy() ? 'Slide to Buy' : 'Slide to Sell'"
+        [label]="swipeLabel()"
         [variant]="isBuy() ? 'buy' : 'sell'"
-        [loadingLabel]="isBuy() ? 'Placing buy order…' : 'Placing sell order…'"
+        [loadingLabel]="swipeLoadingLabel()"
         [disabled]="!canSubmit()"
         [loading]="submitting()"
         [resetKey]="swipeResetKey()"
         (confirmed)="submit()">
       </app-swipe-to-confirm>
 
-      <button type="button" class="tp-btn tp-btn-ghost" [disabled]="submitting()" (click)="requestClose()">Cancel</button>
+      <button type="button" class="tp-btn tp-btn-ghost" [disabled]="submitting()" (click)="requestClose()">{{ 'trade.cancel' | translate }}</button>
     </div>
   </ng-template>
 </aside>

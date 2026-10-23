@@ -109,3 +109,35 @@ a:hover {
   white-space: nowrap;
   border-width: 0;
 }
+
+/* Client-only RTL: keep charts, sliders, tickers and numeric inputs LTR */
+.client-app {
+  text-align: start;
+}
+
+.client-app .font-mono-data,
+.client-app .font-mono,
+.client-app input[type='number'],
+.client-app input[inputmode='decimal'],
+.client-app input[type='range'],
+.client-app .ltr-keep,
+.client-app .chart-container,
+.client-app .pie-chart-wrapper,
+.client-app .area-chart,
+.client-app .sd-chart-box,
+.client-app .tp-slider,
+.client-app .tp-slider-scale {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.client-app[dir='rtl'] .profile-arrow,
+.client-app[dir='rtl'] .section-link svg,
+.client-app[dir='rtl'] .sd-back svg {
+  transform: scaleX(-1);
+}
+
+.client-app[dir='rtl'] .profile-card:hover .profile-arrow,
+.client-app[dir='rtl'] .section-link:hover svg {
+  transform: scaleX(-1) translateX(0.125rem);
+}

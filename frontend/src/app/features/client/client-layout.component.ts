@@ -5,26 +5,31 @@ import { NavbarComponent, NavItem } from '../../shared/components/navbar.compone
 import { InstrumentService } from '../../core/services/instrument.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
 import { AuthService } from '../../core/services/auth.service';
+import { TranslationService } from '../../core/services/translation.service';
 
 @Component({
   selector: 'app-client-layout',
   standalone: true,
   imports: [CommonModule, RouterOutlet, NavbarComponent],
   template: `
-    <app-navbar 
-      [navItems]="navItems" 
-      [userName]="userName"
-      (profileOptionSelected)="onProfileOptionSelected($event)">
-    </app-navbar>
-    <router-outlet></router-outlet>
+    <div class="client-app" [attr.dir]="translation.direction()">
+      <app-navbar 
+        [navItems]="navItems" 
+        [userName]="userName"
+        (profileOptionSelected)="onProfileOptionSelected($event)">
+      </app-navbar>
+      <router-outlet></router-outlet>
+    </div>
   `,
-  styles: []
+  styles: [`
+    .client-app { min-height: 100%; }
+  `]
 })
 export class ClientLayoutComponent implements OnInit {
   navItems: NavItem[] = [
-    { label: 'Home', path: '/client' },
-    { label: 'Portfolio', path: '/client/portfolio' },
-    { label: 'Trades', path: '/client/trades' }
+    { label: 'nav.home', path: '/client' },
+    { label: 'nav.portfolio', path: '/client/portfolio' },
+    { label: 'nav.trades', path: '/client/trades' }
   ];
 
   userName: string;
@@ -34,7 +39,8 @@ export class ClientLayoutComponent implements OnInit {
   constructor(
     private instrumentService: InstrumentService,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    readonly translation: TranslationService
   ) {
     this.userName = this.authService.userName;
   }

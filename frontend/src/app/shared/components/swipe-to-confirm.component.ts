@@ -5,12 +5,14 @@ import {
   ViewChild,
   computed,
   effect,
+  inject,
   input,
   output,
   signal,
   untracked
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslationService } from '../../core/services/translation.service';
 
 let nextSwipeId = 0;
 
@@ -63,15 +65,12 @@ let nextSwipeId = 0;
           </svg>
         </div>
       </div>
-      <p class="sr-only" [attr.id]="hintId">
-        Drag the handle all the way to the right to confirm. Keyboard: press the Right Arrow key until the
-        handle reaches the end, then press Enter. Press Escape or Left Arrow to move it back.
-      </p>
+      <p class="sr-only" [attr.id]="hintId">{{ swipeHint() }}</p>
       <p class="sr-only" role="status" aria-live="polite">{{ loading() ? loadingLabel() : '' }}</p>
     </div>
   `,
   styles: [`
-    :host { display: block; }
+    :host { display: block; direction: ltr; unicode-bidi: isolate; }
 
     .swipe {
       --swipe-color: var(--buy);
@@ -225,17 +224,25 @@ export class SwipeToConfirmComponent implements OnDestroy {
   );
   readonly labelOpacity = computed(() => (this.loading() ? 1 : Math.max(0, 1 - this.progress() * 1.6)));
   readonly valueNow = computed(() => Math.round(this.progress() * 100));
+  readonly swipeHint = computed(() => {
+    this.translation.currentLanguage();
+    return this.translation.t('swipe.hint');
+  });
+
   readonly valueText = computed(() => {
+    this.translation.currentLanguage();
     if (this.loading()) return this.loadingLabel();
-    if (this.disabled()) return `${this.label()} unavailable. Complete the order details first.`;
-    if (this.progress() >= this.threshold) return 'Ready. Press Enter to confirm.';
-    return `${this.valueNow()} percent. Press Right Arrow to slide.`;
+    if (this.disabled()) return this.translation.t('swipe.unavailable', { label: this.label() });
+    if (this.progress() >= this.threshold) return this.translation.t('swipe.ready');
+    return this.translation.t('swipe.percent', { percent: this.valueNow() });
   });
 
   private pointerId: number | null = null;
   private startX = 0;
   private startProgress = 0;
   private travel = 1;
+
+  private readonly translation = inject(TranslationService);
 
   constructor() {
     effect(() => {

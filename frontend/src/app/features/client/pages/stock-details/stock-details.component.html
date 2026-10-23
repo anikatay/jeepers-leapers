@@ -5,20 +5,20 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
           <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        Back
+        {{ 'stock.back' | translate }}
       </a>
       <app-connection-status></app-connection-status>
     </div>
 
     <!-- Loading -->
     <div *ngIf="instrumentStatus() === 'loading'" class="sd-card sd-state" aria-busy="true">
-      <p>Loading {{ ticker() || 'stock' }}…</p>
+      <p>{{ 'stock.loading' | translate:{ ticker: ticker() || ('stock.generic' | translate) } }}</p>
     </div>
 
     <!-- Not found / failed -->
     <div *ngIf="instrumentStatus() === 'error'" class="sd-card sd-state" role="alert">
-      <p class="sd-state-title">We couldn't load {{ ticker() || 'this stock' }}.</p>
-      <p>Check the symbol and try searching again from the bar above.</p>
+      <p class="sd-state-title">{{ 'stock.not_found_title' | translate:{ ticker: ticker() || ('stock.this_stock' | translate) } }}</p>
+      <p>{{ 'stock.not_found_body' | translate }}</p>
     </div>
 
     <ng-container *ngIf="instrument() as inst">
@@ -47,27 +47,27 @@
                      stroke-linecap="round" aria-hidden="true">
                   <circle cx="12" cy="12" r="4.5" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
                 </svg>
-                Market Open
+                {{ 'stock.market_open' | translate }}
               </ng-container>
               <ng-container *ngSwitchCase="'closed'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"
                      stroke-linejoin="round" aria-hidden="true">
                   <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
                 </svg>
-                Market Closed
+                {{ 'stock.market_closed' | translate }}
               </ng-container>
               <ng-container *ngSwitchCase="'unavailable'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"
                      stroke-linecap="round" aria-hidden="true">
                   <circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.5v.01" />
                 </svg>
-                Market Status Unavailable
+                {{ 'stock.market_unavailable' | translate }}
               </ng-container>
-              <ng-container *ngSwitchDefault>Checking market status…</ng-container>
+              <ng-container *ngSwitchDefault>{{ 'stock.market_checking' | translate }}</ng-container>
             </ng-container>
           </p>
           <p *ngIf="exchangeLabel() as exchange" class="sd-exchange">
-            <span class="sd-exchange-label">Exchange:</span> {{ exchange }}
+            <span class="sd-exchange-label">{{ 'stock.exchange' | translate }}:</span> {{ exchange }}
           </p>
           <p *ngIf="marketSession()?.state === 'open' || marketSession()?.state === 'unavailable'" class="sd-market-detail">
             {{ marketSession()?.detail }}
@@ -81,11 +81,11 @@
                [class.up]="change.amount >= 0" [class.down]="change.amount < 0">
               {{ change.amount >= 0 ? '▲ +' : '▼ −' }}{{ formatCurrency(Math.abs(change.amount)) }}
               ({{ change.amount >= 0 ? '+' : '−' }}{{ Math.abs(change.pct) | number:'1.2-2' }}%)
-              <span class="sd-change-label">Today</span>
+              <span class="sd-change-label">{{ 'stock.today' | translate }}</span>
             </p>
-            <ng-template #noChange><p class="sd-change muted">Today's change unavailable</p></ng-template>
+            <ng-template #noChange><p class="sd-change muted">{{ 'stock.today_change_unavailable' | translate }}</p></ng-template>
             <span *ngIf="quoteStatus() === 'STALE' || quoteStatus() === 'UNAVAILABLE'" class="sd-quote-chip">
-              {{ quoteStatus() === 'STALE' ? 'Delayed quote' : 'Quote unavailable' }}
+              {{ (quoteStatus() === 'STALE' ? 'stock.delayed_quote' : 'stock.quote_unavailable') | translate }}
             </span>
           </div>
 
@@ -97,7 +97,7 @@
                    stroke-width="2.25" aria-hidden="true">
                 <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
               </svg>
-              Buy
+              {{ 'stock.buy' | translate }}
             </button>
             <button type="button" class="sd-btn sd-btn-sell" [disabled]="!canSell() || !!marketClosedReason()"
                     [attr.aria-describedby]="marketClosedReason() || sellDisabledReason() ? 'sd-sell-reason' : null"
@@ -106,7 +106,7 @@
                    stroke-width="2.25" aria-hidden="true">
                 <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
               </svg>
-              Sell
+              {{ 'stock.sell' | translate }}
             </button>
             <p *ngIf="marketClosedReason() || sellDisabledReason() as reason" id="sd-sell-reason" class="sd-sell-reason">{{ reason }}</p>
           </div>
@@ -117,7 +117,7 @@
       <section class="sd-card sd-chart-card" aria-labelledby="sd-chart-title">
         <div class="sd-chart-head">
           <div>
-            <h2 id="sd-chart-title" class="sd-section-title font-display">Price history</h2>
+            <h2 id="sd-chart-title" class="sd-section-title font-display">{{ 'stock.price_history' | translate }}</h2>
             <p *ngIf="chartStatus() === 'ready' && periodChange() as pc" class="sd-period-change font-mono-data"
                [class.up]="pc.amount >= 0" [class.down]="pc.amount < 0">
               {{ pc.amount >= 0 ? '+' : '−' }}{{ formatCurrency(Math.abs(pc.amount)) }}
@@ -125,14 +125,14 @@
               <span class="sd-change-label">{{ rangeLabel() }}</span>
             </p>
           </div>
-          <div class="sd-ranges" role="group" aria-label="Chart time range">
+          <div class="sd-ranges" role="group" [attr.aria-label]="'stock.chart_range' | translate">
             <button *ngFor="let r of ranges" type="button" class="sd-range"
                     [class.active]="range() === r" [attr.aria-pressed]="range() === r"
                     (click)="selectRange(r)">{{ r }}</button>
           </div>
         </div>
 
-        <div #chartBox class="sd-chart-box"
+        <div #chartBox class="sd-chart-box ltr-keep" dir="ltr"
              [class.trend-down]="!trendUp()"
              [attr.tabindex]="chartStatus() === 'ready' ? 0 : null"
              [attr.role]="chartStatus() === 'ready' ? 'img' : null"
@@ -174,17 +174,17 @@
           <div *ngIf="chartStatus() === 'ready' && hoverPoint() as hp" class="sd-tooltip" aria-live="polite"
                [style.left.px]="Math.min(Math.max(hp.x, 80), chartSize().width - 80)">
             <span class="sd-tooltip-price font-mono-data">{{ formatCurrency(hp.bar.close) }}</span>
-            <span class="sd-tooltip-date">{{ formatFullDate(hp.bar.date) }} · close</span>
+            <span class="sd-tooltip-date">{{ formatFullDate(hp.bar.date) }} · {{ 'stock.close' | translate }}</span>
           </div>
 
           <div *ngIf="chartStatus() === 'loading'" class="sd-chart-overlay" aria-busy="true">
             <span class="sd-spinner" aria-hidden="true"></span>
-            <span>Loading price history…</span>
+            <span>{{ 'stock.loading_history' | translate }}</span>
           </div>
 
           <div *ngIf="chartStatus() === 'error'" class="sd-chart-overlay" role="alert">
-            <span>Price history isn't available for this range right now.</span>
-            <button type="button" class="sd-retry" (click)="retryChart()">Try again</button>
+            <span>{{ 'stock.history_unavailable' | translate }}</span>
+            <button type="button" class="sd-retry" (click)="retryChart()">{{ 'stock.try_again' | translate }}</button>
           </div>
 
           <!-- 1D: no intraday endpoint exists, so show a labeled placeholder instead of invented data -->
@@ -192,33 +192,30 @@
             <svg class="sd-placeholder-art" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
               <line x1="0" y1="60" x2="400" y2="60" />
             </svg>
-            <span class="sd-placeholder-badge">UI-only placeholder · no data</span>
-            <p class="sd-placeholder-text">
-              Intraday (1D) price history isn't provided by the market data API. Use 5D, 1M, 1Y or All for real
-              daily closes.
-            </p>
+            <span class="sd-placeholder-badge">{{ 'stock.placeholder_badge' | translate }}</span>
+            <p class="sd-placeholder-text">{{ 'stock.intraday_unavailable' | translate }}</p>
             <dl class="sd-placeholder-stats font-mono-data">
-              <div><dt>Previous close</dt><dd>{{ previousClose() ? formatCurrency(previousClose()) : '—' }}</dd></div>
-              <div><dt>Live price</dt><dd>{{ price() > 0 ? formatCurrency(price(), 4) : '—' }}</dd></div>
+              <div><dt>{{ 'stock.previous_close' | translate }}</dt><dd>{{ previousClose() ? formatCurrency(previousClose()) : '—' }}</dd></div>
+              <div><dt>{{ 'stock.live_price' | translate }}</dt><dd>{{ price() > 0 ? formatCurrency(price(), 4) : '—' }}</dd></div>
             </dl>
           </div>
         </div>
-        <p *ngIf="chartStatus() === 'ready'" class="sd-chart-foot">Daily closing prices. Hover, touch or use arrow keys to inspect.</p>
+        <p *ngIf="chartStatus() === 'ready'" class="sd-chart-foot">{{ 'stock.chart_foot' | translate }}</p>
       </section>
 
       <!-- Position -->
       <section class="sd-card sd-position" aria-labelledby="sd-position-title">
-        <h2 id="sd-position-title" class="sd-section-title font-display">Your position</h2>
+        <h2 id="sd-position-title" class="sd-section-title font-display">{{ 'stock.your_position' | translate }}</h2>
         <ng-container [ngSwitch]="holdingsStatus()">
-          <p *ngSwitchCase="'loading'" class="sd-muted">Loading your holdings…</p>
-          <p *ngSwitchCase="'error'" class="sd-muted">Your holdings couldn't be loaded. Selling is disabled until they can be confirmed.</p>
+          <p *ngSwitchCase="'loading'" class="sd-muted">{{ 'stock.loading_holdings' | translate }}</p>
+          <p *ngSwitchCase="'error'" class="sd-muted">{{ 'stock.holdings_error' | translate }}</p>
           <ng-container *ngSwitchDefault>
             <dl *ngIf="canSell(); else noPosition" class="sd-position-grid">
-              <div><dt>Shares owned</dt><dd class="font-mono-data">{{ formatShares(ownedShares()) }}</dd></div>
-              <div><dt>Market value</dt><dd class="font-mono-data">{{ formatCurrency(positionValue()) }}</dd></div>
+              <div><dt>{{ 'stock.shares_owned' | translate }}</dt><dd class="font-mono-data">{{ formatShares(ownedShares()) }}</dd></div>
+              <div><dt>{{ 'stock.market_value' | translate }}</dt><dd class="font-mono-data">{{ formatCurrency(positionValue()) }}</dd></div>
             </dl>
             <ng-template #noPosition>
-              <p class="sd-muted">You don't own any {{ inst.ticker }} shares yet.</p>
+              <p class="sd-muted">{{ 'stock.no_position' | translate:{ ticker: inst.ticker } }}</p>
             </ng-template>
           </ng-container>
         </ng-container>

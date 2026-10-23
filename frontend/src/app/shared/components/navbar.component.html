@@ -11,13 +11,13 @@
     </div>
 
     <!-- Center Navigation -->
-    <nav class="navbar-nav" aria-label="Main Navigation">
+    <nav class="navbar-nav" [attr.aria-label]="'nav.main_navigation' | translate">
       <a *ngFor="let item of navItems"
          [routerLink]="[item.path]"
          routerLinkActive="active"
          [routerLinkActiveOptions]="{ exact: item.path === '/client' }"
          class="nav-link">
-        {{ item.label }}
+        {{ item.label | translate }}
         <span class="nav-underline" *ngIf="false"></span>
       </a>
     </nav>
@@ -28,7 +28,7 @@
 
       <!-- Language Dropdown -->
       <div class="language-container" (click)="$event.stopPropagation()">
-        <button class="language-button" (click)="toggleLanguageDropdown()" title="Select Language">
+        <button class="language-button" (click)="toggleLanguageDropdown()" [title]="'nav.select_language' | translate">
           <!-- Globe icon -->
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
@@ -45,7 +45,7 @@
         <!-- Language Dropdown Menu -->
         <div class="language-menu" *ngIf="languageOpen()" (click)="$event.stopPropagation()">
           <div class="language-panel">
-            <p class="panel-title">Language</p>
+            <p class="panel-title">{{ 'nav.language' | translate }}</p>
             <div class="language-list">
               <button *ngFor="let lang of languages()"
                       class="language-item"
@@ -63,7 +63,7 @@
       <div class="profile-container" (click)="$event.stopPropagation()">
         <button class="profile-button" (click)="toggleProfile()">
           <div class="avatar">{{ avatarLetter }}</div>
-          <span class="username">Hi, {{ userName.split(' ')[0] }}</span>
+          <span class="username">{{ 'nav.hi' | translate }} {{ userName.split(' ')[0] }}</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
@@ -72,11 +72,11 @@
         <!-- Profile Menu -->
         <div class="profile-menu" *ngIf="profileOpen()" (click)="$event.stopPropagation()">
           <button class="menu-item" (click)="selectProfileOption('profile')">
-            <span>Profile</span>
+            <span>{{ 'nav.profile' | translate }}</span>
           </button>
           <div class="menu-divider"></div>
           <button class="menu-item logout" (click)="selectProfileOption('logout')">
-            <span>Sign Out</span>
+            <span>{{ 'nav.sign_out' | translate }}</span>
           </button>
         </div>
       </div>
@@ -97,8 +97,8 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Search Apple, Tesla, Nvidia…"
-          aria-label="Search stocks by company name or symbol"
+          [placeholder]="'nav.search_placeholder' | translate"
+          [attr.aria-label]="'nav.search_aria' | translate"
           [ngModel]="searchQuery()"
           (input)="onSearchInput($event)"
           (focus)="onSearchFocus()"
@@ -107,14 +107,14 @@
 
         <!-- Trade button -->
         <button class="trade-button" (click)="tradeClick()">
-          Trade
+          {{ 'nav.trade' | translate }}
         </button>
       </div>
 
       <!-- Search dropdown results -->
       <div class="search-dropdown" *ngIf="searchOpen() && searchQuery().length > 0" (click)="$event.stopPropagation()">
         <div *ngIf="searchResults().length === 0" class="no-results">
-          <p>No results found</p>
+          <p>{{ 'nav.no_results' | translate }}</p>
         </div>
         <button *ngFor="let result of searchResults()"
                 class="search-result-item"

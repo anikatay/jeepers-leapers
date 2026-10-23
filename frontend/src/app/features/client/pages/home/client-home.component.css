@@ -75,7 +75,7 @@ button {
   border-radius: 0.75rem;
   background: var(--card);
   transition: all 0.2s ease;
-  text-align: left;
+  text-align: start;
 }
 
 .profile-card:hover {
@@ -321,7 +321,7 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  text-align: right;
+  text-align: end;
   flex-shrink: 0;
 }
 
@@ -445,8 +445,8 @@ button {
 .chart-x-axis {
   position: absolute;
   bottom: -1.5rem;
-  left: 3rem;
-  right: 0;
+  inset-inline-start: 3rem;
+  inset-inline-end: 0;
   display: flex;
   justify-content: space-between;
   font-size: 0.75rem;
@@ -484,7 +484,7 @@ button {
 
 .trades-table th {
   padding: 0.5rem;
-  text-align: left;
+  text-align: start;
   font-weight: 600;
   color: var(--muted-foreground);
   border-bottom: 1px solid var(--border);
@@ -541,7 +541,7 @@ button {
 .qty-cell,
 .price-cell,
 .total-cell {
-  text-align: right;
+  text-align: end;
   font-weight: 500;
 }
 

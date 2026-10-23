@@ -1,5 +1,6 @@
 import { Component, inject, input } from '@angular/core';
 import { AppearanceService, TEXT_SIZES, THEMES } from '../../core/services/appearance.service';
+import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
 let nextId = 0;
 
@@ -7,27 +8,28 @@ let nextId = 0;
 @Component({
   selector: 'app-appearance-settings',
   standalone: true,
+  imports: [TranslatePipe],
   template: `
     @if (showMode()) {
       <fieldset class="group">
-        <legend>Mode</legend>
+        <legend>{{ 'appearance.mode' | translate }}</legend>
         <div class="segment">
           <label class="seg" [class.checked]="!appearance.dark()">
             <input type="radio" [name]="id + '-mode'" [checked]="!appearance.dark()" (change)="appearance.dark.set(false)" />
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
-            Light
+            {{ 'appearance.light' | translate }}
           </label>
           <label class="seg" [class.checked]="appearance.dark()">
             <input type="radio" [name]="id + '-mode'" [checked]="appearance.dark()" (change)="appearance.dark.set(true)" />
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
-            Dark
+            {{ 'appearance.dark' | translate }}
           </label>
         </div>
       </fieldset>
     }
 
     <fieldset class="group">
-      <legend>Color theme</legend>
+      <legend>{{ 'appearance.color_theme' | translate }}</legend>
       <div class="themes">
         @for (theme of themes; track theme.id) {
           <label class="theme" [class.checked]="appearance.theme() === theme.id">
@@ -37,7 +39,7 @@ let nextId = 0;
                   [style.background]="'linear-gradient(135deg, ' + theme.swatch[0] + ' 50%, ' + theme.swatch[1] + ' 50%)'"></span>
             <span class="theme-text">
               {{ theme.label }}
-              @if (theme.accessible) { <small>Accessible</small> }
+              @if (theme.accessible) { <small>{{ 'appearance.accessible' | translate }}</small> }
             </span>
           </label>
         }
@@ -45,18 +47,18 @@ let nextId = 0;
     </fieldset>
 
     <fieldset class="group">
-      <legend>Text size</legend>
+      <legend>{{ 'appearance.text_size' | translate }}</legend>
       <div class="segment sizes">
         @for (size of textSizes; track size.id; let i = $index) {
           <label class="seg" [class.checked]="appearance.textSize() === size.id">
             <input type="radio" [name]="id + '-size'" [checked]="appearance.textSize() === size.id"
                    (change)="appearance.setTextSize(size.id)" />
             <span class="sample" aria-hidden="true" [style.font-size.em]="0.8 + i * 0.15">Aa</span>
-            {{ size.label }}
+            {{ (size.id === 'x-large' ? 'appearance.x_large' : 'appearance.' + size.id) | translate }}
           </label>
         }
       </div>
-      <p class="hint">Applies to the whole app and works together with browser zoom.</p>
+      <p class="hint">{{ 'appearance.hint' | translate }}</p>
     </fieldset>
   `,
   styles: `

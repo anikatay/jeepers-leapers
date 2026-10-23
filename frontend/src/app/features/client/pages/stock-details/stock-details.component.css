@@ -158,7 +158,7 @@
 .sd-change.muted { color: var(--muted-foreground); font-weight: 500; }
 
 .sd-change-label {
-  margin-left: 0.25rem;
+  margin-inline-start: 0.25rem;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   color: var(--muted-foreground);
@@ -229,7 +229,7 @@
   margin: 0;
   font-size: 0.75rem;
   color: var(--muted-foreground);
-  text-align: right;
+  text-align: end;
 }
 
 /* Market session + exchange */
@@ -596,7 +596,7 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .sd-sell-reason { text-align: left; }
+  .sd-sell-reason { text-align: start; }
 
   .sd-ranges { width: 100%; }
 

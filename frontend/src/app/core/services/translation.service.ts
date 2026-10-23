@@ -1,4 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
+import { CLIENT_UI_TRANSLATIONS } from './client-ui-translations';
+import { CLIENT_UI_TRANSLATIONS_MORE } from './client-ui-translations-more';
 
 export type Language = 'en' | 'es' | 'bn' | 'hi' | 'ur' | 'pa' | 'te' | 'ta' | 'gu' | 'ga';
 
@@ -880,11 +882,55 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
   }
 };
 
+const RTL_LANGUAGES = new Set<string>(['ar', 'ur']);
+
+function applyParams(text: string, params?: Record<string, string | number>): string {
+  if (!params) return text;
+  return text.replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
+    params[name] === undefined ? `{{${name}}}` : String(params[name])
+  );
+}
+
+for (const extra of [CLIENT_UI_TRANSLATIONS, CLIENT_UI_TRANSLATIONS_MORE]) {
+  for (const [lang, entries] of Object.entries(extra)) {
+    if (translations[lang as Language]) {
+      Object.assign(translations[lang as Language], entries);
+    }
+  }
+}
+
+const KEY_ALIASES: Record<string, string> = {
+  'home.buy': 'trades.buy',
+  'home.sell': 'trades.sell',
+  'stock.buy': 'trades.buy',
+  'stock.sell': 'trades.sell',
+  'trade.buy': 'trades.buy',
+  'trade.sell': 'trades.sell',
+  'trade.cancel': 'common.cancel',
+  'trade.loading': 'common.loading',
+  'trade.entry_shares': 'portfolio.shares',
+  'trade.estimated_total': 'portfolio.estimated_total',
+  'trade.company': 'portfolio.company',
+  'trade.available_cash': 'portfolio.cash_available',
+  'stock.shares_owned': 'portfolio.shares',
+  'trades.date': 'home.time'
+};
+
+for (const lang of Object.keys(translations) as Language[]) {
+  for (const [key, alias] of Object.entries(KEY_ALIASES)) {
+    if (!translations[lang][key] && translations[lang][alias]) {
+      translations[lang][key] = translations[lang][alias];
+    }
+  }
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class TranslationService {
   currentLanguage = signal<Language>(this.getStoredLanguage());
+  readonly isRtl = computed(() => RTL_LANGUAGES.has(this.currentLanguage()));
+  readonly direction = computed(() => (this.isRtl() ? 'rtl' : 'ltr'));
 
   constructor() {
     // Persist language to localStorage whenever it changes
@@ -909,13 +955,13 @@ export class TranslationService {
     localStorage.setItem('app-language', lang);
   }
 
-  translate(key: TranslationKey, defaultValue?: string): string {
+  translate(key: TranslationKey, defaultValue?: string, params?: Record<string, string | number>): string {
     const lang = this.currentLanguage();
-    const translated = translations[lang]?.[key];
-    return translated || defaultValue || key;
+    const translated = translations[lang]?.[key] || translations.en[key] || defaultValue || key;
+    return applyParams(translated, params);
   }
 
-  t(key: TranslationKey): string {
-    return this.translate(key);
+  t(key: TranslationKey, params?: Record<string, string | number>): string {
+    return this.translate(key, undefined, params);
   }
 }

@@ -6,6 +6,7 @@ import { InstrumentService } from '../../core/services/instrument.service';
 import { TranslationService, LANGUAGES, type Language, type LanguageOption } from '../../core/services/translation.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
 import { AppearanceControlsComponent } from './appearance-controls.component';
+import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
 export interface NavItem {
   label: string;
@@ -21,7 +22,7 @@ export interface StockSymbol {
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule, AppearanceControlsComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule, AppearanceControlsComponent, TranslatePipe],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css'
 })
@@ -29,9 +30,9 @@ export class NavbarComponent implements OnInit {
   private static readonly TICKER_PATTERN = /^[A-Z0-9][A-Z0-9._=-]{0,31}$/;
 
   @Input() navItems: NavItem[] = [
-    { label: 'Home', path: '/client' },
-    { label: 'Portfolio', path: '/client/portfolio' },
-    { label: 'Trades', path: '/client/trades' }
+    { label: 'nav.home', path: '/client' },
+    { label: 'nav.portfolio', path: '/client/portfolio' },
+    { label: 'nav.trades', path: '/client/trades' }
   ];
   @Input() userName = 'User';
   @Input() brandName = 'Bull Exchange';
@@ -60,8 +61,9 @@ export class NavbarComponent implements OnInit {
   }
 
   constructor(private instrumentService: InstrumentService, private translationService: TranslationService) {
-    // Sync selected language with translation service
-    this.selectedLanguage.set(this.translationService.currentLanguage());
+    effect(() => {
+      this.selectedLanguage.set(this.translationService.currentLanguage());
+    });
     
     // Filter search results when search query changes
     effect(() => {

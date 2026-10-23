@@ -24,6 +24,8 @@ import { TradesService } from '../../../../core/services/trades.service';
 import { TradeModalService } from '../../../../core/services/trade-modal.service';
 import { AccountResponse } from '../../../../core/models/account.model';
 import { TradeRequest, TradeResponse } from '../../../../core/models/trade.model';
+import { TranslationService } from '../../../../core/services/translation.service';
+import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { SwipeToConfirmComponent } from '../../../../shared/components/swipe-to-confirm.component';
 import { getStockIcon } from '../../../../shared/utils/stock-icon';
 
@@ -57,7 +59,7 @@ const round4 = (value: number) => Math.round(value * 10_000) / 10_000;
 @Component({
   selector: 'app-trade-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, SwipeToConfirmComponent],
+  imports: [CommonModule, FormsModule, SwipeToConfirmComponent, TranslatePipe],
   templateUrl: './trade-panel.component.html',
   styleUrl: './trade-panel.component.css'
 })
@@ -69,6 +71,7 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly tradeModalService = inject(TradeModalService);
   private readonly instrumentService = inject(InstrumentService);
   private readonly marketSessionService = inject(MarketSessionService);
+  private readonly translation = inject(TranslationService);
 
   readonly instrument = input.required<TradePanelInstrument>();
   readonly price = input(0);
@@ -173,62 +176,74 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly remainingBuyingPower = computed(() => this.cash() - this.estimatedSettlement());
 
   readonly notice = computed<PanelNotice | null>(() => {
+    this.translation.currentLanguage();
+    const t = (key: string, params?: Record<string, string | number>) => this.translation.t(key, params);
     const isBuy = this.isBuy();
     const closedReason = this.marketClosedReason();
     if (closedReason) return { text: closedReason, tone: 'error' };
-    if (!this.accountId) return { text: 'No active trading account is selected.', tone: 'error' };
-    if (this.accountStatus() === 'loading') return { text: 'Loading your available cash…', tone: 'info' };
+    if (!this.accountId) return { text: t('trade.no_account'), tone: 'error' };
+    if (this.accountStatus() === 'loading') return { text: t('trade.loading_cash'), tone: 'info' };
     if (this.accountStatus() === 'error') {
-      return { text: 'Unable to load your available cash. Close the panel and try again.', tone: 'error' };
+      return { text: t('trade.cash_error'), tone: 'error' };
     }
-    if (this.price() <= 0) return { text: 'A live price is not available for this stock right now.', tone: 'error' };
-    if (this.fxStatus() === 'loading') return { text: 'Loading currency conversion rate…', tone: 'info' };
+    if (this.price() <= 0) return { text: t('trade.no_price'), tone: 'error' };
+    if (this.fxStatus() === 'loading') return { text: t('trade.loading_fx'), tone: 'info' };
     if (this.fxStatus() === 'error') {
-      return { text: 'Unable to load the current currency conversion rate.', tone: 'error' };
+      return { text: t('trade.fx_error'), tone: 'error' };
     }
 
     if (!isBuy) {
-      if (this.holdingsStatus() === 'loading') return { text: 'Loading your holdings…', tone: 'info' };
+      if (this.holdingsStatus() === 'loading') return { text: t('trade.loading_holdings'), tone: 'info' };
       if (this.holdingsStatus() === 'error') {
-        return { text: 'Unable to load your holdings, so selling is unavailable.', tone: 'error' };
+        return { text: t('trade.holdings_error'), tone: 'error' };
       }
       if (this.owned() <= 0) {
-        return { text: `You don't own any shares of ${this.instrument().ticker}.`, tone: 'error' };
+        return { text: t('trade.dont_own', { ticker: this.instrument().ticker }), tone: 'error' };
       }
     }
 
     if (this.entryMode() === 'shares') {
       const raw = this.sharesText().trim();
-      if (!raw) return { text: 'Enter the number of shares.', tone: 'info' };
+      if (!raw) return { text: t('trade.enter_shares'), tone: 'info' };
       if (!/^\d*\.?\d*$/.test(raw) || !(parseFloat(raw) > 0)) {
-        return { text: 'Enter a share quantity greater than 0.', tone: 'error' };
+        return { text: t('trade.shares_gt_zero'), tone: 'error' };
       }
       const decimals = raw.split('.')[1]?.length ?? 0;
       if (decimals > QUANTITY_DECIMALS) {
-        return { text: `Share quantities support up to ${QUANTITY_DECIMALS} decimal places.`, tone: 'error' };
+        return { text: t('trade.shares_decimals', { decimals: QUANTITY_DECIMALS }), tone: 'error' };
       }
     } else {
       const raw = this.amountText().trim();
-      if (!raw) return { text: 'Enter a dollar amount or drag the slider.', tone: 'info' };
+      if (!raw) return { text: t('trade.enter_amount'), tone: 'info' };
       if (!/^\d*\.?\d*$/.test(raw) || !(this.amountValue() > 0)) {
-        return { text: 'Enter an amount greater than 0.', tone: 'error' };
+        return { text: t('trade.amount_gt_zero'), tone: 'error' };
       }
       if (this.amountValue() > this.maxAmount() + 0.0001) {
         return {
-          text: isBuy ? 'This amount is more than your available cash.' : 'This amount is more than the value of the shares you own.',
+          text: isBuy ? t('trade.amount_over_cash') : t('trade.amount_over_shares'),
           tone: 'error'
         };
       }
-      if (this.quantity() <= 0) return { text: 'This amount is too small for a single share fraction.', tone: 'error' };
+      if (this.quantity() <= 0) return { text: t('trade.amount_too_small'), tone: 'error' };
     }
 
     if (isBuy && this.estimatedSettlement() > this.cash()) {
-      return { text: 'Insufficient buying power for this order.', tone: 'error' };
+      return { text: t('trade.insufficient_power'), tone: 'error' };
     }
     if (!isBuy && this.quantity() > this.owned()) {
-      return { text: `You can sell at most ${this.formatShares(this.owned())} shares.`, tone: 'error' };
+      return { text: t('trade.sell_at_most', { shares: this.formatShares(this.owned()) }), tone: 'error' };
     }
     return null;
+  });
+
+  readonly swipeLabel = computed(() => {
+    this.translation.currentLanguage();
+    return this.isBuy() ? this.translation.t('trade.slide_to_buy') : this.translation.t('trade.slide_to_sell');
+  });
+
+  readonly swipeLoadingLabel = computed(() => {
+    this.translation.currentLanguage();
+    return this.isBuy() ? this.translation.t('trade.placing_buy') : this.translation.t('trade.placing_sell');
   });
 
   readonly canSubmit = computed(() => this.notice() === null && this.quantity() > 0 && !this.submitting());
@@ -322,7 +337,7 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
       },
       error: err => {
         this.submitting.set(false);
-        this.submitError.set(err?.error?.details || err?.error?.message || err?.message || 'Trade failed');
+        this.submitError.set(err?.error?.details || err?.error?.message || err?.message || this.translation.t('trade.failed'));
         this.failedAttempts.update(n => n + 1);
         console.error('Trade error:', err);
       }

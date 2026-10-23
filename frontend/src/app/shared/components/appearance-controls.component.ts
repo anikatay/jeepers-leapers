@@ -1,6 +1,7 @@
 import { Component, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { AppearanceService } from '../../core/services/appearance.service';
 import { AppearanceSettingsComponent } from './appearance-settings.component';
+import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
 let nextId = 0;
 
@@ -8,23 +9,23 @@ let nextId = 0;
 @Component({
   selector: 'app-appearance-controls',
   standalone: true,
-  imports: [AppearanceSettingsComponent],
+  imports: [AppearanceSettingsComponent, TranslatePipe],
   template: `
-    <button type="button" class="switch" role="switch" [class.on]="appearance.dark()" [attr.aria-checked]="appearance.dark()" aria-label="Dark mode" (click)="appearance.toggleDark()">
+    <button type="button" class="switch" role="switch" [class.on]="appearance.dark()" [attr.aria-checked]="appearance.dark()" [attr.aria-label]="'appearance.dark_mode' | translate" (click)="appearance.toggleDark()">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
       <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
       <span class="knob"></span>
     </button>
 
     <div class="theme">
-      <button type="button" class="pill" aria-label="Appearance and accessibility" [attr.aria-controls]="menuId"
+      <button type="button" class="pill" [attr.aria-label]="'appearance.aria' | translate" [attr.aria-controls]="menuId"
               [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()">
         <span class="swatch"></span>
         <svg viewBox="0 0 24 24" class="caret"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       @if (menuOpen()) {
         <div class="menu" [class.clamped]="menuLeft() !== null" [style.left.px]="menuLeft()"
-             [style.width.px]="menuLeft() !== null ? menuWidth() : null" [id]="menuId" role="group" aria-label="Appearance and accessibility">
+             [style.width.px]="menuLeft() !== null ? menuWidth() : null" [id]="menuId" role="group" [attr.aria-label]="'appearance.aria' | translate">
           <app-appearance-settings [showMode]="false" />
         </div>
       }
@@ -86,13 +87,13 @@ let nextId = 0;
       overflow-y: auto;
       padding: 1rem;
       position: absolute;
-      right: 0;
+      inset-inline-end: 0;
       top: 100%;
       width: min(24rem, calc(100vw - 2rem));
       z-index: 30;
     }
 
-    .menu.clamped { right: auto; }
+    .menu.clamped { inset-inline-end: auto; }
   `
 })
 export class AppearanceControlsComponent {

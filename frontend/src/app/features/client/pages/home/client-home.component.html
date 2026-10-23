@@ -80,11 +80,11 @@
 
       <!-- Right column: Portfolio Allocation (Pie Chart) -->
       <div class="allocation-section">
-        <h2 class="section-title font-display">Portfolio Allocation</h2>
+        <h2 class="section-title font-display">{{ 'home.portfolio_allocation' | translate }}</h2>
         <div class="allocation-content">
           <!-- Pie Chart (SVG) -->
-          <div class="pie-chart-wrapper">
-            <svg class="pie-chart" viewBox="0 0 200 200" aria-label="Portfolio allocation pie chart">
+          <div class="pie-chart-wrapper" dir="ltr">
+            <svg class="pie-chart" viewBox="0 0 200 200" [attr.aria-label]="'home.portfolio_allocation' | translate">
               <!-- Dynamic pie slices based on real holdings -->
               <path *ngFor="let slice of pieSlices(); let i = index"
                     [attr.d]="slice.d"
@@ -150,8 +150,8 @@
         </div>
 
         <!-- Portfolio performance chart, driven by /api/market/{ticker}/history -->
-        <div class="chart-container">
-          <svg *ngIf="chartLinePath()" class="area-chart" viewBox="0 0 800 220" preserveAspectRatio="none" aria-label="Portfolio performance chart">
+        <div class="chart-container" dir="ltr">
+          <svg *ngIf="chartLinePath()" class="area-chart" viewBox="0 0 800 220" preserveAspectRatio="none" [attr.aria-label]="'home.portfolio_performance' | translate">
             <defs>
               <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stop-color="var(--primary)" stop-opacity="0.3" />
@@ -164,8 +164,8 @@
             <path [attr.d]="chartAreaPath()" fill="url(#chartGrad)" stroke="none" />
             <path [attr.d]="chartLinePath()" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <p *ngIf="chartLoading()" class="chart-empty-state">Loading chart…</p>
-          <p *ngIf="!chartLoading() && !chartLinePath()" class="chart-empty-state">No holdings yet — buy a stock to see your performance here.</p>
+          <p *ngIf="chartLoading()" class="chart-empty-state">{{ 'home.chart_loading' | translate }}</p>
+          <p *ngIf="!chartLoading() && !chartLinePath()" class="chart-empty-state">{{ 'home.chart_empty' | translate }}</p>
           <div class="chart-y-axis" *ngIf="chartLinePath()">
             <span>{{ chartYAxisLabels()[0] }}</span>
             <span>{{ chartYAxisLabels()[1] }}</span>
@@ -208,7 +208,7 @@
                   </div>
                 </td>
                 <td class="type-cell" [class.buy]="trade.type === 'Buy'" [class.sell]="trade.type === 'Sell'">
-                  {{ trade.type }}
+                  {{ (trade.type === 'Buy' ? 'home.buy' : 'home.sell') | translate }}
                 </td>
                 <td class="qty-cell font-mono-data">{{ trade.qty }}</td>
                 <td class="price-cell font-mono-data">{{ formatCurrency(trade.price, trade.currency) }}</td>

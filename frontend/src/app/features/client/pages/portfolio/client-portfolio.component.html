@@ -2,7 +2,7 @@
 <div class="portfolio-shell">
   <!-- Loading State -->
   <div *ngIf="loading()" class="portfolio-content" style="opacity: 0.6;">
-    <p style="text-align: center; color: var(--muted-foreground);">Loading portfolio data...</p>
+    <p style="text-align: center; color: var(--muted-foreground);">{{ 'portfolio.loading' | translate }}</p>
 
   </div>
 
@@ -15,14 +15,14 @@
   <!-- Main Content -->
     <!-- Main Content -->
   <div class="portfolio-content" *ngIf="!loading()">
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;" dir="ltr">
       <app-connection-status></app-connection-status>
     </div>
 
     <!-- Summary Cards Grid - 2 col (mobile) → 4 col (desktop) -->
     <div class="summary-cards-grid">
       <div *ngFor="let card of summaryCards()" class="summary-card">
-        <p class="summary-label">{{ card.label }}</p>
+        <p class="summary-label">{{ card.label | translate }}</p>
         <p class="summary-value" [class.positive]="card.isPositive === true" [class.negative]="card.isPositive === false">{{ card.value }}</p>
       </div>
     </div>
@@ -82,7 +82,7 @@
               </th>
               <th class="col-sortable" (click)="toggleSort('currentValue')">
                 <button class="sort-header">
-                  Current Value
+                  {{ 'portfolio.current_value' | translate }}
                   <span *ngIf="sortBy() === 'currentValue'" class="sort-indicator">
                     {{ sortDir() === 'desc' ? '↓' : '↑' }}
                   </span>
@@ -90,13 +90,13 @@
               </th>
               <th class="col-sortable" (click)="toggleSort('gain')">
                 <button class="sort-header">
-                  Gain/Loss
+                  {{ 'portfolio.gain_loss' | translate }}
                   <span *ngIf="sortBy() === 'gain'" class="sort-indicator">
                     {{ sortDir() === 'desc' ? '↓' : '↑' }}
                   </span>
                 </button>
               </th>
-              <th class="col-actions">Actions</th>
+              <th class="col-actions">{{ 'portfolio.actions' | translate }}</th>
             </tr>
           </thead>
           <tbody>

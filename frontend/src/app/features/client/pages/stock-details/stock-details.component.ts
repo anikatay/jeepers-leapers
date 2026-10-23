@@ -22,6 +22,8 @@ import { MarketSession, MarketSessionService } from '../../../../core/services/m
 import { AppearanceService } from '../../../../core/services/appearance.service';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { PriceBar, QuoteStatus } from '../../../../core/models/market.model';
+import { TranslationService } from '../../../../core/services/translation.service';
+import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
 import { getStockIcon } from '../../../../shared/utils/stock-icon';
 import {
@@ -61,7 +63,7 @@ const CHART_PAD = { top: 16, right: 64, bottom: 28, left: 8 };
 @Component({
   selector: 'app-stock-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, ConnectionStatusComponent, TradePanelComponent],
+  imports: [CommonModule, RouterLink, ConnectionStatusComponent, TradePanelComponent, TranslatePipe],
   templateUrl: './stock-details.component.html',
   styleUrl: './stock-details.component.css'
 })
@@ -75,6 +77,7 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly marketQuoteService = inject(MarketQuoteService);
   private readonly marketSessionService = inject(MarketSessionService);
   private readonly appearance = inject(AppearanceService);
+  private readonly translation = inject(TranslationService);
 
   @ViewChild('chartBox') private chartBox?: ElementRef<HTMLElement>;
 
@@ -139,9 +142,10 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly canSell = computed(() => this.holdingsStatus() === 'ready' && (this.ownedShares() ?? 0) > 0);
   readonly sellDisabledReason = computed(() => {
-    if (this.holdingsStatus() === 'loading') return 'Checking your holdings…';
-    if (this.holdingsStatus() === 'error') return "Selling is unavailable because your holdings couldn't be loaded.";
-    if (!this.canSell()) return `You don't own any shares of ${this.ticker()}.`;
+    this.translation.currentLanguage();
+    if (this.holdingsStatus() === 'loading') return this.translation.t('stock.checking_holdings');
+    if (this.holdingsStatus() === 'error') return this.translation.t('stock.sell_unavailable');
+    if (!this.canSell()) return this.translation.t('stock.dont_own', { ticker: this.ticker() });
     return null;
   });
 
@@ -159,7 +163,17 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   });
 
-  readonly rangeLabel = computed(() => RANGES[this.range()].label);
+  readonly rangeLabel = computed(() => {
+    this.translation.currentLanguage();
+    const keys: Record<ChartRange, string> = {
+      '1D': 'stock.range_today',
+      '5D': 'stock.range_5d',
+      '1M': 'stock.range_1m',
+      '1Y': 'stock.range_1y',
+      All: 'stock.range_all'
+    };
+    return this.translation.t(keys[this.range()]);
+  });
 
   readonly periodChange = computed(() => {
     const bars = this.bars();
@@ -219,13 +233,19 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   readonly chartSummary = computed(() => {
+    this.translation.currentLanguage();
     const bars = this.bars();
-    if (bars.length === 0) return `No price history for ${this.ticker()}`;
+    if (bars.length === 0) return this.translation.t('stock.no_history', { ticker: this.ticker() });
     const first = bars[0];
     const last = bars[bars.length - 1];
-    return `${this.ticker()} price history, ${this.rangeLabel()}: ${this.formatCurrency(first.close)} on ` +
-      `${this.formatFullDate(first.date)} to ${this.formatCurrency(last.close)} on ${this.formatFullDate(last.date)}. ` +
-      'Use the left and right arrow keys to inspect daily closes.';
+    return this.translation.t('stock.chart_summary', {
+      ticker: this.ticker(),
+      range: this.rangeLabel(),
+      first: this.formatCurrency(first.close),
+      firstDate: this.formatFullDate(first.date),
+      last: this.formatCurrency(last.close),
+      lastDate: this.formatFullDate(last.date)
+    });
   });
 
   ngOnInit(): void {

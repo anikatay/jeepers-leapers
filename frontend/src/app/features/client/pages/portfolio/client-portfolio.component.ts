@@ -171,14 +171,14 @@ export class ClientPortfolioComponent implements OnInit {
           },
           error: (err) => {
             console.error('Failed to load instruments:', err);
-            this.error.set('Failed to load instruments');
+            this.error.set(this.translationService.t('portfolio.failed_instruments'));
             this.loading.set(false);
           }
         });
       },
       error: (err) => {
         console.error('Failed to load holdings:', err);
-        this.error.set('Failed to load holdings');
+        this.error.set(this.translationService.t('portfolio.failed_holdings'));
         this.loading.set(false);
       }
     });
@@ -226,7 +226,7 @@ export class ClientPortfolioComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load account:', err);
-        this.error.set('Failed to load account data');
+        this.error.set(this.translationService.t('portfolio.failed_account'));
         this.loading.set(false);
       }
     });
@@ -359,11 +359,12 @@ export class ClientPortfolioComponent implements OnInit {
 
     const fmt = (v: number) => `${v >= 0 ? '+' : '-'}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
+    this.translationService.currentLanguage();
     return [
-      { label: 'Total Portfolio Value', value: `$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: true },
-      { label: "Today's Gain/Loss", value: fmt(todaysGain), isPositive: todaysGain >= 0 },
-      { label: 'Overall Gain/Loss', value: fmt(totalGain), isPositive: totalGain >= 0 },
-      { label: 'Cash Available', value: `$${cashBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: undefined },
+      { label: 'portfolio.total_portfolio_value', value: `$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: true },
+      { label: 'portfolio.todays_gain_loss', value: fmt(todaysGain), isPositive: todaysGain >= 0 },
+      { label: 'portfolio.overall_gain_loss', value: fmt(totalGain), isPositive: totalGain >= 0 },
+      { label: 'portfolio.cash_available', value: `$${cashBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: undefined },
     ];
   });
 

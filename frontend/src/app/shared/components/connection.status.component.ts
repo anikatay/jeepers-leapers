@@ -1,18 +1,19 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MarketQuoteService } from '../../core/services/market-quote.service';
+import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
 @Component({
   selector: 'app-connection-status',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   template: `
     <div class="connection-status" [class]="marketQuoteService.status()">
       <span class="dot"></span>
       <span class="label" [ngSwitch]="marketQuoteService.status()">
-        <ng-container *ngSwitchCase="'connected'">Live prices</ng-container>
-        <ng-container *ngSwitchCase="'reconnecting'">Live prices paused — reconnecting…</ng-container>
-        <ng-container *ngSwitchDefault>Live prices offline</ng-container>
+        <ng-container *ngSwitchCase="'connected'">{{ 'conn.live' | translate }}</ng-container>
+        <ng-container *ngSwitchCase="'reconnecting'">{{ 'conn.reconnecting' | translate }}</ng-container>
+        <ng-container *ngSwitchDefault>{{ 'conn.offline' | translate }}</ng-container>
       </span>
     </div>
   `,

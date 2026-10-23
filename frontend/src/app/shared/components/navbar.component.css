@@ -42,8 +42,8 @@ button {
   gap: 0.5rem 1rem;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0.75rem 1rem;
-  padding-right: 1rem;
+  padding-block: 0.75rem;
+  padding-inline: 1rem;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -217,7 +217,7 @@ button {
 .profile-menu {
   position: absolute;
   top: 100%;
-  right: 0;
+  inset-inline-end: 0;
   margin-top: 0.375rem;
   min-width: 11rem;
   background: var(--surface-raised);
@@ -231,7 +231,7 @@ button {
 
 .menu-item {
   width: 100%;
-  text-align: left;
+  text-align: start;
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
   color: var(--foreground);
@@ -296,8 +296,8 @@ button {
   height: 1rem;
   color: var(--muted-foreground);
   flex-shrink: 0;
-  padding-left: 1rem;
-  padding-right: 0.5rem;
+  padding-inline-start: 1rem;
+  padding-inline-end: 0.5rem;
 }
 
 .search-input {
@@ -366,7 +366,7 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  text-align: left;
+  text-align: start;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -407,7 +407,7 @@ button {
   color: var(--foreground);
   white-space: nowrap;
   flex-shrink: 0;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -489,7 +489,7 @@ button {
 .language-menu {
   position: absolute;
   top: 100%;
-  right: 0;
+  inset-inline-end: 0;
   margin-top: 0.5rem;
   width: min(16rem, calc(100vw - 2rem));
   background: var(--surface-raised);
@@ -516,10 +516,11 @@ button {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  text-align: start;
   gap: 0.2rem;
   width: 100%;
   padding: 0.75rem;
-  text-align: left;
+  text-align: start;
   border: 1px solid transparent;
   border-radius: 0.625rem;
   font-size: 0.875rem;

@@ -108,7 +108,7 @@ export class ClientTradesComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load trades:', err);
-        this.error.set('Failed to load trades');
+        this.error.set(this.translationService.t('trades.failed'));
         this.allTrades.set([]);
         this.loading.set(false);
       }
