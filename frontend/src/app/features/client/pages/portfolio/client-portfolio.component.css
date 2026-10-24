@@ -75,6 +75,10 @@ button {
   margin: 0;
 }
 
+.stat-value {
+  transition: color 2000ms ease;
+}
+
 .summary-value.positive {
   color: #22c55e;
 }
