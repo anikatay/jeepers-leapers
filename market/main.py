@@ -631,6 +631,12 @@ def _fetch_history(ticker: str, period: str, interval: str) -> dict:
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data for {ticker}")
 
+    # Yahoo returns the current session as a placeholder row with NaN prices, which
+    # is not JSON-serialisable. Drop those before anything reads the frame.
+    df = df.dropna(subset=["Open", "High", "Low", "Close"])
+    if df.empty:
+        raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
     frame = df
     opening_bar = None
     if interval == "1m":
