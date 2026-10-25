@@ -5,14 +5,13 @@ import { NavbarComponent, NavItem } from '../../shared/components/navbar.compone
 import { InstrumentService } from '../../core/services/instrument.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
 import { AuthService } from '../../core/services/auth.service';
-import { TranslationService } from '../../core/services/translation.service';
 
 @Component({
   selector: 'app-client-layout',
   standalone: true,
   imports: [CommonModule, RouterOutlet, NavbarComponent],
   template: `
-    <div class="client-app" [attr.dir]="translation.direction()">
+    <div class="client-app" dir="ltr">
       <app-navbar 
         [navItems]="navItems" 
         [userName]="userName"
@@ -39,8 +38,7 @@ export class ClientLayoutComponent implements OnInit {
   constructor(
     private instrumentService: InstrumentService,
     private router: Router,
-    private authService: AuthService,
-    readonly translation: TranslationService
+    private authService: AuthService
   ) {
     this.userName = this.authService.userName;
   }

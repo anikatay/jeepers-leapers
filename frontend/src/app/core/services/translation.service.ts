@@ -1,8 +1,8 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { CLIENT_UI_TRANSLATIONS } from './client-ui-translations';
 import { CLIENT_UI_TRANSLATIONS_MORE } from './client-ui-translations-more';
 
-export type Language = 'en' | 'es' | 'bn' | 'hi' | 'ur' | 'pa' | 'te' | 'ta' | 'gu' | 'ga';
+export type Language = 'en' | 'es' | 'bn' | 'hi' | 'pa' | 'te' | 'ta' | 'gu' | 'ga';
 
 export interface LanguageOption {
   code: Language;
@@ -15,7 +15,6 @@ export const LANGUAGES: LanguageOption[] = [
   { code: 'es', englishName: 'Spanish', nativeName: 'Español' },
   { code: 'bn', englishName: 'Bengali', nativeName: 'বাংলা' },
   { code: 'hi', englishName: 'Hindi', nativeName: 'हिन्दी' },
-  { code: 'ur', englishName: 'Urdu', nativeName: 'اردو' },
   { code: 'pa', englishName: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
   { code: 'te', englishName: 'Telugu', nativeName: 'తెలుగు' },
   { code: 'ta', englishName: 'Tamil', nativeName: 'தமிழ்' },
@@ -378,91 +377,6 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.close': 'बंद करें',
     'common.processing': 'प्रोसेसिंग...',
     'common.invalid_quantity': 'अमान्य मात्रा',
-  },
-  ur: {
-    'nav.home': 'ہوم',
-    'nav.portfolio': 'پورٹ فولیو',
-    'nav.trades': 'ٹریڈز',
-    'nav.profile': 'پروفائل',
-    'nav.settings': 'ترتیبات',
-    'nav.logout': 'لاگ آؤٹ',
-    'nav.theme': 'تھیم',
-    'nav.language': 'زبان',
-
-    'home.title': 'پورٹ فولیو ڈیش بورڈ',
-    'home.portfolio_value': 'پورٹ فولیو کی قدر',
-    'home.your_profile': 'آپ کا پروفائل',
-    'home.portfolio_performance': 'پورٹ فولیو کی کارکردگی',
-    'home.view_investments': 'سرمایہ کاری دیکھیں',
-    'home.todays_gain': 'آج کا منافع',
-    'home.overall_gain': 'مجموعی منافع',
-    'home.cash_remaining': 'باقی نقد رقم',
-    'home.portfolio_allocation': 'پورٹ فولیو کی تقسیم',
-    'home.total_value': 'کل قدر',
-    'home.performance': 'کارکردگی',
-    'home.trading_history': 'تجارتی تاریخ',
-    'home.time': 'وقت',
-    'home.symbol': 'علامت',
-    'home.type': 'قسم',
-    'home.quantity': 'مقدار',
-    'home.price': 'قیمت',
-    'home.total': 'کل',
-    'home.view_all_trades': 'تمام ٹریڈز دیکھیں',
-
-    'portfolio.title': 'پورٹ فولیو',
-    'portfolio.search_stocks': 'اسٹاک تلاش کریں...',
-    'portfolio.filter': 'فلٹر',
-    'portfolio.all': 'تمام',
-    'portfolio.gains': 'منافع',
-    'portfolio.losses': 'نقصان',
-    'portfolio.sort_by': 'کی طرف سے ترتیب دیں',
-    'portfolio.shares': 'شیئرز',
-    'portfolio.current_price': 'موجودہ قیمت',
-    'portfolio.current_value': 'موجودہ قدر',
-    'portfolio.gain_loss': 'منافع/نقصان',
-    'portfolio.actions': 'کارروائیاں',
-    'portfolio.buy_more': 'مزید خریدیں',
-    'portfolio.sell': 'فروخت',
-    'portfolio.buy_shares': 'شیئرز خریدیں',
-    'portfolio.sell_shares': 'شیئرز فروخت',
-    'portfolio.shares_input': 'شیئرز',
-    'portfolio.estimated_total': 'متوقع کل',
-    'portfolio.confirm_buy': 'خریداری کی تصدیق کریں',
-    'portfolio.confirm_sell': 'فروخت کی تصدیق کریں',
-    'portfolio.select_instrument': 'آلہ منتخب کریں',
-    'portfolio.change': 'تبدیل کریں',
-    'portfolio.success': 'کامیابی',
-    'portfolio.no_holdings': 'کوئی ہولڈنگ نہیں ملی',
-
-    'trades.title': 'ٹریڈز',
-    'trades.search': 'ٹریڈز تلاش کریں...',
-    'trades.filter_by_type': 'قسم کے لحاظ سے فلٹر کریں',
-    'trades.filter_by_date': 'تاریخ کے لحاظ سے فلٹر کریں',
-    'trades.from_date': 'سے',
-    'trades.to_date': 'تک',
-    'trades.sort': 'ترتیب دیں',
-    'trades.newest': 'نیا ترین',
-    'trades.oldest': 'سب سے پرانا',
-    'trades.clear_filters': 'فلٹرز صاف کریں',
-    'trades.new_trade': 'نیا ٹریڈ',
-    'trades.time': 'وقت',
-    'trades.symbol': 'علامت',
-    'trades.type': 'قسم',
-    'trades.quantity': 'مقدار',
-    'trades.price': 'قیمت',
-    'trades.total': 'کل',
-    'trades.buy': 'خریدیں',
-    'trades.sell': 'فروخت',
-    'trades.no_trades': 'کوئی ٹریڈ نہیں ملے',
-
-    'common.loading': 'لوڈ ہو رہا ہے...',
-    'common.error': 'خرابی',
-    'common.success': 'کامیابی',
-    'common.cancel': 'منسوخ کریں',
-    'common.confirm': 'تصدیق کریں',
-    'common.close': 'بند کریں',
-    'common.processing': 'پروسیسنگ...',
-    'common.invalid_quantity': 'غیر درست مقدار',
   },
   pa: {
     'nav.home': 'ਘਰ',
@@ -882,8 +796,6 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
   }
 };
 
-const RTL_LANGUAGES = new Set<string>(['ar', 'ur']);
-
 function applyParams(text: string, params?: Record<string, string | number>): string {
   if (!params) return text;
   return text.replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
@@ -929,8 +841,6 @@ for (const lang of Object.keys(translations) as Language[]) {
 })
 export class TranslationService {
   currentLanguage = signal<Language>(this.getStoredLanguage());
-  readonly isRtl = computed(() => RTL_LANGUAGES.has(this.currentLanguage()));
-  readonly direction = computed(() => (this.isRtl() ? 'rtl' : 'ltr'));
 
   constructor() {
     // Persist language to localStorage whenever it changes
@@ -943,7 +853,7 @@ export class TranslationService {
     if (stored && this.isValidLanguage(stored)) {
       return stored as Language;
     }
-    return 'en'; // Default to English
+    return 'en';
   }
 
   private isValidLanguage(lang: string): boolean {
