@@ -86,6 +86,17 @@ export class AppearanceService {
     if (TEXT_SIZES.some(s => s.id === size)) this.textSize.set(size);
   }
 
+  /**
+   * Client Home allocation-donut slice color.
+   * Resolves `--donut-1` … `--donut-12` from styles-theme.css so the fill
+   * follows the active theme/dark class without storing a snapshot hex.
+   */
+  donutSliceColor(index: number): string {
+    const slots = 12;
+    const slot = ((index % slots) + slots) % slots;
+    return `var(--donut-${slot + 1})`;
+  }
+
   private load(): AppearancePrefs {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as Partial<AppearancePrefs> | null;

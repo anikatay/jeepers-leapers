@@ -505,6 +505,312 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+   CLIENT HOME: PORTFOLIO ALLOCATION DONUT
+   12 distinct, theme-coordinated slice colors. AppearanceService toggles the
+   theme class on <html>, so these tokens update immediately (no chart redraw).
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --donut-1: #1a6b3c;
+  --donut-2: #22c55e;
+  --donut-3: #0d9488;
+  --donut-4: #ca8a04;
+  --donut-5: #15803d;
+  --donut-6: #14b8a6;
+  --donut-7: #65a30d;
+  --donut-8: #3f6e4e;
+  --donut-9: #84cc16;
+  --donut-10: #0891b2;
+  --donut-11: #4ade80;
+  --donut-12: #a16207;
+}
+
+:root.dark {
+  --donut-1: #22c55e;
+  --donut-2: #4ade80;
+  --donut-3: #2dd4bf;
+  --donut-4: #facc15;
+  --donut-5: #86efac;
+  --donut-6: #5eead4;
+  --donut-7: #a3e635;
+  --donut-8: #6db88a;
+  --donut-9: #bef264;
+  --donut-10: #22d3ee;
+  --donut-11: #bbf7d0;
+  --donut-12: #fbbf24;
+}
+
+:root.ocean {
+  --donut-1: #1d4ed8;
+  --donut-2: #38bdf8;
+  --donut-3: #0ea5e9;
+  --donut-4: #6366f1;
+  --donut-5: #0369a1;
+  --donut-6: #06b6d4;
+  --donut-7: #2563eb;
+  --donut-8: #7dd3fc;
+  --donut-9: #0284c7;
+  --donut-10: #818cf8;
+  --donut-11: #1e40af;
+  --donut-12: #22d3ee;
+}
+
+:root.ocean.dark {
+  --donut-1: #60a5fa;
+  --donut-2: #38bdf8;
+  --donut-3: #22d3ee;
+  --donut-4: #818cf8;
+  --donut-5: #93c5fd;
+  --donut-6: #67e8f9;
+  --donut-7: #3b82f6;
+  --donut-8: #7dd3fc;
+  --donut-9: #06b6d4;
+  --donut-10: #a5b4fc;
+  --donut-11: #bae6fd;
+  --donut-12: #c4b5fd;
+}
+
+:root.lavender {
+  --donut-1: #7c3aed;
+  --donut-2: #a78bfa;
+  --donut-3: #c026d3;
+  --donut-4: #818cf8;
+  --donut-5: #6d28d9;
+  --donut-6: #d946ef;
+  --donut-7: #8b5cf6;
+  --donut-8: #c4b5fd;
+  --donut-9: #a855f7;
+  --donut-10: #4c1d95;
+  --donut-11: #e879f9;
+  --donut-12: #6366f1;
+}
+
+:root.lavender.dark {
+  --donut-1: #a78bfa;
+  --donut-2: #c4b5fd;
+  --donut-3: #e879f9;
+  --donut-4: #818cf8;
+  --donut-5: #8b5cf6;
+  --donut-6: #d946ef;
+  --donut-7: #ddd6fe;
+  --donut-8: #f0abfc;
+  --donut-9: #c084fc;
+  --donut-10: #e9d5ff;
+  --donut-11: #f5d0fe;
+  --donut-12: #a5b4fc;
+}
+
+:root.rose {
+  --donut-1: #be185d;
+  --donut-2: #f472b6;
+  --donut-3: #e11d48;
+  --donut-4: #fb7185;
+  --donut-5: #9d174d;
+  --donut-6: #c026d3;
+  --donut-7: #ec4899;
+  --donut-8: #f9a8d4;
+  --donut-9: #db2777;
+  --donut-10: #fda4af;
+  --donut-11: #be123c;
+  --donut-12: #e879f9;
+}
+
+:root.rose.dark {
+  --donut-1: #f472b6;
+  --donut-2: #f9a8d4;
+  --donut-3: #fb7185;
+  --donut-4: #e879f9;
+  --donut-5: #ec4899;
+  --donut-6: #f0abfc;
+  --donut-7: #fda4af;
+  --donut-8: #fbcfe8;
+  --donut-9: #f43f5e;
+  --donut-10: #d946ef;
+  --donut-11: #fb7185;
+  --donut-12: #f5d0fe;
+}
+
+:root.sage {
+  --donut-1: #4a7c59;
+  --donut-2: #6aaa7e;
+  --donut-3: #78716c;
+  --donut-4: #a3b18a;
+  --donut-5: #3f6b4c;
+  --donut-6: #8fbc8f;
+  --donut-7: #a8a29e;
+  --donut-8: #5a8a68;
+  --donut-9: #6b7f5e;
+  --donut-10: #c4b7a6;
+  --donut-11: #2d5a3d;
+  --donut-12: #86c99a;
+}
+
+:root.sage.dark {
+  --donut-1: #6aaa7e;
+  --donut-2: #86c99a;
+  --donut-3: #a8a29e;
+  --donut-4: #a3b18a;
+  --donut-5: #4ade80;
+  --donut-6: #8fbc8f;
+  --donut-7: #d6d3d1;
+  --donut-8: #5a8a68;
+  --donut-9: #bbf7d0;
+  --donut-10: #d6d3c4;
+  --donut-11: #86efac;
+  --donut-12: #c4b7a6;
+}
+
+:root.mono {
+  --donut-1: #111827;
+  --donut-2: #4b5563;
+  --donut-3: #9ca3af;
+  --donut-4: #1f2937;
+  --donut-5: #6b7280;
+  --donut-6: #d1d5db;
+  --donut-7: #374151;
+  --donut-8: #e5e7eb;
+  --donut-9: #030712;
+  --donut-10: #78716c;
+  --donut-11: #52525b;
+  --donut-12: #cbd5e1;
+}
+
+:root.mono.dark {
+  --donut-1: #f9fafb;
+  --donut-2: #9ca3af;
+  --donut-3: #6b7280;
+  --donut-4: #e5e7eb;
+  --donut-5: #d1d5db;
+  --donut-6: #4b5563;
+  --donut-7: #f3f4f6;
+  --donut-8: #374151;
+  --donut-9: #ffffff;
+  --donut-10: #9ca3af;
+  --donut-11: #a1a1aa;
+  --donut-12: #d4d4d8;
+}
+
+:root.midnight {
+  --donut-1: #1e3a5f;
+  --donut-2: #2d7dd2;
+  --donut-3: #334155;
+  --donut-4: #0ea5e9;
+  --donut-5: #1e3a8a;
+  --donut-6: #64748b;
+  --donut-7: #4a8fd4;
+  --donut-8: #38bdf8;
+  --donut-9: #0f172a;
+  --donut-10: #7dd3fc;
+  --donut-11: #1d4ed8;
+  --donut-12: #94a3b8;
+}
+
+:root.midnight.dark {
+  --donut-1: #4a8fd4;
+  --donut-2: #7ea8e8;
+  --donut-3: #38bdf8;
+  --donut-4: #94a3b8;
+  --donut-5: #60a5fa;
+  --donut-6: #7dd3fc;
+  --donut-7: #2d7dd2;
+  --donut-8: #cbd5e1;
+  --donut-9: #93c5fd;
+  --donut-10: #bae6fd;
+  --donut-11: #818cf8;
+  --donut-12: #e2e8f0;
+}
+
+:root.a11y-bo {
+  --donut-1: #1a4d8a;
+  --donut-2: #d4600a;
+  --donut-3: #2d5fa0;
+  --donut-4: #b45309;
+  --donut-5: #0c3d73;
+  --donut-6: #e07a20;
+  --donut-7: #3d6fad;
+  --donut-8: #c45a08;
+  --donut-9: #5b9bd5;
+  --donut-10: #f08030;
+  --donut-11: #7cb3ea;
+  --donut-12: #f59a52;
+}
+
+:root.a11y-bo.dark {
+  --donut-1: #5b9bd5;
+  --donut-2: #f08030;
+  --donut-3: #7cb3ea;
+  --donut-4: #f59a52;
+  --donut-5: #90b8e8;
+  --donut-6: #fb923c;
+  --donut-7: #3d6fad;
+  --donut-8: #fdba74;
+  --donut-9: #dce4f4;
+  --donut-10: #ea580c;
+  --donut-11: #bfdbfe;
+  --donut-12: #fed7aa;
+}
+
+:root.a11y-bg {
+  --donut-1: #0c2d6b;
+  --donut-2: #c8960a;
+  --donut-3: #1a4080;
+  --donut-4: #855d00;
+  --donut-5: #0a2458;
+  --donut-6: #d4a020;
+  --donut-7: #2d5aa0;
+  --donut-8: #a67c00;
+  --donut-9: #5a8fd6;
+  --donut-10: #e0b040;
+  --donut-11: #80a8e4;
+  --donut-12: #c9a227;
+}
+
+:root.a11y-bg.dark {
+  --donut-1: #5a8fd6;
+  --donut-2: #d4a020;
+  --donut-3: #80a8e4;
+  --donut-4: #e0b040;
+  --donut-5: #93c5fd;
+  --donut-6: #facc15;
+  --donut-7: #2d5aa0;
+  --donut-8: #fde68a;
+  --donut-9: #e4ecf4;
+  --donut-10: #c8960a;
+  --donut-11: #bfdbfe;
+  --donut-12: #fef3c7;
+}
+
+:root.a11y-hc {
+  --donut-1: #000000;
+  --donut-2: #0060c0;
+  --donut-3: #005c00;
+  --donut-4: #a00000;
+  --donut-5: #5c00a0;
+  --donut-6: #006666;
+  --donut-7: #333333;
+  --donut-8: #004080;
+  --donut-9: #007000;
+  --donut-10: #c04000;
+  --donut-11: #7000b0;
+  --donut-12: #008080;
+}
+
+:root.a11y-hc.dark {
+  --donut-1: #ffffff;
+  --donut-2: #60c0ff;
+  --donut-3: #7dff7d;
+  --donut-4: #ff8a8a;
+  --donut-5: #d080ff;
+  --donut-6: #40e0e0;
+  --donut-7: #e0e0e0;
+  --donut-8: #80d0ff;
+  --donut-9: #a0ffa0;
+  --donut-10: #ffb0b0;
+  --donut-11: #e0a0ff;
+  --donut-12: #70ffff;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
    ACCESSIBILITY: TEXT SIZE
    Scales the root font size so every rem-based size follows. Percentages keep
    the user's browser font-size preference and zoom. "normal" sets nothing.
