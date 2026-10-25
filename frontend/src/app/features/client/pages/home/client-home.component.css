@@ -232,6 +232,7 @@ button {
   flex-shrink: 0;
   width: 12.5rem;
   height: 12.5rem;
+  overflow: visible;
 }
 
 .pie-chart {
@@ -239,9 +240,29 @@ button {
   height: 100%;
 }
 
+.donut-reveal-sweep {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.donut-entrance .donut-reveal-sweep {
+  animation: client-home-donut-draw 800ms ease-out forwards;
+}
+
+@keyframes client-home-donut-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donut-entrance .donut-reveal-sweep {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 .pie-slice {
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, fill 0.25s ease;
 }
 
 .pie-slice:hover {
@@ -271,6 +292,81 @@ button {
   font-size: 0.75rem;
   color: var(--muted-foreground);
   margin: 0;
+}
+
+.pie-tooltip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.5rem);
+  transform: translateX(-50%);
+  z-index: 8;
+  min-width: 12.75rem;
+  max-width: 16.5rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-raised);
+  color: var(--foreground);
+  box-shadow: var(--shadow-raised);
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .pie-tooltip {
+    left: calc(100% + 0.6rem);
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+.pie-tip-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pie-tip-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+
+.pie-tip-ticker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.pie-tip-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.pie-tip-row + .pie-tip-row {
+  margin-top: 0.25rem;
+}
+
+.pie-tip-row .font-mono-data {
+  color: var(--foreground);
+  font-weight: 600;
+  text-align: end;
+}
+
+.pie-tip-row .positive {
+  color: var(--gain);
+}
+
+.pie-tip-row .negative {
+  color: var(--loss);
 }
 
 /* Holdings List */

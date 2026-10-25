@@ -1,7 +1,8 @@
-import { Component, OnInit,OnDestroy, signal, effect, inject } from '@angular/core';
+import { Component, HostListener, OnInit, OnDestroy, computed, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AccountService } from '../../../../core/services/account.service';
+import { AppearanceService } from '../../../../core/services/appearance.service';
 import { PortfolioService } from '../../../../core/services/portfolio.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { TradesService } from '../../../../core/services/trades.service';
@@ -25,7 +26,18 @@ export interface StockHolding {
   pct: number;
   value: number;
   price: number;
+  shares: number;
   avgCostBasis: number;
+}
+
+export interface PieTooltip {
+  name: string;
+  ticker: string;
+  shares: string;
+  marketValue: string;
+  allocation: string;
+  pnl: string;
+  pnlTone: 'positive' | 'negative' | 'na';
 }
 
 export interface Trade {
@@ -59,6 +71,7 @@ export interface PieSlice {
 
 export class ClientHomeComponent implements OnInit {
   private auth = inject(AuthService);
+  private readonly appearance = inject(AppearanceService);
   private get ACCOUNT_ID() { return this.auth.session()?.accountId ?? ''; }
   printname() {
     return {
@@ -73,10 +86,20 @@ export class ClientHomeComponent implements OnInit {
   holdings = signal<StockHolding[]>([]);
   completedTrades = signal<Trade[]>([]);
   pieSlices = signal<PieSlice[]>([]);
+  /** True after the first non-empty donut render; stays on so live quotes do not replay the entrance. */
+  readonly donutEntrance = signal(false);
 
   selectedPeriod = signal<Period>('1M');
   activePieIndex = signal<number | undefined>(undefined);
   periodOptions: Period[] = ['1D', '1W', '1M', '3M', '1Y', 'All'];
+  private pieFromTouch = false;
+
+  readonly pieTooltip = computed((): PieTooltip | null => {
+    const index = this.activePieIndex();
+    if (index === undefined) return null;
+    const holding = this.holdings()[index];
+    return holding ? this.buildPieTooltip(holding) : null;
+  });
 
   portfolioValue = signal<string>('N/A');
   todaysGain = signal<string>('N/A');
@@ -134,13 +157,8 @@ export class ClientHomeComponent implements OnInit {
     this.loadAllData();
   }
 
-  private pieColors = [
-    '#0ea5e9', // Cyan
-    '#ec4899', // Pink
-    '#f59e0b', // Amber
-    '#8b5cf6', // Violet
-    '#6366f1'  // Indigo
-  ];
+  /** Stable symbol → palette index so live quotes do not reshuffle slice colors. */
+  private readonly donutColorBySymbol = new Map<string, number>();
 
   private loadAllData() {
     // Load account info for cash remaining
@@ -214,6 +232,7 @@ export class ClientHomeComponent implements OnInit {
           pct: 0, // Will recalculate below
           value: value,
           price: instrument.currentPrice ?? 0,
+          shares: h.quantity,
           avgCostBasis
         });
         totalValue += value;
@@ -275,11 +294,20 @@ export class ClientHomeComponent implements OnInit {
   }
 
 
+  private sliceColor(symbol: string): string {
+    let index = this.donutColorBySymbol.get(symbol);
+    if (index === undefined) {
+      index = this.donutColorBySymbol.size;
+      this.donutColorBySymbol.set(symbol, index);
+    }
+    return this.appearance.donutSliceColor(index);
+  }
+
   private generatePieSlices(holdings: StockHolding[], totalValue: number) {
     const slices: PieSlice[] = [];
     let currentAngle = -90; // Start at top (negative 90 in SVG coordinates)
 
-    holdings.forEach((holding, index) => {
+    holdings.forEach((holding) => {
       const percentage = totalValue > 0 ? (holding.value / totalValue) * 100 : 0;
       const angle = (percentage / 100) * 360; // Convert percentage to degrees
 
@@ -288,7 +316,7 @@ export class ClientHomeComponent implements OnInit {
         percentage: Math.round(percentage),
         angle: angle,
         startAngle: currentAngle,
-        color: this.pieColors[index % this.pieColors.length],
+        color: this.sliceColor(holding.symbol),
         d: this.calculatePiePath(currentAngle, angle)
       };
 
@@ -297,6 +325,9 @@ export class ClientHomeComponent implements OnInit {
     });
 
     this.pieSlices.set(slices);
+    if (slices.length > 0) {
+      this.donutEntrance.set(true);
+    }
   }
 
   private calculatePiePath(startAngle: number, angle: number): string {
@@ -501,10 +532,65 @@ export class ClientHomeComponent implements OnInit {
     this.activePieIndex.set(undefined);
   }
 
+  onPieEnter(index: number, event: PointerEvent): void {
+    if (event.pointerType === 'mouse') {
+      this.pieFromTouch = false;
+      this.setPieActive(index);
+    }
+  }
+
+  onPieLeave(event: PointerEvent): void {
+    if (event.pointerType === 'mouse' && !this.pieFromTouch) {
+      this.clearPieActive();
+    }
+  }
+
+  onPieUp(index: number, event: PointerEvent): void {
+    if (event.pointerType === 'mouse') return;
+    event.preventDefault();
+    this.pieFromTouch = true;
+    this.activePieIndex.update(current => current === index ? undefined : index);
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  onDocumentPointerDown(event: PointerEvent): void {
+    if (this.activePieIndex() === undefined || event.pointerType === 'mouse') return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.pie-slice')) return;
+    this.clearPieActive();
+    this.pieFromTouch = false;
+  }
+
   onStockClick(holding: StockHolding) {
     if (holding.symbol !== 'Others') {
       console.log('Navigate to stock:', holding.symbol);
     }
+  }
+
+  private buildPieTooltip(holding: StockHolding): PieTooltip {
+    const name = holding.name?.trim() || 'N/A';
+    const ticker = holding.symbol?.trim() || 'N/A';
+    const shares = holding.shares > 0 ? this.formatShares(holding.shares) : 'N/A';
+    const marketValue = Number.isFinite(holding.value)
+      ? this.formatCurrency(holding.value, holding.currency || 'USD')
+      : 'N/A';
+    const allocation = Number.isFinite(holding.pct) ? `${holding.pct}%` : 'N/A';
+
+    let pnl = 'N/A';
+    let pnlTone: PieTooltip['pnlTone'] = 'na';
+    if (holding.avgCostBasis > 0 && holding.shares > 0 && holding.price > 0) {
+      const { gain, gainPct } = calculateHoldingGain(holding.shares, holding.price, holding.avgCostBasis);
+      const sign = gain >= 0 ? '+' : '-';
+      const amount = this.formatCurrency(Math.abs(gain), holding.currency || 'USD');
+      pnl = `${sign}${amount} (${sign}${Math.abs(gainPct).toFixed(2)}%)`;
+      pnlTone = gain > 0 ? 'positive' : gain < 0 ? 'negative' : 'na';
+    }
+
+    return { name, ticker, shares, marketValue, allocation, pnl, pnlTone };
+  }
+
+  private formatShares(value: number): string {
+    return value.toLocaleString('en-US', { maximumFractionDigits: 4 });
   }
 
   goToPortfolio() {
