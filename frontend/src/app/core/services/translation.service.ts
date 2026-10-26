@@ -1,6 +1,8 @@
 import { Injectable, signal } from '@angular/core';
+import { CLIENT_UI_TRANSLATIONS } from './client-ui-translations';
+import { CLIENT_UI_TRANSLATIONS_MORE } from './client-ui-translations-more';
 
-export type Language = 'en' | 'es' | 'bn' | 'hi' | 'ur' | 'pa' | 'te' | 'ta' | 'gu' | 'ga';
+export type Language = 'en' | 'es' | 'bn' | 'hi' |  'pa' | 'te' | 'ta' | 'gu' | 'ga';
 
 export interface LanguageOption {
   code: Language;
@@ -13,7 +15,6 @@ export const LANGUAGES: LanguageOption[] = [
   { code: 'es', englishName: 'Spanish', nativeName: 'Español' },
   { code: 'bn', englishName: 'Bengali', nativeName: 'বাংলা' },
   { code: 'hi', englishName: 'Hindi', nativeName: 'हिन्दी' },
-  { code: 'ur', englishName: 'Urdu', nativeName: 'اردو' },
   { code: 'pa', englishName: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
   { code: 'te', englishName: 'Telugu', nativeName: 'తెలుగు' },
   { code: 'ta', englishName: 'Tamil', nativeName: 'தமிழ்' },
@@ -29,6 +30,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'Home',
     'nav.portfolio': 'Portfolio',
     'nav.trades': 'Trades',
+    'nav.heatmap': 'Market Heatmap',
     'nav.profile': 'Profile',
     'nav.settings': 'Settings',
     'nav.logout': 'Logout',
@@ -106,6 +108,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'Buy',
     'trades.sell': 'Sell',
     'trades.no_trades': 'No trades found',
+    'trades.analysis.column': 'Analysis',
+    'trades.analysis.analyze': 'Analyze',
+    'trades.analysis.analyze_label': 'Analyze {symbol} {side} from {date}',
+    'trades.analysis.title': 'Trade analysis',
+    'trades.analysis.close': 'Close',
+    'trades.analysis.loading': 'Analyzing your trade…',
+    'trades.analysis.verdict.GOOD': 'Good decision',
+    'trades.analysis.verdict.MIXED': 'Mixed',
+    'trades.analysis.verdict.POOR': 'Poor decision',
+    'trades.analysis.verdict.TOO_EARLY': 'Too early to tell',
+    'trades.analysis.strengths': 'Strengths',
+    'trades.analysis.concerns': 'Concerns',
+    'trades.analysis.suggestions': 'Suggestions',
+    'trades.analysis.pnl_as_of': 'P&L as of {time}',
+    'trades.analysis.pnl_not_calculated': 'P&L not calculated yet. This review does not include profit or loss.',
+    'trades.analysis.disclaimer': 'Automated review, not financial advice.',
+    'trades.analysis.error.session_expired': 'Your session has expired. Please log in again.',
+    'trades.analysis.error.not_found': 'This trade could not be found.',
+    'trades.analysis.error.rate_limited': 'Too many analyses. Try again in {duration}.',
+    'trades.analysis.error.unavailable': 'Analysis is unavailable right now. Please try again later.',
+    'trades.analysis.error.unknown': 'Something went wrong. Please try again.',
 
     // Common/Modal
     'common.loading': 'Loading...',
@@ -197,6 +220,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'Comprar',
     'trades.sell': 'Vender',
     'trades.no_trades': 'No hay operaciones encontradas',
+    'trades.analysis.column': 'Análisis',
+    'trades.analysis.analyze': 'Analizar',
+    'trades.analysis.analyze_label': 'Analizar {symbol} {side} del {date}',
+    'trades.analysis.title': 'Análisis de la operación',
+    'trades.analysis.close': 'Cerrar',
+    'trades.analysis.loading': 'Analizando tu operación…',
+    'trades.analysis.verdict.GOOD': 'Buena decisión',
+    'trades.analysis.verdict.MIXED': 'Mixta',
+    'trades.analysis.verdict.POOR': 'Mala decisión',
+    'trades.analysis.verdict.TOO_EARLY': 'Es pronto para saberlo',
+    'trades.analysis.strengths': 'Puntos fuertes',
+    'trades.analysis.concerns': 'Preocupaciones',
+    'trades.analysis.suggestions': 'Sugerencias',
+    'trades.analysis.pnl_as_of': 'P&L a fecha de {time}',
+    'trades.analysis.pnl_not_calculated': 'P&L aún no calculado. Este análisis no incluye ganancias ni pérdidas.',
+    'trades.analysis.disclaimer': 'Análisis automático, no es asesoramiento financiero.',
+    'trades.analysis.error.session_expired': 'Tu sesión ha caducado. Vuelve a iniciar sesión.',
+    'trades.analysis.error.not_found': 'No se encontró esta operación.',
+    'trades.analysis.error.rate_limited': 'Demasiados análisis. Inténtalo de nuevo en {duration}.',
+    'trades.analysis.error.unavailable': 'El análisis no está disponible ahora. Inténtalo más tarde.',
+    'trades.analysis.error.unknown': 'Algo salió mal. Inténtalo de nuevo.',
 
     'common.loading': 'Cargando...',
     'common.error': 'Error',
@@ -282,6 +326,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'কিনুন',
     'trades.sell': 'বিক্রি করুন',
     'trades.no_trades': 'কোন ট্রেড পাওয়া যায়নি',
+    'trades.analysis.column': 'বিশ্লেষণ',
+    'trades.analysis.analyze': 'বিশ্লেষণ করুন',
+    'trades.analysis.analyze_label': '{date} তারিখের {symbol} {side} বিশ্লেষণ করুন',
+    'trades.analysis.title': 'ট্রেড বিশ্লেষণ',
+    'trades.analysis.close': 'বন্ধ করুন',
+    'trades.analysis.loading': 'আপনার ট্রেড বিশ্লেষণ করা হচ্ছে…',
+    'trades.analysis.verdict.GOOD': 'ভালো সিদ্ধান্ত',
+    'trades.analysis.verdict.MIXED': 'মিশ্র',
+    'trades.analysis.verdict.POOR': 'দুর্বল সিদ্ধান্ত',
+    'trades.analysis.verdict.TOO_EARLY': 'এখনই বলা কঠিন',
+    'trades.analysis.strengths': 'শক্তির দিক',
+    'trades.analysis.concerns': 'উদ্বেগ',
+    'trades.analysis.suggestions': 'পরামর্শ',
+    'trades.analysis.pnl_as_of': '{time} পর্যন্ত P&L',
+    'trades.analysis.pnl_not_calculated': 'P&L এখনও গণনা করা হয়নি। এই পর্যালোচনায় লাভ বা ক্ষতি অন্তর্ভুক্ত নেই।',
+    'trades.analysis.disclaimer': 'স্বয়ংক্রিয় পর্যালোচনা, আর্থিক পরামর্শ নয়।',
+    'trades.analysis.error.session_expired': 'আপনার সেশনের মেয়াদ শেষ হয়েছে। অনুগ্রহ করে আবার লগ ইন করুন।',
+    'trades.analysis.error.not_found': 'এই ট্রেডটি খুঁজে পাওয়া যায়নি।',
+    'trades.analysis.error.rate_limited': 'অনেক বেশি বিশ্লেষণ। {duration} পরে আবার চেষ্টা করুন।',
+    'trades.analysis.error.unavailable': 'বিশ্লেষণ এখন উপলব্ধ নেই। অনুগ্রহ করে পরে আবার চেষ্টা করুন।',
+    'trades.analysis.error.unknown': 'কিছু ভুল হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
 
     'common.loading': 'লোড হচ্ছে...',
     'common.error': 'ত্রুটি',
@@ -367,6 +432,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'खरीदें',
     'trades.sell': 'बेचें',
     'trades.no_trades': 'कोई ट्रेड नहीं मिले',
+    'trades.analysis.column': 'विश्लेषण',
+    'trades.analysis.analyze': 'विश्लेषण करें',
+    'trades.analysis.analyze_label': '{date} के {symbol} {side} का विश्लेषण करें',
+    'trades.analysis.title': 'ट्रेड विश्लेषण',
+    'trades.analysis.close': 'बंद करें',
+    'trades.analysis.loading': 'आपके ट्रेड का विश्लेषण हो रहा है…',
+    'trades.analysis.verdict.GOOD': 'अच्छा निर्णय',
+    'trades.analysis.verdict.MIXED': 'मिश्रित',
+    'trades.analysis.verdict.POOR': 'कमज़ोर निर्णय',
+    'trades.analysis.verdict.TOO_EARLY': 'अभी कहना जल्दबाज़ी होगी',
+    'trades.analysis.strengths': 'मज़बूत पक्ष',
+    'trades.analysis.concerns': 'चिंताएँ',
+    'trades.analysis.suggestions': 'सुझाव',
+    'trades.analysis.pnl_as_of': '{time} तक का P&L',
+    'trades.analysis.pnl_not_calculated': 'P&L की गणना अभी नहीं हुई है। इस समीक्षा में लाभ या हानि शामिल नहीं है।',
+    'trades.analysis.disclaimer': 'स्वचालित समीक्षा, वित्तीय सलाह नहीं।',
+    'trades.analysis.error.session_expired': 'आपका सत्र समाप्त हो गया है। कृपया फिर से लॉग इन करें।',
+    'trades.analysis.error.not_found': 'यह ट्रेड नहीं मिला।',
+    'trades.analysis.error.rate_limited': 'बहुत अधिक विश्लेषण। {duration} बाद फिर से प्रयास करें।',
+    'trades.analysis.error.unavailable': 'विश्लेषण अभी उपलब्ध नहीं है। कृपया बाद में प्रयास करें।',
+    'trades.analysis.error.unknown': 'कुछ गलत हो गया। कृपया फिर से प्रयास करें।',
 
     'common.loading': 'लोड हो रहा है...',
     'common.error': 'त्रुटि',
@@ -376,91 +462,6 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.close': 'बंद करें',
     'common.processing': 'प्रोसेसिंग...',
     'common.invalid_quantity': 'अमान्य मात्रा',
-  },
-  ur: {
-    'nav.home': 'ہوم',
-    'nav.portfolio': 'پورٹ فولیو',
-    'nav.trades': 'ٹریڈز',
-    'nav.profile': 'پروفائل',
-    'nav.settings': 'ترتیبات',
-    'nav.logout': 'لاگ آؤٹ',
-    'nav.theme': 'تھیم',
-    'nav.language': 'زبان',
-
-    'home.title': 'پورٹ فولیو ڈیش بورڈ',
-    'home.portfolio_value': 'پورٹ فولیو کی قدر',
-    'home.your_profile': 'آپ کا پروفائل',
-    'home.portfolio_performance': 'پورٹ فولیو کی کارکردگی',
-    'home.view_investments': 'سرمایہ کاری دیکھیں',
-    'home.todays_gain': 'آج کا منافع',
-    'home.overall_gain': 'مجموعی منافع',
-    'home.cash_remaining': 'باقی نقد رقم',
-    'home.portfolio_allocation': 'پورٹ فولیو کی تقسیم',
-    'home.total_value': 'کل قدر',
-    'home.performance': 'کارکردگی',
-    'home.trading_history': 'تجارتی تاریخ',
-    'home.time': 'وقت',
-    'home.symbol': 'علامت',
-    'home.type': 'قسم',
-    'home.quantity': 'مقدار',
-    'home.price': 'قیمت',
-    'home.total': 'کل',
-    'home.view_all_trades': 'تمام ٹریڈز دیکھیں',
-
-    'portfolio.title': 'پورٹ فولیو',
-    'portfolio.search_stocks': 'اسٹاک تلاش کریں...',
-    'portfolio.filter': 'فلٹر',
-    'portfolio.all': 'تمام',
-    'portfolio.gains': 'منافع',
-    'portfolio.losses': 'نقصان',
-    'portfolio.sort_by': 'کی طرف سے ترتیب دیں',
-    'portfolio.shares': 'شیئرز',
-    'portfolio.current_price': 'موجودہ قیمت',
-    'portfolio.current_value': 'موجودہ قدر',
-    'portfolio.gain_loss': 'منافع/نقصان',
-    'portfolio.actions': 'کارروائیاں',
-    'portfolio.buy_more': 'مزید خریدیں',
-    'portfolio.sell': 'فروخت',
-    'portfolio.buy_shares': 'شیئرز خریدیں',
-    'portfolio.sell_shares': 'شیئرز فروخت',
-    'portfolio.shares_input': 'شیئرز',
-    'portfolio.estimated_total': 'متوقع کل',
-    'portfolio.confirm_buy': 'خریداری کی تصدیق کریں',
-    'portfolio.confirm_sell': 'فروخت کی تصدیق کریں',
-    'portfolio.select_instrument': 'آلہ منتخب کریں',
-    'portfolio.change': 'تبدیل کریں',
-    'portfolio.success': 'کامیابی',
-    'portfolio.no_holdings': 'کوئی ہولڈنگ نہیں ملی',
-
-    'trades.title': 'ٹریڈز',
-    'trades.search': 'ٹریڈز تلاش کریں...',
-    'trades.filter_by_type': 'قسم کے لحاظ سے فلٹر کریں',
-    'trades.filter_by_date': 'تاریخ کے لحاظ سے فلٹر کریں',
-    'trades.from_date': 'سے',
-    'trades.to_date': 'تک',
-    'trades.sort': 'ترتیب دیں',
-    'trades.newest': 'نیا ترین',
-    'trades.oldest': 'سب سے پرانا',
-    'trades.clear_filters': 'فلٹرز صاف کریں',
-    'trades.new_trade': 'نیا ٹریڈ',
-    'trades.time': 'وقت',
-    'trades.symbol': 'علامت',
-    'trades.type': 'قسم',
-    'trades.quantity': 'مقدار',
-    'trades.price': 'قیمت',
-    'trades.total': 'کل',
-    'trades.buy': 'خریدیں',
-    'trades.sell': 'فروخت',
-    'trades.no_trades': 'کوئی ٹریڈ نہیں ملے',
-
-    'common.loading': 'لوڈ ہو رہا ہے...',
-    'common.error': 'خرابی',
-    'common.success': 'کامیابی',
-    'common.cancel': 'منسوخ کریں',
-    'common.confirm': 'تصدیق کریں',
-    'common.close': 'بند کریں',
-    'common.processing': 'پروسیسنگ...',
-    'common.invalid_quantity': 'غیر درست مقدار',
   },
   pa: {
     'nav.home': 'ਘਰ',
@@ -535,6 +536,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'ਖਰੀਦੋ',
     'trades.sell': 'ਵੇਚੋ',
     'trades.no_trades': 'ਕੋਈ ਵਪਾਰ ਨਹੀਂ ਮਿਲਿਆ',
+    'trades.analysis.column': 'ਵਿਸ਼ਲੇਸ਼ਣ',
+    'trades.analysis.analyze': 'ਵਿਸ਼ਲੇਸ਼ਣ ਕਰੋ',
+    'trades.analysis.analyze_label': '{date} ਦੇ {symbol} {side} ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰੋ',
+    'trades.analysis.title': 'ਵਪਾਰ ਵਿਸ਼ਲੇਸ਼ਣ',
+    'trades.analysis.close': 'ਬੰਦ ਕਰੋ',
+    'trades.analysis.loading': 'ਤੁਹਾਡੇ ਵਪਾਰ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਹੋ ਰਿਹਾ ਹੈ…',
+    'trades.analysis.verdict.GOOD': 'ਚੰਗਾ ਫ਼ੈਸਲਾ',
+    'trades.analysis.verdict.MIXED': 'ਮਿਲਿਆ-ਜੁਲਿਆ',
+    'trades.analysis.verdict.POOR': 'ਕਮਜ਼ੋਰ ਫ਼ੈਸਲਾ',
+    'trades.analysis.verdict.TOO_EARLY': 'ਅਜੇ ਕਹਿਣਾ ਜਲਦੀ ਹੈ',
+    'trades.analysis.strengths': 'ਮਜ਼ਬੂਤ ਪੱਖ',
+    'trades.analysis.concerns': 'ਚਿੰਤਾਵਾਂ',
+    'trades.analysis.suggestions': 'ਸੁਝਾਅ',
+    'trades.analysis.pnl_as_of': '{time} ਤੱਕ ਦਾ P&L',
+    'trades.analysis.pnl_not_calculated': 'P&L ਦੀ ਗਣਨਾ ਅਜੇ ਨਹੀਂ ਹੋਈ। ਇਸ ਸਮੀਖਿਆ ਵਿੱਚ ਲਾਭ ਜਾਂ ਨੁਕਸਾਨ ਸ਼ਾਮਲ ਨਹੀਂ ਹੈ।',
+    'trades.analysis.disclaimer': 'ਸਵੈਚਲਿਤ ਸਮੀਖਿਆ, ਵਿੱਤੀ ਸਲਾਹ ਨਹੀਂ।',
+    'trades.analysis.error.session_expired': 'ਤੁਹਾਡਾ ਸੈਸ਼ਨ ਖ਼ਤਮ ਹੋ ਗਿਆ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਲੌਗ ਇਨ ਕਰੋ।',
+    'trades.analysis.error.not_found': 'ਇਹ ਵਪਾਰ ਨਹੀਂ ਮਿਲਿਆ।',
+    'trades.analysis.error.rate_limited': 'ਬਹੁਤ ਜ਼ਿਆਦਾ ਵਿਸ਼ਲੇਸ਼ਣ। {duration} ਬਾਅਦ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+    'trades.analysis.error.unavailable': 'ਵਿਸ਼ਲੇਸ਼ਣ ਇਸ ਵੇਲੇ ਉਪਲਬਧ ਨਹੀਂ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਬਾਅਦ ਵਿੱਚ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+    'trades.analysis.error.unknown': 'ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
 
     'common.loading': 'ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...',
     'common.error': 'ਤ੍ਰੁਟੀ',
@@ -618,6 +640,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'కొనండి',
     'trades.sell': 'విక్రయించండి',
     'trades.no_trades': 'ట్రేడ్‌లు కనుగొనబడలేదు',
+    'trades.analysis.column': 'విశ్లేషణ',
+    'trades.analysis.analyze': 'విశ్లేషించండి',
+    'trades.analysis.analyze_label': '{date} నాటి {symbol} {side} ట్రేడ్‌ను విశ్లేషించండి',
+    'trades.analysis.title': 'ట్రేడ్ విశ్లేషణ',
+    'trades.analysis.close': 'మూసివేయండి',
+    'trades.analysis.loading': 'మీ ట్రేడ్‌ను విశ్లేషిస్తోంది…',
+    'trades.analysis.verdict.GOOD': 'మంచి నిర్ణయం',
+    'trades.analysis.verdict.MIXED': 'మిశ్రమం',
+    'trades.analysis.verdict.POOR': 'బలహీన నిర్ణయం',
+    'trades.analysis.verdict.TOO_EARLY': 'ఇప్పుడే చెప్పడం తొందర',
+    'trades.analysis.strengths': 'బలాలు',
+    'trades.analysis.concerns': 'ఆందోళనలు',
+    'trades.analysis.suggestions': 'సూచనలు',
+    'trades.analysis.pnl_as_of': '{time} నాటికి P&L',
+    'trades.analysis.pnl_not_calculated': 'P&L ఇంకా లెక్కించబడలేదు. ఈ సమీక్షలో లాభం లేదా నష్టం చేర్చబడలేదు.',
+    'trades.analysis.disclaimer': 'స్వయంచాలక సమీక్ష, ఆర్థిక సలహా కాదు.',
+    'trades.analysis.error.session_expired': 'మీ సెషన్ గడువు ముగిసింది. దయచేసి మళ్లీ లాగిన్ అవ్వండి.',
+    'trades.analysis.error.not_found': 'ఈ ట్రేడ్ కనుగొనబడలేదు.',
+    'trades.analysis.error.rate_limited': 'చాలా ఎక్కువ విశ్లేషణలు. {duration} తర్వాత మళ్లీ ప్రయత్నించండి.',
+    'trades.analysis.error.unavailable': 'విశ్లేషణ ప్రస్తుతం అందుబాటులో లేదు. దయచేసి తర్వాత ప్రయత్నించండి.',
+    'trades.analysis.error.unknown': 'ఏదో పొరపాటు జరిగింది. దయచేసి మళ్లీ ప్రయత్నించండి.',
 
     'common.loading': 'లోడ్ చేస్తోంది...',
     'common.error': 'ఎరర్',
@@ -701,6 +744,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'வாங்கவும்',
     'trades.sell': 'விற்க',
     'trades.no_trades': 'வர்த்தகங்கள் எதுவும் கிடைக்கவில்லை',
+    'trades.analysis.column': 'பகுப்பாய்வு',
+    'trades.analysis.analyze': 'பகுப்பாய்வு செய்யுங்கள்',
+    'trades.analysis.analyze_label': '{date} அன்று செய்த {symbol} {side} வர்த்தகத்தைப் பகுப்பாய்வு செய்யுங்கள்',
+    'trades.analysis.title': 'வர்த்தகப் பகுப்பாய்வு',
+    'trades.analysis.close': 'மூடு',
+    'trades.analysis.loading': 'உங்கள் வர்த்தகம் பகுப்பாய்வு செய்யப்படுகிறது…',
+    'trades.analysis.verdict.GOOD': 'நல்ல முடிவு',
+    'trades.analysis.verdict.MIXED': 'கலவையானது',
+    'trades.analysis.verdict.POOR': 'பலவீனமான முடிவு',
+    'trades.analysis.verdict.TOO_EARLY': 'இப்போதே சொல்வது கடினம்',
+    'trades.analysis.strengths': 'பலங்கள்',
+    'trades.analysis.concerns': 'கவலைகள்',
+    'trades.analysis.suggestions': 'பரிந்துரைகள்',
+    'trades.analysis.pnl_as_of': '{time} நிலவரப்படி P&L',
+    'trades.analysis.pnl_not_calculated': 'P&L இன்னும் கணக்கிடப்படவில்லை. இந்த மதிப்பாய்வில் லாபம் அல்லது நஷ்டம் சேர்க்கப்படவில்லை.',
+    'trades.analysis.disclaimer': 'தானியங்கு மதிப்பாய்வு, நிதி ஆலோசனை அல்ல.',
+    'trades.analysis.error.session_expired': 'உங்கள் அமர்வு காலாவதியாகிவிட்டது. மீண்டும் உள்நுழையுங்கள்.',
+    'trades.analysis.error.not_found': 'இந்த வர்த்தகம் கிடைக்கவில்லை.',
+    'trades.analysis.error.rate_limited': 'அதிகமான பகுப்பாய்வுகள். {duration} கழித்து மீண்டும் முயலுங்கள்.',
+    'trades.analysis.error.unavailable': 'பகுப்பாய்வு இப்போது கிடைக்கவில்லை. பின்னர் முயலுங்கள்.',
+    'trades.analysis.error.unknown': 'ஏதோ தவறு நடந்தது. மீண்டும் முயலுங்கள்.',
 
     'common.loading': 'ஏற்றுக்கொள்ளப்படுகிறது...',
     'common.error': 'பிழை',
@@ -786,6 +850,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'ખરીદો',
     'trades.sell': 'વેચો',
     'trades.no_trades': 'કોઈ વર્તણૂક મળ્યો નથી',
+    'trades.analysis.column': 'વિશ્લેષણ',
+    'trades.analysis.analyze': 'વિશ્લેષણ કરો',
+    'trades.analysis.analyze_label': '{date} ના {symbol} {side} નું વિશ્લેષણ કરો',
+    'trades.analysis.title': 'ટ્રેડ વિશ્લેષણ',
+    'trades.analysis.close': 'બંધ કરો',
+    'trades.analysis.loading': 'તમારા ટ્રેડનું વિશ્લેષણ થઈ રહ્યું છે…',
+    'trades.analysis.verdict.GOOD': 'સારો નિર્ણય',
+    'trades.analysis.verdict.MIXED': 'મિશ્ર',
+    'trades.analysis.verdict.POOR': 'નબળો નિર્ણય',
+    'trades.analysis.verdict.TOO_EARLY': 'હમણાં કહેવું વહેલું છે',
+    'trades.analysis.strengths': 'મજબૂત પાસાં',
+    'trades.analysis.concerns': 'ચિંતાઓ',
+    'trades.analysis.suggestions': 'સૂચનો',
+    'trades.analysis.pnl_as_of': '{time} સુધીનો P&L',
+    'trades.analysis.pnl_not_calculated': 'P&L ની ગણતરી હજી થઈ નથી. આ સમીક્ષામાં નફો કે નુકસાન સામેલ નથી.',
+    'trades.analysis.disclaimer': 'સ્વચાલિત સમીક્ષા, નાણાકીય સલાહ નથી.',
+    'trades.analysis.error.session_expired': 'તમારું સત્ર સમાપ્ત થઈ ગયું છે. કૃપા કરીને ફરી લૉગ ઇન કરો.',
+    'trades.analysis.error.not_found': 'આ ટ્રેડ મળ્યો નથી.',
+    'trades.analysis.error.rate_limited': 'ઘણાં બધાં વિશ્લેષણ. {duration} પછી ફરી પ્રયાસ કરો.',
+    'trades.analysis.error.unavailable': 'વિશ્લેષણ હાલમાં ઉપલબ્ધ નથી. કૃપા કરીને પછીથી પ્રયાસ કરો.',
+    'trades.analysis.error.unknown': 'કંઈક ખોટું થયું. કૃપા કરીને ફરી પ્રયાસ કરો.',
 
     'common.loading': 'લોડ કરી રહ્યું છે...',
     'common.error': 'ભૂલ',
@@ -868,6 +953,27 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'trades.buy': 'Ceannach',
     'trades.sell': 'Díol',
     'trades.no_trades': 'Nil aon trádáil aimsithe',
+    'trades.analysis.column': 'Anailís',
+    'trades.analysis.analyze': 'Déan anailís',
+    'trades.analysis.analyze_label': 'Déan anailís ar {side} {symbol} ó {date}',
+    'trades.analysis.title': 'Anailís trádála',
+    'trades.analysis.close': 'Dún',
+    'trades.analysis.loading': 'Ag déanamh anailíse ar do thrádáil…',
+    'trades.analysis.verdict.GOOD': 'Cinneadh maith',
+    'trades.analysis.verdict.MIXED': 'Measctha',
+    'trades.analysis.verdict.POOR': 'Droch-chinneadh',
+    'trades.analysis.verdict.TOO_EARLY': 'Ró-luath le rá',
+    'trades.analysis.strengths': 'Láidreachtaí',
+    'trades.analysis.concerns': 'Ábhair imní',
+    'trades.analysis.suggestions': 'Moltaí',
+    'trades.analysis.pnl_as_of': 'P&L amhail {time}',
+    'trades.analysis.pnl_not_calculated': 'Níor ríomhadh P&L fós. Ní áirítear brabús ná caillteanas san athbhreithniú seo.',
+    'trades.analysis.disclaimer': 'Athbhreithniú uathoibríoch, ní comhairle airgeadais é.',
+    'trades.analysis.error.session_expired': 'Tá do sheisiún imithe in éag. Logáil isteach arís, le do thoil.',
+    'trades.analysis.error.not_found': 'Níorbh fhéidir an trádáil seo a aimsiú.',
+    'trades.analysis.error.rate_limited': 'An iomarca anailísí. Bain triail eile as i gceann {duration}.',
+    'trades.analysis.error.unavailable': 'Níl anailís ar fáil faoi láthair. Bain triail eile as ar ball.',
+    'trades.analysis.error.unknown': 'Tharla earráid. Bain triail eile as.',
 
     'common.loading': 'Á Lódáil...',
     'common.error': 'Earráid',
@@ -879,6 +985,46 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.invalid_quantity': 'Méid Neamhbhailí',
   }
 };
+
+function applyParams(text: string, params?: Record<string, string | number>): string {
+  if (!params) return text;
+  return text.replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
+    params[name] === undefined ? `{{${name}}}` : String(params[name])
+  );
+}
+
+for (const extra of [CLIENT_UI_TRANSLATIONS, CLIENT_UI_TRANSLATIONS_MORE]) {
+  for (const [lang, entries] of Object.entries(extra)) {
+    if (translations[lang as Language]) {
+      Object.assign(translations[lang as Language], entries);
+    }
+  }
+}
+
+const KEY_ALIASES: Record<string, string> = {
+  'home.buy': 'trades.buy',
+  'home.sell': 'trades.sell',
+  'stock.buy': 'trades.buy',
+  'stock.sell': 'trades.sell',
+  'trade.buy': 'trades.buy',
+  'trade.sell': 'trades.sell',
+  'trade.cancel': 'common.cancel',
+  'trade.loading': 'common.loading',
+  'trade.entry_shares': 'portfolio.shares',
+  'trade.estimated_total': 'portfolio.estimated_total',
+  'trade.company': 'portfolio.company',
+  'trade.available_cash': 'portfolio.cash_available',
+  'stock.shares_owned': 'portfolio.shares',
+  'trades.date': 'home.time'
+};
+
+for (const lang of Object.keys(translations) as Language[]) {
+  for (const [key, alias] of Object.entries(KEY_ALIASES)) {
+    if (!translations[lang][key] && translations[lang][alias]) {
+      translations[lang][key] = translations[lang][alias];
+    }
+  }
+}
 
 @Injectable({
   providedIn: 'root'
@@ -897,7 +1043,7 @@ export class TranslationService {
     if (stored && this.isValidLanguage(stored)) {
       return stored as Language;
     }
-    return 'en'; // Default to English
+    return 'en';
   }
 
   private isValidLanguage(lang: string): boolean {
@@ -909,13 +1055,19 @@ export class TranslationService {
     localStorage.setItem('app-language', lang);
   }
 
-  translate(key: TranslationKey, defaultValue?: string): string {
+  translate(key: TranslationKey, defaultValue?: string, params?: Record<string, string | number>): string {
     const lang = this.currentLanguage();
-    const translated = translations[lang]?.[key];
-    return translated || defaultValue || key;
+    const translated = translations[lang]?.[key] || translations.en[key] || defaultValue || key;
+    return applyParams(translated, params);
   }
 
-  t(key: TranslationKey): string {
-    return this.translate(key);
+  t(key: TranslationKey, params?: Record<string, string | number>): string {
+    return this.translate(key, undefined, params);
+  }
+
+  /** Translates text with {name} placeholders, e.g. format('x', { seconds: 41 }) for 'Try again in {seconds} seconds'. */
+  format(key: TranslationKey, params: Record<string, string | number>): string {
+    return this.translate(key).replace(/\{(\w+)\}/g, (placeholder, name: string) =>
+      name in params ? String(params[name]) : placeholder);
   }
 }

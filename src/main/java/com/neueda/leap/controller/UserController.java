@@ -28,8 +28,9 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public UserDetailsResponse getUserById(@PathVariable UUID userId, @AuthenticationPrincipal Jwt jwt) {
-        authorizationService.requireUser(userId, authorizationService.getAuthenticatedUserId(jwt));
+        public UserDetailsResponse getUserById(@PathVariable(name = "userId") UUID userId,
+            @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAdminOrUser(userId, jwt);
 
         User user = userService.getUserById(userId);
         UserPii pii = userPiiService.getUserPiiById(userId);
@@ -37,12 +38,14 @@ public class UserController {
     }
 
     @GetMapping
-    public List<User> getAllUsers() {
+    public List<User> getAllUsers(@AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAdmin(jwt);
         return userService.getAllUsers();
     }
 
     @PostMapping
-    public User createUser(@RequestBody CreateUserRequest createUserRequest) {
+    public User createUser(@RequestBody CreateUserRequest createUserRequest, @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAdmin(jwt);
         User user = new User(
             createUserRequest.userId(),
             createUserRequest.role(),
@@ -52,17 +55,19 @@ public class UserController {
     }
 
     @PutMapping("/{userId}/status")
-    public User updateUserStatus(@PathVariable UUID userId, @RequestParam String newStatus,
+        public User updateUserStatus(@PathVariable(name = "userId") UUID userId,
+            @RequestParam(name = "newStatus") String newStatus,
             @AuthenticationPrincipal Jwt jwt) {
-        authorizationService.requireUser(userId, authorizationService.getAuthenticatedUserId(jwt));
+        authorizationService.requireAdmin(jwt);
 
         User user = userService.getUserById(userId);
         return userService.updateUserStatus(user, newStatus);
     }
 
     @DeleteMapping("/{userId}")
-    public void deleteUserById(@PathVariable UUID userId, @AuthenticationPrincipal Jwt jwt) {
-        authorizationService.requireUser(userId, authorizationService.getAuthenticatedUserId(jwt));
+        public void deleteUserById(@PathVariable(name = "userId") UUID userId,
+            @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAdmin(jwt);
 
         userService.deleteUserById(userId);
     }

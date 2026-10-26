@@ -73,11 +73,11 @@ public class TradeController {
     
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<TradeResponse>> getTradesByAccount(
-            @PathVariable UUID accountId,
-            @RequestParam(required = false) Integer limit,
-            @RequestParam (required = false) Integer offset,
+            @PathVariable(name = "accountId") UUID accountId,
+            @RequestParam(name = "limit", required = false) Integer limit,
+            @RequestParam(name = "offset", required = false) Integer offset,
             @AuthenticationPrincipal Jwt jwt) {
-        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
         
         List<TradeResponse> trades = tradeService.getAllTradesByAccountWithInstrument(accountId, limit, offset);
         
@@ -90,10 +90,10 @@ public class TradeController {
 
     @GetMapping("/account/{accountId}/instrument/{instrumentId}")
     public ResponseEntity<List<TradeResponse>> getTradesByAccountAndInstrument(
-            @PathVariable UUID accountId,
-            @PathVariable UUID instrumentId,
+            @PathVariable(name = "accountId") UUID accountId,
+            @PathVariable(name = "instrumentId") UUID instrumentId,
             @AuthenticationPrincipal Jwt jwt) {
-        authorizationService.requireAccountOwner(accountId, authorizationService.getAuthenticatedUserId(jwt));
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
         
         List<TradeResponse> trades = tradeService.getTradesByAccountAndInstrument(accountId, instrumentId);
         
@@ -105,18 +105,23 @@ public class TradeController {
     }
 
     @PostMapping("/{tradeId}/analysis")
-    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable UUID tradeId,
+    public ResponseEntity<TradeAnalysisResult> analyzeTrade(@PathVariable(name = "tradeId") UUID tradeId,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID userId = userIdOf(jwt);
+        UUID userId = authorizationService.getAuthenticatedUserId(jwt);
         analysisRateLimiter.acquire(userId.toString());
         return ResponseEntity.ok(tradeAnalysisService.analyze(tradeId, userId));
     }
 
     /** What the model would be told about the trade, without calling it. */
     @GetMapping("/{tradeId}/analysis/context")
-    public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable UUID tradeId,
+    public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable(name = "tradeId") UUID tradeId,
             @AuthenticationPrincipal Jwt jwt) {
+<<<<<<< HEAD
         return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId, userIdOf(jwt)));
+=======
+        return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId,
+                authorizationService.getAuthenticatedUserId(jwt)));
+>>>>>>> main
     }
 
 }

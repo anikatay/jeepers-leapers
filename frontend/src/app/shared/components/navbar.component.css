@@ -36,13 +36,14 @@ button {
 
 .navbar-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0.75rem 1rem;
-  padding-right: 1rem;
+  padding-block: 0.75rem;
+  padding-inline: 1rem;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -67,8 +68,8 @@ button {
 }
 
 .logo-image {
-  width: 36px;
-  height: 36px;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -152,70 +153,6 @@ button {
   flex-shrink: 0;
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   APPEARANCE DROPDOWN
-   ────────────────────────────────────────────────────────────────────────── */
-
-.appearance-container {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.appearance-button {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--foreground);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  transition: all 0.2s ease;
-}
-
-.appearance-button:hover {
-  background: var(--secondary);
-}
-
-.appearance-button svg {
-  color: currentColor;
-}
-
-.theme-swatches {
-  display: flex;
-  gap: 0.125rem;
-  flex-shrink: 0;
-}
-
-.swatch {
-  width: 0.875rem;
-  height: 0.875rem;
-  border-radius: 9999px;
-  display: block;
-  flex-shrink: 0;
-}
-
-.appearance-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0.5rem;
-  width: 18rem;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  z-index: 50;
-  overflow: hidden;
-}
-
-.appearance-panel {
-  padding: 1rem;
-  space-y: 1rem;
-}
-
 .panel-title {
   font-size: 0.625rem;
   font-weight: 700;
@@ -223,68 +160,6 @@ button {
   letter-spacing: 0.05em;
   color: var(--muted-foreground);
   margin: 0 0 1rem 0;
-}
-
-.mode-section {
-  margin-bottom: 1rem;
-}
-
-.section-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--foreground);
-  margin: 0 0 0.5rem 0;
-}
-
-.mode-buttons {
-  display: flex;
-  gap: 0.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-
-.mode-btn {
-  flex: 1;
-  padding: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: transparent;
-  color: var(--muted-foreground);
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.mode-btn:hover {
-  background: var(--secondary);
-}
-
-.theme-section {
-  margin-top: 1rem;
-}
-
-.theme-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-}
-
-.theme-btn {
-  padding: 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  background: var(--secondary);
-  color: var(--foreground);
-  border-radius: 0.5rem;
-  transition: all 0.2s ease;
-  border: 2px solid transparent;
-}
-
-.theme-btn:hover {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -342,13 +217,13 @@ button {
 .profile-menu {
   position: absolute;
   top: 100%;
-  right: 0;
+  inset-inline-end: 0;
   margin-top: 0.375rem;
-  width: 11rem;
-  background: var(--card);
+  min-width: 11rem;
+  background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: 0.75rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-raised);
   z-index: 50;
   overflow: hidden;
   padding: 0.25rem;
@@ -356,7 +231,7 @@ button {
 
 .menu-item {
   width: 100%;
-  text-align: left;
+  text-align: start;
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
   color: var(--foreground);
@@ -375,7 +250,7 @@ button {
 }
 
 .menu-item.logout {
-  color: #ef4444;
+  color: var(--loss);
 }
 
 .menu-divider {
@@ -409,12 +284,11 @@ button {
   border-radius: 0.75rem;
   overflow: hidden;
   transition: all 0.2s ease;
-  focus-within: box-shadow 0 0 0 3px rgba(var(--ring-rgb), 0.1);
 }
 
 .search-input-wrapper:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent);
 }
 
 .search-icon {
@@ -422,12 +296,13 @@ button {
   height: 1rem;
   color: var(--muted-foreground);
   flex-shrink: 0;
-  padding-left: 1rem;
-  padding-right: 0.5rem;
+  padding-inline-start: 1rem;
+  padding-inline-end: 0.5rem;
 }
 
 .search-input {
   flex: 1;
+  min-width: 0;
   padding: 0.625rem 0;
   font-size: 0.875rem;
   color: var(--foreground);
@@ -461,7 +336,8 @@ button {
 .search-hint {
   font-size: 0.75rem;
   color: var(--muted-foreground);
-  margin: 0.25rem 0 0 1rem;
+  margin: 0.25rem 0 0;
+  margin-inline-start: 1rem;
   padding: 0;
 }
 
@@ -475,13 +351,13 @@ button {
   left: 0;
   right: 0;
   margin-top: 0.25rem;
-  background: var(--card);
+  background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: 0.75rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-raised);
   z-index: 40;
   overflow: hidden;
-  max-height: 300px;
+  max-height: min(20rem, 60vh);
   overflow-y: auto;
 }
 
@@ -498,7 +374,7 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  text-align: left;
+  text-align: start;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -539,7 +415,7 @@ button {
   color: var(--foreground);
   white-space: nowrap;
   flex-shrink: 0;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -572,73 +448,6 @@ button {
   .navbar-logo {
     min-width: auto;
   }
-
-  .appearance-button {
-    padding: 0.25rem 0.5rem;
-  }
-
-  .theme-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.profile-button:hover {
-  background: #f1f5f9;
-}
-
-.profile-name {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #e2e8f0;
-  display: grid;
-  place-items: center;
-}
-
-.avatar svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: #64748b;
-  stroke-width: 1.5;
-}
-
-.profile-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
-  min-width: 140px;
-  padding: 6px;
-  z-index: 30;
-}
-
-.profile-menu button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: none;
-  background: transparent;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.profile-menu button:hover {
-  background: #f1f5f9;
-}
-
-.profile-menu button.logout {
-  color: #dc2626;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -688,13 +497,13 @@ button {
 .language-menu {
   position: absolute;
   top: 100%;
-  right: 0;
+  inset-inline-end: 0;
   margin-top: 0.5rem;
-  width: 16rem;
-  background: var(--card);
+  width: min(16rem, calc(100vw - 2rem));
+  background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-raised);
   z-index: 50;
   overflow: hidden;
 }
@@ -715,10 +524,11 @@ button {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  text-align: start;
   gap: 0.2rem;
   width: 100%;
   padding: 0.75rem;
-  text-align: left;
+  text-align: start;
   border: 1px solid transparent;
   border-radius: 0.625rem;
   font-size: 0.875rem;

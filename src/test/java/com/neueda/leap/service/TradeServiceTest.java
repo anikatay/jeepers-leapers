@@ -1,6 +1,7 @@
 package com.neueda.leap.service;
 
 import com.neueda.leap.dto.response.TradeResponse;
+import com.neueda.leap.exception.ApplicationException;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
@@ -85,6 +86,7 @@ class TradeServiceTest {
                     return instrument;
                 });
         lenient().when(accountService.getAccount(any(UUID.class))).thenReturn(activeAccount());
+        lenient().when(accountService.getAccountForTrade(any(UUID.class))).thenReturn(activeAccount());
         lenient().when(marketDataService.getExchangeRate(any(String.class), any(String.class)))
                 .thenReturn(BigDecimal.ONE);
         lenient().doNothing().when(authorizationService)
@@ -112,6 +114,32 @@ class TradeServiceTest {
         assertThrows(ObjectInvalidException.class, () -> tradeService.createTrade(null, authenticatedUserId));
 
         verify(tradeMapper, never()).createTrade(any(Trade.class));
+    }
+
+    @Test
+    void testCreateTradeRejectsFrozenAccountBeforeInstrumentLookup() {
+        UUID accountId = UUID.randomUUID();
+        Trade trade = new Trade();
+        trade.setAccountId(accountId);
+        trade.setInstrumentId(UUID.randomUUID());
+        trade.setSide("BUY");
+        trade.setQuantity(BigDecimal.ONE);
+
+        Account frozenAccount = activeAccount();
+        frozenAccount.setAccountId(accountId);
+        frozenAccount.setStatus("FROZEN");
+        frozenAccount.setFreezeReason("Suspicious trading activity");
+        when(accountService.getAccountForTrade(accountId)).thenReturn(frozenAccount);
+
+        ApplicationException exception = assertThrows(ApplicationException.class,
+                () -> tradeService.createTrade(trade, authenticatedUserId));
+
+        assertEquals("ACCOUNT_FROZEN", exception.getCode());
+        assertEquals("The account was frozen by an administrator: Suspicious trading activity",
+                exception.getDetails());
+        verify(instrumentService, never()).getInstrumentById(any(UUID.class));
+        verify(tradeMapper, never()).createTrade(any(Trade.class));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     // Verifies createTrade rejects missing account id.
@@ -341,7 +369,7 @@ class TradeServiceTest {
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
         when(tradeMapper.createTrade(trade)).thenReturn(1);
-        when(accountService.getAccount(accountId)).thenReturn(account);
+        when(accountService.getAccountForTrade(accountId)).thenReturn(account);
         when(holdingService.findHolding(accountId, instrumentId)).thenReturn(null);
 
         Trade result = tradeService.createTrade(trade, authenticatedUserId);
@@ -460,7 +488,7 @@ class TradeServiceTest {
 
         when(instrumentService.getInstrumentById(instrumentId)).thenReturn(instrument);
         when(tradeMapper.createTrade(trade)).thenReturn(1);
-        when(accountService.getAccount(accountId)).thenReturn(account);
+        when(accountService.getAccountForTrade(accountId)).thenReturn(account);
         when(holdingService.findHolding(accountId, instrumentId)).thenReturn(null);
         doThrow(new RuntimeException("Insufficient balance")).when(accountService)
             .decrementBalance(accountId, BigDecimal.valueOf(2000));

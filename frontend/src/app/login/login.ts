@@ -25,7 +25,9 @@ export class Login {
       next: (response) => {
         const target = response.role === 'ROLE_ADMIN'
           ? '/admin'
-          : response.role === 'ROLE_ANALYST' ? '/analyst' : '/client';
+          : response.role === 'ROLE_ANALYST'
+            ? '/analyst'
+            : '/client';
         this.router.navigateByUrl(target).then(ok => console.log('navigated:', ok));
         console.log(response); // token, userId, role
       },

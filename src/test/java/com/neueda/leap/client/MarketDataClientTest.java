@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
@@ -26,6 +27,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import org.springframework.web.util.UriBuilder;
 
@@ -186,6 +189,19 @@ class MarketDataClientTest {
 
         assertEquals("Market data service failed for AAPL", ex.getMessage());
         assertInstanceOf(RestClientException.class, ex.getCause());
+    }
+
+    @Test
+    void testFetchHistoryBatchReturnsResponsesWhenApiSucceeds() {
+        Map<String, HistoryResponse> expected = Map.of("AAPL", history("AAPL"));
+        when(responseSpec.body(
+                org.mockito.ArgumentMatchers.<ParameterizedTypeReference<Map<String, HistoryResponse>>>any()))
+                .thenReturn(expected);
+
+        Map<String, HistoryResponse> actual =
+                marketDataClient.fetchHistoryBatch(Set.of("AAPL"), "5y");
+
+        assertEquals(expected, actual);
     }
 
     @Test

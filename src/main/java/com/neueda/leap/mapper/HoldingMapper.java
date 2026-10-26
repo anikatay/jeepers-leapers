@@ -42,7 +42,7 @@ public interface HoldingMapper extends OltpMapper {
 
     @Update("UPDATE holdings SET quantity = quantity - #{amount} " +
             "WHERE account_id = #{accountId} AND instrument_id = #{instrumentId} " +
-            "AND quantity >= #{amount}")
+            "AND quantity > #{amount}")
     int decrementHoldingQuantity(UUID accountId, UUID instrumentId, BigDecimal amount);
 
     @Delete("DELETE FROM holdings WHERE account_id = #{accountId} AND instrument_id = #{instrumentId} " + 

@@ -48,7 +48,7 @@ button {
 
 .grid-row-1 {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
   margin-bottom: 0.5rem;
 }
@@ -75,11 +75,12 @@ button {
   border-radius: 0.75rem;
   background: var(--card);
   transition: all 0.2s ease;
-  text-align: left;
+  text-align: start;
 }
 
 .profile-card:hover {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
 }
 
 .profile-avatar {
@@ -131,7 +132,7 @@ button {
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0,1fr));
   gap: 0.75rem;
 }
 
@@ -144,6 +145,7 @@ button {
   border-radius: 0.75rem;
   background: var(--card);
   transition: all 0.2s ease;
+  min-width: 0;
 }
 
 .stat-card:hover {
@@ -178,9 +180,6 @@ button {
   font-weight: 500;
   color: var(--muted-foreground);
   margin: 0 0 0.25rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .stat-value {
@@ -188,14 +187,18 @@ button {
   font-weight: 700;
   color: var(--foreground);
   margin: 0.25rem 0 0 0;
+  transition: color 2000ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-value.positive {
-  color: #22c55e;
+  color: var(--gain);
 }
 
 .stat-value.negative {
-  color: #dc2626;
+  color: var(--loss);
 }
 
 
@@ -231,8 +234,9 @@ button {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 200px;
-  height: 200px;
+  width: 12.5rem;
+  height: 12.5rem;
+  overflow: visible;
 }
 
 .pie-chart {
@@ -240,9 +244,29 @@ button {
   height: 100%;
 }
 
+.donut-reveal-sweep {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.donut-entrance .donut-reveal-sweep {
+  animation: client-home-donut-draw 800ms ease-out forwards;
+}
+
+@keyframes client-home-donut-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donut-entrance .donut-reveal-sweep {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 .pie-slice {
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, fill 0.25s ease;
 }
 
 .pie-slice:hover {
@@ -266,12 +290,88 @@ button {
   font-weight: 700;
   color: var(--foreground);
   margin: 0;
+  transition: color 2000ms ease;
 }
 
 .pie-label {
   font-size: 0.75rem;
   color: var(--muted-foreground);
   margin: 0;
+}
+
+.pie-tooltip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.5rem);
+  transform: translateX(-50%);
+  z-index: 8;
+  min-width: 12.75rem;
+  max-width: 16.5rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-raised);
+  color: var(--foreground);
+  box-shadow: var(--shadow-raised);
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .pie-tooltip {
+    left: calc(100% + 0.6rem);
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+.pie-tip-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pie-tip-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+
+.pie-tip-ticker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.pie-tip-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.pie-tip-row + .pie-tip-row {
+  margin-top: 0.25rem;
+}
+
+.pie-tip-row .font-mono-data {
+  color: var(--foreground);
+  font-weight: 600;
+  text-align: end;
+}
+
+.pie-tip-row .positive {
+  color: var(--gain);
+}
+
+.pie-tip-row .negative {
+  color: var(--loss);
 }
 
 /* Holdings List */
@@ -322,7 +422,7 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  text-align: right;
+  text-align: end;
   flex-shrink: 0;
 }
 
@@ -331,12 +431,14 @@ button {
   font-weight: 500;
   color: var(--foreground);
   min-width: 2rem;
+  transition: color 2000ms ease;
 }
 
 .holding-value {
   font-size: 0.75rem;
   color: var(--muted-foreground);
   white-space: nowrap;
+  transition: color 2000ms ease;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -345,7 +447,7 @@ button {
 
 .grid-row-2 {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
 }
 
@@ -422,36 +524,7 @@ button {
 /* Chart Container */
 .chart-container {
   position: relative;
-  display: flex;
-  gap: 1rem;
   min-height: 220px;
-}
-
-.chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-end;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-  padding: 0.5rem 0;
-  min-width: 3rem;
-}
-
-.area-chart {
-  flex: 1;
-  min-height: 220px;
-}
-
-.chart-x-axis {
-  position: absolute;
-  bottom: -1.5rem;
-  left: 3rem;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
 }
 
 /* Trades Section */
@@ -485,7 +558,7 @@ button {
 
 .trades-table th {
   padding: 0.5rem;
-  text-align: left;
+  text-align: start;
   font-weight: 600;
   color: var(--muted-foreground);
   border-bottom: 1px solid var(--border);
@@ -532,17 +605,17 @@ button {
 }
 
 .type-cell.buy {
-  color: #22c55e;
+  color: var(--gain);
 }
 
 .type-cell.sell {
-  color: #ef4444;
+  color: var(--loss);
 }
 
 .qty-cell,
 .price-cell,
 .total-cell {
-  text-align: right;
+  text-align: end;
   font-weight: 500;
 }
 
@@ -579,8 +652,8 @@ button {
   }
 
   .pie-chart-wrapper {
-    width: 150px;
-    height: 150px;
+    width: 9.375rem;
+    height: 9.375rem;
   }
 
   .trades-table {
@@ -608,8 +681,8 @@ button {
   }
 
   .pie-chart-wrapper {
-    width: 120px;
-    height: 120px;
+    width: 7.5rem;
+    height: 7.5rem;
   }
 
   .holdings-list {
@@ -625,13 +698,10 @@ button {
   .section-title {
     font-size: 0.8rem;
   }
-
-  .chart-empty-state {
-    text-align: center;
-    color: var(--muted-foreground);
-    padding: 2rem 0;
-  }
-
-
 }
 
+.chart-empty-state {
+  text-align: center;
+  color: var(--muted-foreground);
+  padding: 2rem 0;
+}

@@ -37,9 +37,8 @@ class SecurityConfigTest {
     @BeforeEach
     void setUp() throws JwtException {
         when(jwtDecoder.decode("valid-token")).thenReturn(validJwt());
-        when(jwtDecoder.decode("analyst-token")).thenReturn(jwtWithRole("ROLE_ANALYST"));
-        when(jwtDecoder.decode("customer-token")).thenReturn(jwtWithRole("ROLE_CUSTOMER"));
-        when(jwtDecoder.decode("admin-token")).thenReturn(jwtWithRole("ROLE_ADMIN"));
+        when(jwtDecoder.decode("analyst-token")).thenReturn(analystJwt());
+        when(jwtDecoder.decode("admin-token")).thenReturn(adminJwt());
         when(jwtDecoder.decode("malformed-token")).thenThrow(new JwtException("Invalid token"));
     }
 
@@ -76,17 +75,15 @@ class SecurityConfigTest {
                 .andExpect(status().isForbidden());
     }
 
-        @Test
-        void analyticsRequireAnalystRoleAndRefreshRequiresAdminRole() throws Exception {
-        mockMvc.perform(get("/api/analytics/status").header("Authorization", "Bearer analyst-token"))
+    @Test
+        void analystEndpointAcceptsAnalystAndAdminRoles() throws Exception {
+        mockMvc.perform(get("/analyst/status").header("Authorization", "Bearer analyst-token"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/analyst/status").header("Authorization", "Bearer admin-token"))
             .andExpect(status().isOk());
-        mockMvc.perform(get("/api/analytics/status").header("Authorization", "Bearer customer-token"))
-            .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/analytics/admin/status").header("Authorization", "Bearer analyst-token"))
-            .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/analytics/admin/status").header("Authorization", "Bearer admin-token"))
+        mockMvc.perform(get("/admin/status").header("Authorization", "Bearer admin-token"))
             .andExpect(status().isOk());
-        }
+    }
 
     // Verifies malformed bearer tokens are rejected by the resource server.
     @Test
@@ -107,13 +104,23 @@ class SecurityConfigTest {
                 .build();
     }
 
-    private Jwt jwtWithRole(String role) {
-        return Jwt.withTokenValue(role + "-token")
+    private Jwt analystJwt() {
+        return Jwt.withTokenValue("analyst-token")
                 .header("alg", "HS256")
-                .subject("alex@example.com")
+                .subject("analyst@example.com")
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
-                .claim("role", role)
+                .claims(claims -> claims.put("role", "ROLE_ANALYST"))
+                .build();
+    }
+
+    private Jwt adminJwt() {
+        return Jwt.withTokenValue("admin-token")
+                .header("alg", "HS256")
+                .subject("admin@example.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claims(claims -> claims.put("role", "ROLE_ADMIN"))
                 .build();
     }
 

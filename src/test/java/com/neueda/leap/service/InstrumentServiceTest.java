@@ -16,8 +16,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.math.BigDecimal;
+<<<<<<< HEAD
+=======
+import java.time.Duration;
+>>>>>>> main
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -33,6 +38,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class InstrumentServiceTest {
@@ -50,6 +56,9 @@ class InstrumentServiceTest {
     private StringRedisTemplate redis;
 
     @Mock
+    private ValueOperations<String, String> valueOperations;
+
+    @Mock
     private MarketDataService marketDataService;
     
 
@@ -58,6 +67,8 @@ class InstrumentServiceTest {
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
+        lenient().when(redis.opsForValue()).thenReturn(valueOperations);
+        lenient().when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
         instrumentService = new InstrumentService(
                 instrumentMapper,
                 marketDataClient,
@@ -405,6 +416,38 @@ class InstrumentServiceTest {
 
         verify(marketDataService, never()).getHistory(any(), any());
         verify(instrumentMapper, never()).updatePrice(any(Instrument.class));
+    }
+
+    @Test
+    void testRefreshPriceIfStaleFetchesLiveQuoteWhenNoCachedQuote() {
+        UUID instrumentId = UUID.randomUUID();
+        Instant quoteTime = Instant.now();
+        Instrument instrument = new Instrument();
+        instrument.setInstrumentId(instrumentId);
+        instrument.setTicker("BTC-USD");
+        instrument.setCurrentPrice(BigDecimal.valueOf(575.5));
+        instrument.setUpdatedAt(OffsetDateTime.now().minusHours(1));
+
+        MarketQuote liveQuote = new MarketQuote(
+                "QUOTE",
+                "BTC-USD",
+                BigDecimal.valueOf(81000),
+                quoteTime,
+                quoteTime,
+                "yfinance-rest",
+                QuoteStatus.LIVE);
+
+        when(instrumentMapper.findById(instrumentId)).thenReturn(instrument);
+        when(marketDataService.getLatestQuote("BTC-USD")).thenReturn(Optional.empty());
+        when(marketDataService.fetchLiveQuote("BTC-USD")).thenReturn(liveQuote);
+        when(instrumentMapper.updatePrice(instrument)).thenReturn(1);
+
+        Instrument refreshed = instrumentService.refreshPriceIfStale(instrumentId);
+
+        assertEquals(BigDecimal.valueOf(81000), refreshed.getCurrentPrice());
+        assertEquals(OffsetDateTime.ofInstant(quoteTime, java.time.ZoneOffset.UTC), refreshed.getUpdatedAt());
+        verify(marketDataService).fetchLiveQuote("BTC-USD");
+        verify(instrumentMapper).updatePrice(instrument);
     }
 
     // Verifies updatePrice throws when mapper update fails.

@@ -63,6 +63,10 @@ curl -sS "$API_URL/api/market/heatmap?sector=energy" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
+The heatmap loads one month of daily performance history through the backend
+batch history endpoint; requests are split into groups of 50 to match the
+market sidecar's upstream limit.
+
 Each heatmap ticker has `LIVE`, `STALE`, `CLOSED`, or `UNAVAILABLE` status.
 `UNAVAILABLE` means the sidecar has not delivered a quote for that ticker yet.
 The current universe is versioned in the response and uses the configured
@@ -91,12 +95,12 @@ Both endpoints need a login token and only work on the logged-in user's own trad
 `bob@example.com` (password `123`) owns trade `c3000000-0000-0000-0000-000000000007`:
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:8095/api/auth/login -H 'Content-Type: application/json' \
+TOKEN=$(curl -s -X POST http://localhost:8091/api/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"bob@example.com","password":"123"}' | jq -r .token)
 # What the model would be told (no OpenAI call)
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8091/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context
 # The review (about 2 to 4 seconds)
-curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8095/api/trades/c3000000-0000-0000-0000-000000000007/analysis
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8091/api/trades/c3000000-0000-0000-0000-000000000007/analysis
 ```
 
 ### Configuration

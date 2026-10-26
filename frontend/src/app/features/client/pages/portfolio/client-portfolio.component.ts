@@ -9,6 +9,7 @@ import { TradeModalService } from '../../../../core/services/trade-modal.service
 import { TranslationService } from '../../../../core/services/translation.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Subscription, forkJoin } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { HoldingResponse } from '../../../../core/models/holding.model';
@@ -20,16 +21,23 @@ import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../sha
 import { GainIndicatorComponent } from '../../../../shared/components/gain-indicator.component';
 import { SparklineComponent } from '../../../../shared/components/sparkline.component';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
+import {
+  LoadStatus,
+  TradePanelComponent,
+  TradePanelInstrument,
+  TradeSide
+} from '../../components/trade-panel/trade-panel.component';
 
-/* ─────────────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    FIGMA-COMPLIANT PORTFOLIO PAGE WITH REAL BACKEND DATA
-───────────────────────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export interface Holding {
   instrumentId: string;
   symbol: string;
   name: string;
   currency: string;
+  exchangeId?: string;
   shares: number;
   currentPrice: number;
   currentValue: number;
@@ -57,7 +65,7 @@ interface StockIconStyle {
 @Component({
   selector: 'app-client-portfolio',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent],
+  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent, TradePanelComponent],
   templateUrl: './client-portfolio.component.html',
   styleUrl: './client-portfolio.component.css'
 })
@@ -86,27 +94,18 @@ export class ClientPortfolioComponent implements OnInit {
     'BRK.B': { label: 'B', background: '#1e3a8a', color: '#ffffff' },
   };
 
-  // ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // UI STATE (Signals for reactive updates)
-  // ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   searchQuery = signal<string>('');
   filterType = signal<'all' | 'gain' | 'loss'>('all');
   sortBy = signal<SortKey>('currentValue');
   sortDir = signal<'asc' | 'desc'>('desc');
 
-  // Modal state
+  // Trade panel state
   isModalOpen = signal<boolean>(false);
-  modalMode = signal<'BUY' | 'SELL'>('BUY');
+  modalMode = signal<TradeSide>('BUY');
   selectedHolding = signal<Holding | null>(null);
-  modalQuantity = signal<string>('');
-  isSubmitting = signal<boolean>(false);
-  tradeSuccess = signal<boolean>(false);
-  tradeError = signal<string | null>(null);
-  settlementFxRate = signal<number>(1);
-  settlementRateLoading = signal(false);
-  settlementRateError = signal<string | null>(null);
-  orderInputMode = signal<'shares' | 'cash'>('shares');
-  modalCashAmount = signal<string>('');
   private quoteSubscription?: Subscription;
   private subscribedTickers = new Set<string>();
 
@@ -134,6 +133,7 @@ export class ClientPortfolioComponent implements OnInit {
           symbol: instrumentToTrade.ticker,
           name: instrumentToTrade.name,
           currency: instrumentToTrade.currency || 'USD',
+          exchangeId: instrumentToTrade.exchangeId,
           shares: 0,
           currentPrice: instrumentToTrade.currentPrice,
           currentValue: 0,
@@ -172,14 +172,14 @@ export class ClientPortfolioComponent implements OnInit {
           },
           error: (err) => {
             console.error('Failed to load instruments:', err);
-            this.error.set('Failed to load instruments');
+            this.error.set(this.translationService.t('portfolio.failed_instruments'));
             this.loading.set(false);
           }
         });
       },
       error: (err) => {
         console.error('Failed to load holdings:', err);
-        this.error.set('Failed to load holdings');
+        this.error.set(this.translationService.t('portfolio.failed_holdings'));
         this.loading.set(false);
       }
     });
@@ -204,6 +204,7 @@ export class ClientPortfolioComponent implements OnInit {
           symbol: instrument.ticker,
           name: instrument.name,
           currency: instrument.currency || 'USD',
+          exchangeId: instrument.exchangeId,
           shares: h.quantity,
           currentPrice: instrument.currentPrice,
           currentValue: currentValue,
@@ -222,12 +223,11 @@ export class ClientPortfolioComponent implements OnInit {
     this.accountService.getAccount(this.ACCOUNT_ID).subscribe({
       next: (acc) => {
         this.account.set(acc);
-        this.refreshSettlementRate();
         this.loading.set(false);
       },
       error: (err) => {
         console.error('Failed to load account:', err);
-        this.error.set('Failed to load account data');
+        this.error.set(this.translationService.t('portfolio.failed_account'));
         this.loading.set(false);
       }
     });
@@ -258,24 +258,41 @@ export class ClientPortfolioComponent implements OnInit {
 
   private subscribeToLiveQuotes(holdings: Holding[]): void{
     const tickers = new Set(holdings.map(h => h.symbol));
+    const selectedTicker = this.selectedHolding()?.symbol;
+    if (selectedTicker) {
+      tickers.add(selectedTicker);
+    }
+
     this.subscribedTickers.forEach(ticker => {
       if (!tickers.has(ticker)) {
         this.marketQuoteService.unsubscribe(ticker);
       }
     });
-    tickers.forEach(ticker => this.marketQuoteService.subscribe(ticker));
+
+    tickers.forEach(ticker => {
+      if (!this.subscribedTickers.has(ticker)) {
+        this.marketQuoteService.subscribe(ticker);
+      }
+    });
     this.subscribedTickers = tickers;
 
     if (!this.quoteSubscription) {
-      this.quoteSubscription = this.marketQuoteService.quotes$.subscribe(quote => {
-        this.allHoldings.update(holdings =>
-          holdings.map(h => {
-            if (h.symbol !== quote.ticker) return h;
-            const { gain, gainPct } = calculateHoldingGain(h.shares, quote.price, h.avgCostBasis);
-            return { ...h, currentPrice: quote.price, currentValue: h.shares * quote.price, gain, gainPct };
-          })
-        );
-      });
+      this.quoteSubscription = this.marketQuoteService.quotes$
+        .pipe(throttleTime(2000, undefined, { leading: true, trailing: true }))
+        .subscribe(quote => {
+          this.allHoldings.update(holdings =>
+            holdings.map(h => {
+              if (h.symbol !== quote.ticker) return h;
+              const { gain, gainPct } = calculateHoldingGain(h.shares, quote.price, h.avgCostBasis);
+              return { ...h, currentPrice: quote.price, currentValue: h.shares * quote.price, gain, gainPct };
+            })
+          );
+          this.selectedHolding.update(holding =>
+            holding?.symbol === quote.ticker
+              ? { ...holding, currentPrice: quote.price }
+              : holding
+          );
+        });
     }
   }
 
@@ -285,9 +302,9 @@ export class ClientPortfolioComponent implements OnInit {
   }
 
 
-  // ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // COMPUTED VALUES (Derived state)
-  // ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   filteredAndSorted = computed(() => {
     const query = this.searchQuery().toLowerCase();
@@ -314,22 +331,32 @@ export class ClientPortfolioComponent implements OnInit {
 
     return result;
   });
-  resolvedQuantity = computed(() => {
+  panelInstrument = computed<TradePanelInstrument | null>(() => {
     const holding = this.selectedHolding();
-    if (!holding) return 0;
+    if (!holding) return null;
+    return {
+      instrumentId: holding.instrumentId,
+      ticker: holding.symbol,
+      name: holding.name,
+      currency: holding.currency,
+      exchangeId: holding.exchangeId
+    };
+  });
 
-    if (this.orderInputMode() === 'cash') {
-      const amount = parseFloat(this.modalCashAmount()) || 0;
-      const price = holding.currentPrice || 0;
-      const fxRate = this.settlementFxRate();
-      if (price <= 0 || fxRate <= 0 || this.settlementRateLoading() || this.settlementRateError()) {
-        return 0;
-      }
-      // Round down to 6 decimals so a cash order never spends more than the amount typed.
-      return Math.floor((amount / (price * fxRate)) * 1_000_000) / 1_000_000;
-    }
+  // Live row for the selected holding, so the panel tracks WebSocket price updates.
+  private panelHolding = computed(() => {
+    const selected = this.selectedHolding();
+    if (!selected) return null;
+    return this.allHoldings().find(h => h.instrumentId === selected.instrumentId) ?? null;
+  });
 
-    return parseFloat(this.modalQuantity()) || 0;
+  panelPrice = computed(() => this.panelHolding()?.currentPrice ?? this.selectedHolding()?.currentPrice ?? 0);
+  panelOwnedShares = computed(() => (this.loading() || this.error() ? null : this.panelHolding()?.shares ?? 0));
+  panelHoldingsStatus = computed<LoadStatus>(() => (this.loading() ? 'loading' : this.error() ? 'error' : 'ready'));
+  panelPreviousClose = computed(() => {
+    const symbol = this.selectedHolding()?.symbol;
+    const bars = symbol ? this.holdingSparklines()[symbol] : undefined;
+    return bars && bars.length >= 2 ? bars[bars.length - 2] : null;
   });
 
   // Summary cards data
@@ -350,18 +377,19 @@ export class ClientPortfolioComponent implements OnInit {
 
     const fmt = (v: number) => `${v >= 0 ? '+' : '-'}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
+    this.translationService.currentLanguage();
     return [
-      { label: 'Total Portfolio Value', value: `$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: true },
-      { label: "Today's Gain/Loss", value: fmt(todaysGain), isPositive: todaysGain >= 0 },
-      { label: 'Overall Gain/Loss', value: fmt(totalGain), isPositive: totalGain >= 0 },
-      { label: 'Cash Available', value: `$${cashBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: undefined },
+      { label: 'portfolio.total_portfolio_value', value: `$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: true },
+      { label: 'portfolio.todays_gain_loss', value: fmt(todaysGain), isPositive: todaysGain >= 0 },
+      { label: 'portfolio.overall_gain_loss', value: fmt(totalGain), isPositive: totalGain >= 0 },
+      { label: 'portfolio.cash_available', value: `$${cashBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, isPositive: undefined },
     ];
   });
 
 
-  // ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // METHODS
-  // ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   getStockIcon(symbol: string): StockIconStyle {
     return this.stockIconStyles[symbol] || {
@@ -386,35 +414,33 @@ export class ClientPortfolioComponent implements OnInit {
     this.filterType.set(filter);
   }
 
-  openTradeModal(holding: Holding, mode: 'BUY' | 'SELL'): void {
+  openTradeModal(holding: Holding, mode: TradeSide): void {
+    // The frozen reason is already shown by the page-level notice.
+    if (this.isAccountFrozen()) return;
+
     this.selectedHolding.set(holding);
+    if (!this.subscribedTickers.has(holding.symbol)) {
+      this.marketQuoteService.subscribe(holding.symbol);
+      this.subscribedTickers.add(holding.symbol);
+    }
     this.modalMode.set(mode);
     this.isModalOpen.set(true);
-    this.modalQuantity.set('');
-    this.modalCashAmount.set('');
-    this.orderInputMode.set('shares');
-    this.isSubmitting.set(false);
-    this.tradeSuccess.set(false);
-    this.tradeError.set(null);
-    this.refreshSettlementRate();
   }
-
-  setOrderInputMode(mode: 'shares' | 'cash'): void {
-    this.orderInputMode.set(mode);
-  }
-
 
   closeModal(): void {
     this.isModalOpen.set(false);
-    // Reset after modal closes
-    setTimeout(() => {
-      this.selectedHolding.set(null);
-      this.modalQuantity.set('');
-      this.modalCashAmount.set('');
-      this.tradeError.set(null);
-      this.settlementFxRate.set(1);
-      this.settlementRateError.set(null);
-    }, 300);
+    // Drop the live quote subscription if the ticker is no longer held.
+    const ticker = this.selectedHolding()?.symbol;
+    if (ticker && !this.allHoldings().some(holding => holding.symbol === ticker)) {
+      this.marketQuoteService.unsubscribe(ticker);
+      this.subscribedTickers.delete(ticker);
+    }
+    this.selectedHolding.set(null);
+  }
+
+  onTradeCompleted(): void {
+    // Panel already signals TradeModalService.notifyTradeCompleted().
+    this.loadData();
   }
 
   formatCurrency(value: number | null | undefined, currency: string | null | undefined): string {
@@ -428,76 +454,8 @@ export class ClientPortfolioComponent implements OnInit {
     }).format(amount);
   }
 
-  private refreshSettlementRate(): void {
-    const holding = this.selectedHolding();
-    const accountCurrency = (this.account()?.currency || 'USD').toUpperCase();
-    const instrumentCurrency = (holding?.currency || 'USD').toUpperCase();
-    if (!holding || instrumentCurrency === accountCurrency) {
-      this.settlementFxRate.set(1);
-      this.settlementRateLoading.set(false);
-      this.settlementRateError.set(null);
-      return;
-    }
-
-    this.settlementRateLoading.set(true);
-    this.settlementRateError.set(null);
-    this.marketDataService.getExchangeRate(instrumentCurrency, accountCurrency).subscribe({
-      next: response => {
-        this.settlementFxRate.set(response.rate);
-        this.settlementRateLoading.set(false);
-      },
-      error: err => {
-        console.error('Failed to load settlement FX rate:', err);
-        this.settlementFxRate.set(0);
-        this.settlementRateLoading.set(false);
-        this.settlementRateError.set('Unable to load the current currency conversion rate');
-      }
-    });
-  }
-
-
-  confirmTrade(): void {
-    const holding = this.selectedHolding();
-    const qty = this.resolvedQuantity();
-
-    if (!holding || qty <= 0) {
-      this.tradeError.set('Invalid quantity');
-      return;
-    }
-
-
-    this.isSubmitting.set(true);
-    this.tradeError.set(null);
-
-    const tradeRequest = {
-      accountId: this.ACCOUNT_ID,
-      instrumentId: holding.instrumentId,
-      side: this.modalMode(),
-      quantity: qty
-    };
-
-    this.tradesService.createTrade(tradeRequest).subscribe({
-      next: (response) => {
-        this.isSubmitting.set(false);
-        this.tradeSuccess.set(true);
-
-        // Reload data after successful trade
-        setTimeout(() => {
-          this.loadData();
-          // Notify all components that a trade was completed (for chart refresh, etc.)
-          this.tradeModalService.notifyTradeCompleted();
-          this.closeModal();
-        }, 1400);
-      },
-      error: (err) => {
-        this.isSubmitting.set(false);
-        const errorMessage = err?.error?.message || 
-                           err?.message || 
-                           'Trade failed';
-        this.tradeError.set(errorMessage);
-        console.error('Trade error:', err);
-      }
-    });
+  isAccountFrozen(): boolean {
+    return this.account()?.status === 'FROZEN';
   }
 
   // Expose Math for template

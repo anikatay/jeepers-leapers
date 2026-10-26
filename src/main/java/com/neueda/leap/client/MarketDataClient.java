@@ -2,9 +2,15 @@ package com.neueda.leap.client;
 
 import com.neueda.leap.exception.MarketDataUnavailableException;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.IntradayHistoryResponse;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketSectorCatalog;
+<<<<<<< HEAD
+=======
+import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.NewsResponse;
+>>>>>>> main
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectInvalidException;
 
@@ -55,6 +61,56 @@ public class MarketDataClient {
 			throw new ObjectInvalidException("Invalid market data request for " + ticker);
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException("Market data service failed for " + ticker, e);
+		}
+	}
+
+	public IntradayHistoryResponse fetchIntradayHistory(String ticker){
+		try{
+			IntradayHistoryResponse response = restClient.get()
+					.uri(uri -> uri.path("/history/intraday")
+							.queryParam("ticker", ticker)
+							.build())
+					.retrieve()
+					.body(IntradayHistoryResponse.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException(
+						"Market data service returned empty intraday response for " + ticker);
+			}
+			return response;
+		}catch (HttpClientErrorException.NotFound e) {
+			throw new ObjectNotFoundException("No intraday market data for " + ticker);
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException("Invalid intraday market data request for " + ticker);
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market data service failed for intraday history " + ticker, e);
+		}
+	}
+
+	public NewsResponse fetchNews(Set<String> tickers, int limit) {
+		if (tickers == null || tickers.isEmpty()) {
+			throw new ObjectInvalidException("Tickers cannot be empty");
+		}
+
+		String encodedTickers = tickers.stream().map(String::trim).collect(Collectors.joining(","));
+		try {
+			NewsResponse response = restClient.get()
+					.uri(uri -> uri.path("/news")
+							.queryParam("tickers", encodedTickers)
+							.queryParam("limit", limit)
+							.build())
+					.retrieve()
+					.body(NewsResponse.class);
+
+			if (response == null || response.items() == null) {
+				throw new MarketDataUnavailableException("Market data service returned empty news response");
+			}
+			return response;
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException("Invalid news request");
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException("Market data service failed for news", e);
 		}
 	}
 
@@ -129,6 +185,30 @@ public class MarketDataClient {
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException(
 					"Market lookup failed for " + ticker, e);
+		}
+	}
+
+	public MarketQuote fetchLatestQuote(String ticker) {
+		try {
+			MarketQuote response = restClient.get()
+					.uri(uri -> uri.path("/quote")
+							.queryParam("ticker", ticker)
+							.build())
+					.retrieve()
+					.body(MarketQuote.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException(
+						"Market quote service returned an empty response for " + ticker);
+			}
+			return response;
+		} catch (HttpClientErrorException.NotFound e) {
+			throw new ObjectNotFoundException("No current market quote for " + ticker);
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException("Invalid market quote request for " + ticker);
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market quote service failed for " + ticker, e);
 		}
 	}
 
