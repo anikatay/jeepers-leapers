@@ -880,6 +880,16 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
   }
 };
 
+/**
+ * Adds a feature's strings. Lazy-loaded features call this when they load, so their strings stay
+ * out of the initial bundle; adding the same strings again changes nothing.
+ */
+export function registerTranslations(strings: Record<Language, Record<TranslationKey, string>>): void {
+  for (const lang of LANGUAGES.map(language => language.code)) {
+    Object.assign(translations[lang], strings[lang]);
+  }
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -917,5 +927,12 @@ export class TranslationService {
 
   t(key: TranslationKey): string {
     return this.translate(key);
+  }
+
+  /** translate() with {placeholders} filled in, e.g. format('hunter.score', { n: 83 }). */
+  format(key: TranslationKey, values: Record<string, string | number>): string {
+    return Object.entries(values).reduce(
+      (text, [name, value]) => text.split(`{${name}}`).join(String(value)),
+      this.translate(key));
   }
 }

@@ -1,0 +1,152 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.watchlist-page {
+  padding: 1.25rem 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.link {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link:focus-visible,
+.remove-button:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--card);
+  padding: 1rem;
+}
+
+.disclaimer {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--foreground);
+  background: var(--muted);
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.75rem;
+}
+
+.muted {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.alert {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.75rem;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.empty p {
+  margin: 0;
+  color: var(--foreground);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  padding: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ticker {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+.actions {
+  text-align: right;
+}
+
+.remove-button {
+  font: inherit;
+  font-size: 0.8125rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.625rem;
+  cursor: pointer;
+}
+
+.remove-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

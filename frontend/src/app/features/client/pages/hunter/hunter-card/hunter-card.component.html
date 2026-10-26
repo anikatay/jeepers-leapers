@@ -1,0 +1,159 @@
+<section class="hunter-card">
+  <div class="name-row">
+    <label class="field-label" for="hunter-name">{{ 'hunter.name_label' | translate }}</label>
+    <input id="hunter-name" class="text-input" type="text" maxlength="80" [value]="spec().name"
+      [disabled]="disabled()" (input)="setName($any($event.target).value)">
+  </div>
+
+  @if (generalErrors().length) {
+    <ul class="errors" role="alert">
+      @for (error of generalErrors(); track $index) {
+        <li>{{ error.message }}</li>
+      }
+    </ul>
+  }
+
+  <!-- Filters -->
+  <h3 class="group-title" id="hunter-filters-title">{{ 'hunter.filters' | translate }}</h3>
+  @if (!spec().quantRules.length && !spec().sectorRule) {
+    <p class="empty">{{ 'hunter.filters_empty' | translate }}</p>
+  }
+  <ul class="rules" aria-labelledby="hunter-filters-title">
+    @for (rule of spec().quantRules; track rule.id; let i = $index) {
+      <li class="rule" [class.off]="!rule.enabled" [attr.data-rule]="rule.id">
+        <div class="rule-line">
+          <button type="button" class="switch" role="switch" [attr.aria-checked]="rule.enabled"
+            [attr.aria-label]="named('hunter.use_named', metricLabel(rule.metric))" [disabled]="disabled()"
+            (click)="toggleQuant(i)"><span class="knob"></span></button>
+          <select class="control" [attr.aria-label]="'hunter.filters' | translate" [disabled]="disabled()"
+            [title]="definition(rule.metric)" (change)="setMetric(i, $any($event.target).value)">
+            @for (metric of catalog().metrics; track metric.id) {
+              <option [value]="metric.id" [selected]="metric.id === rule.metric">{{ metricLabel(metric.id) }}</option>
+            }
+          </select>
+          <select class="control" [attr.aria-label]="metricLabel(rule.metric)" [disabled]="disabled()"
+            (change)="setOp(i, $any($event.target).value)">
+            @for (op of ops; track op) {
+              <option [value]="op" [selected]="op === rule.op">{{ ('hunter.op_' + op) | translate }}</option>
+            }
+          </select>
+          <input class="control number" type="number" step="any" [value]="rule.value" [disabled]="disabled()"
+            [attr.aria-label]="metricLabel(rule.metric)" (change)="setValue(i, $any($event.target).value)">
+          @if (rule.op === 'between') {
+            <span class="muted">{{ 'hunter.and' | translate }}</span>
+            <input class="control number" type="number" step="any" [value]="rule.value2" [disabled]="disabled()"
+              [attr.aria-label]="metricLabel(rule.metric)" (change)="setValue(i, $any($event.target).value, true)">
+          }
+          <span class="unit">{{ unit(rule.metric) }}</span>
+          <button type="button" class="remove" [attr.aria-label]="named('hunter.remove_named', metricLabel(rule.metric))"
+            [disabled]="disabled()" (click)="removeQuant(i)">×</button>
+        </div>
+        @if (rule.sourceText) {
+          <p class="source">“{{ rule.sourceText }}”</p>
+        }
+        @for (error of errorsFor('quantRules[' + i + ']'); track $index) {
+          <p class="error">{{ error.message }}</p>
+        }
+      </li>
+    }
+
+    @if (spec().sectorRule; as sector) {
+      <li class="rule" [class.off]="!sector.enabled" data-rule="sector">
+        <div class="rule-line">
+          <button type="button" class="switch" role="switch" [attr.aria-checked]="sector.enabled"
+            [attr.aria-label]="named('hunter.use_named', ('hunter.sector' | translate))" [disabled]="disabled()"
+            (click)="toggleSector()"><span class="knob"></span></button>
+          <span class="label">{{ 'hunter.sector' | translate }}</span>
+          <select class="control" [attr.aria-label]="'hunter.sector' | translate" [disabled]="disabled()"
+            (change)="setSectorOp($any($event.target).value)">
+            <option value="in" [selected]="sector.op === 'in'">{{ 'hunter.sector_in' | translate }}</option>
+            <option value="notIn" [selected]="sector.op === 'notIn'">{{ 'hunter.sector_not_in' | translate }}</option>
+          </select>
+          @for (value of sector.values; track value) {
+            <span class="chip">{{ value }}
+              <button type="button" class="chip-remove" [attr.aria-label]="named('hunter.remove_named', value)"
+                [disabled]="disabled()" (click)="removeSector(value)">×</button>
+            </span>
+          }
+          @if (sectorsToAdd().length) {
+            <select class="control" [attr.aria-label]="'hunter.add_sector' | translate" [disabled]="disabled()"
+              (change)="pickSector($event)">
+              <option value="">+ {{ 'hunter.add_sector' | translate }}</option>
+              @for (option of sectorsToAdd(); track option) {
+                <option [value]="option">{{ option }}</option>
+              }
+            </select>
+          }
+          <button type="button" class="remove" [attr.aria-label]="named('hunter.remove_named', ('hunter.sector' | translate))"
+            [disabled]="disabled()" (click)="removeSectorRule()">×</button>
+        </div>
+        @if (sector.sourceText) {
+          <p class="source">“{{ sector.sourceText }}”</p>
+        }
+        @for (error of errorsFor('sectorRule'); track $index) {
+          <p class="error">{{ error.message }}</p>
+        }
+      </li>
+    }
+  </ul>
+  @if (canAddFilter()) {
+    <select class="control add" [attr.aria-label]="'hunter.add_filter' | translate" [disabled]="disabled()"
+      (change)="pickFilter($event)">
+      <option value="">+ {{ 'hunter.add_filter' | translate }}</option>
+      @if (spec().quantRules.length < catalog().limits.maxQuantRules) {
+        @for (metric of catalog().metrics; track metric.id) {
+          <option [value]="metric.id">{{ metricLabel(metric.id) }}</option>
+        }
+      }
+      @if (!spec().sectorRule) {
+        <option value="sector">{{ 'hunter.sector' | translate }}</option>
+      }
+    </select>
+  }
+
+  <!-- Qualitative checks -->
+  <h3 class="group-title" id="hunter-checks-title">{{ 'hunter.checks' | translate }}</h3>
+  @if (!spec().criteria.length) {
+    <p class="empty">{{ 'hunter.checks_empty' | translate }}</p>
+  }
+  <ul class="rules" aria-labelledby="hunter-checks-title">
+    @for (criterion of spec().criteria; track criterion.id; let i = $index) {
+      <li class="rule" [class.off]="!criterion.enabled" [attr.data-rule]="criterion.id">
+        <div class="rule-line">
+          <button type="button" class="switch" role="switch" [attr.aria-checked]="criterion.enabled"
+            [attr.aria-label]="named('hunter.use_named', criterion.statement || ('hunter.checks' | translate))"
+            [disabled]="disabled()" (click)="toggleCriterion(i)"><span class="knob"></span></button>
+          <textarea class="control statement" rows="2" maxlength="200" [value]="criterion.statement"
+            [placeholder]="'hunter.check_placeholder' | translate" [attr.aria-label]="'hunter.checks' | translate"
+            [disabled]="disabled()" (input)="setStatement(i, $any($event.target).value)"></textarea>
+          <button type="button" class="remove"
+            [attr.aria-label]="named('hunter.remove_named', criterion.statement || ('hunter.checks' | translate))"
+            [disabled]="disabled()" (click)="removeCriterion(i)">×</button>
+        </div>
+        @for (error of errorsFor('criteria[' + i + ']'); track $index) {
+          <p class="error">{{ error.message }}</p>
+        }
+      </li>
+    }
+  </ul>
+  @if (canAddCheck()) {
+    <button type="button" class="link-button" [disabled]="disabled()" (click)="addCriterion()">
+      + {{ 'hunter.add_check' | translate }}
+    </button>
+  }
+
+  <!-- Not used -->
+  @if (spec().unsupported.length) {
+    <h3 class="group-title">{{ 'hunter.not_used' | translate }}</h3>
+    <ul class="not-used">
+      @for (clause of spec().unsupported; track $index) {
+        <li>
+          @if (clause.sourceText) {
+            <span class="source">“{{ clause.sourceText }}”</span>
+          }
+          <span>{{ unsupportedMessage(clause) }}</span>
+        </li>
+      }
+    </ul>
+  }
+</section>
