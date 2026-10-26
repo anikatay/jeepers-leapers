@@ -53,15 +53,6 @@ button {
   to { transform: translateX(0); }
 }
 
-:host-context([dir='rtl']) .tp-panel {
-  animation-name: tp-slide-in-rtl;
-}
-
-@keyframes tp-slide-in-rtl {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
-}
-
 @keyframes tp-fade {
   from { opacity: 0; }
   to { opacity: 1; }

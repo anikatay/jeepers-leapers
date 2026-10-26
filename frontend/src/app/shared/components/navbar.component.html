@@ -100,7 +100,7 @@
         <input
           type="text"
           class="search-input"
-          [placeholder]="'nav.search_placeholder' | translate"
+          placeholder="Enter company or symbol"
           [attr.aria-label]="'nav.search_aria' | translate"
           [ngModel]="searchQuery()"
           (input)="onSearchInput($event)"
@@ -113,6 +113,9 @@
           {{ 'nav.trade' | translate }}
         </button>
       </div>
+
+      <!-- Search hint -->
+      <p class="search-hint">e.g. AAPL, TSLA, NVDA</p>
 
       <!-- Search dropdown results -->
       <div class="search-dropdown" *ngIf="searchOpen() && searchQuery().length > 0" (click)="$event.stopPropagation()">
