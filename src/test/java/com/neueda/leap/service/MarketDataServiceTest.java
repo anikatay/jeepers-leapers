@@ -31,7 +31,9 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -224,6 +226,24 @@ class MarketDataServiceTest {
         assertEquals("AAPL", result.ticker());
         verify(valueOperations).get("history:AAPL");
         verify(marketDataClient).fetchHistory("AAPL", "5y");
+    }
+
+    @Test
+    void testGetHistoryBatchFetchesMissingTickersTogetherAndSlicesResults() throws Exception {
+        HistoryResponse aapl = history("AAPL", barsForSlicing());
+        HistoryResponse msft = history("MSFT", barsForSlicing());
+        LinkedHashSet<String> tickers = new LinkedHashSet<>(List.of("AAPL", "MSFT"));
+        when(marketDataClient.fetchHistoryBatch(tickers, "1mo"))
+                .thenReturn(Map.of("AAPL", aapl, "MSFT", msft));
+        when(objectMapper.writeValueAsString(any(HistoryResponse.class))).thenReturn("{\"fresh\":true}");
+
+        Map<String, HistoryResponse> result = marketDataService.getHistoryBatch("aapl, MSFT", "1m");
+
+        assertEquals(2, result.size());
+        assertEquals(2, result.get("AAPL").bars().size());
+        assertEquals(2, result.get("MSFT").bars().size());
+        assertEquals("1m", result.get("AAPL").period());
+        verify(marketDataClient).fetchHistoryBatch(tickers, "1mo");
     }
 
     // Verifies supported period 1m returns only bars within the latest-one-month window.
