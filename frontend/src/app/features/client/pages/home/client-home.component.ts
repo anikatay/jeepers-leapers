@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, computed, signal, effect, inject } from '@angular/core';
+import { Component, OnInit, ViewChild, computed, signal, effect, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AccountService } from '../../../../core/services/account.service';

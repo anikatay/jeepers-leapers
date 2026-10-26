@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { CLIENT_UI_TRANSLATIONS } from './client-ui-translations';
 import { CLIENT_UI_TRANSLATIONS_MORE } from './client-ui-translations-more';
 
-export type Language = 'en' | 'es' | 'bn' | 'hi' | 'pa' | 'te' | 'ta' | 'gu' | 'ga';
+export type Language = 'en' | 'es' | 'bn' | 'hi' |  'pa' | 'te' | 'ta' | 'gu' | 'ga';
 
 export interface LanguageOption {
   code: Language;
