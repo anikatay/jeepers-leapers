@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, catchError, map, switchMap, tap, throwError } from 'rxjs';
 import { AuthResponse, AuthRequest, RegisterRequest } from '../models/auth.model';
+import { UsersService } from './users.service';
 
 
 @Injectable({
@@ -14,7 +15,7 @@ export class AuthService{
   private _session = signal<AuthResponse | null>(this.loadSession());
   session = this._session.asReadonly();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private usersService: UsersService) {}
 
   /**
    * Create a new trade (BUY or SELL)
@@ -24,7 +25,25 @@ export class AuthService{
 
   login(request: AuthRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>('/api/auth/login', request).pipe(
-      tap(res => this.saveSession(res))
+      switchMap(res => {
+        sessionStorage.setItem(this.TOKEN_KEY, res.token);
+
+        return this.usersService.getUserById(res.userId).pipe(
+          map(user => ({
+            ...res,
+            firstName: user.firstName,
+            lastName: user.lastName
+          }))
+        );
+      }),
+      tap(res => {
+        sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(res));
+        this._session.set(res);
+      }),
+      catchError(error => {
+        this.clearSession();
+        return throwError(() => error);
+      })
     );
   }
 
@@ -34,28 +53,35 @@ export class AuthService{
     );
   }
 
-  get token() { return localStorage.getItem(this.TOKEN_KEY); }
+  get token() { return sessionStorage.getItem(this.TOKEN_KEY); }
   get userId() { return this._session()?.userId ?? null; }
   get role() { return this._session()?.role ?? null; }
   get accountId() { return this._session()?.accountId ?? null; }
+  get userName(): string {
+    return this._session()?.firstName?.trim() || 'User';
+  }
   isLoggedIn() { return !!this.token; }
 
   private loadSession(): AuthResponse | null {
     try {
-      const raw = localStorage.getItem(this.SESSION_KEY);
+      const raw = sessionStorage.getItem(this.SESSION_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   }
 
   private saveSession(response: AuthResponse) {
-    localStorage.setItem(this.TOKEN_KEY, response.token);
-    localStorage.setItem(this.SESSION_KEY, JSON.stringify(response));
+    sessionStorage.setItem(this.TOKEN_KEY, response.token);
+    sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(response));
     this._session.set(response);
   }
 
   logout() {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.SESSION_KEY);
+    this.clearSession();
+  }
+
+  private clearSession() {
+    sessionStorage.removeItem(this.TOKEN_KEY);
+    sessionStorage.removeItem(this.SESSION_KEY);
     this._session.set(null);
   }
 }

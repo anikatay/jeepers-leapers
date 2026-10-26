@@ -1,6 +1,7 @@
 package com.neueda.leap.service;
 
 import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.QuoteStatus;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.model.Instrument;
 
@@ -44,7 +45,9 @@ public class InstrumentPriceSyncService implements IService {
         for (String ticker : subscriptions.keySet()) {
             try {
                 Optional<MarketQuote> latestQuote = marketDataService.getLatestQuote(ticker);
-                if (latestQuote.isEmpty() || !isFresh(latestQuote.get().quoteTime())) {
+                if (latestQuote.isEmpty()
+                        || !QuoteStatus.LIVE.equals(latestQuote.get().status())
+                        || !isFresh(latestQuote.get().quoteTime())) {
                     continue;
                 }
 

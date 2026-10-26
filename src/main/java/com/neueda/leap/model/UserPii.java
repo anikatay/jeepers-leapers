@@ -1,6 +1,6 @@
 package com.neueda.leap.model;
 import com.neueda.leap.exception.ObjectInvalidException;
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.time.Period;
 import java.util.UUID;
 
@@ -12,7 +12,7 @@ public class UserPii {
 
     private String lastName;
 
-    private OffsetDateTime dateOfBirth;
+    private LocalDate dateOfBirth;
 
     private String ssn;
 
@@ -29,7 +29,7 @@ public class UserPii {
         UUID userId, 
         String firstName, 
         String lastName, 
-        OffsetDateTime dateOfBirth, 
+        LocalDate dateOfBirth, 
         String ssn, 
         String address, 
         String phoneNumber, 
@@ -54,8 +54,8 @@ public class UserPii {
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
 
-    public OffsetDateTime getDateOfBirth() { return dateOfBirth; }
-    public void setDateOfBirth(OffsetDateTime dateOfBirth) { this.dateOfBirth = dateOfBirth; }
+    public LocalDate getDateOfBirth() { return dateOfBirth; }
+    public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
 
     public String getSsn() { return ssn; }
     public void setSsn(String ssn) { this.ssn = ssn; }
@@ -74,6 +74,6 @@ public class UserPii {
             // TODO: Change exception to proper response body
             throw new ObjectInvalidException("Date of birth is not set");
         }
-        return Period.between(dateOfBirth.toLocalDate(), OffsetDateTime.now().toLocalDate()).getYears();
+        return Period.between(dateOfBirth, LocalDate.now()).getYears();
     }
 }

@@ -19,6 +19,7 @@ const THEMES = ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']
 
       <nav aria-label="Analyst">
         <a routerLink="/analyst/dashboard" routerLinkActive="active">Analytics</a>
+        <a routerLink="/analyst/heatmap" routerLinkActive="active">Market Heatmap</a>
       </nav>
 
       <div class="actions">
@@ -78,6 +79,7 @@ const THEMES = ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']
       text-decoration: none;
     }
 
+    nav { display: flex; gap: 1.5rem; }
     nav a.active { border-color: var(--primary); color: var(--primary); }
 
     .actions { align-items: center; display: flex; gap: 0.5rem; justify-self: end; }

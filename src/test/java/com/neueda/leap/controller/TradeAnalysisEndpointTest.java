@@ -9,6 +9,7 @@ import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.config.SecurityConfig;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.service.TradeService;
+import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.util.JwtUtil;
 
 import org.junit.jupiter.api.Test;
@@ -61,10 +62,17 @@ class TradeAnalysisEndpointTest {
 
     @MockBean
     private TradeService tradeService;
+        @MockBean
+        private AuthorizationService authorizationService;
     @MockBean
     private TradeAnalysisService tradeAnalysisService;
     @MockBean
     private AnalysisRateLimiter rateLimiter;
+
+        @org.junit.jupiter.api.BeforeEach
+        void configureAuthorization() {
+                when(authorizationService.getAuthenticatedUserId(any())).thenReturn(USER_ID);
+        }
 
     @Test
     void requiresALoginToken() throws Exception {
@@ -78,7 +86,7 @@ class TradeAnalysisEndpointTest {
     void rejectsATokenSignedWithAnotherKey() throws Exception {
         JwtUtil otherIssuer = new JwtUtil();
         ReflectionTestUtils.setField(otherIssuer, "secret", "YW5vdGhlci1zZWNyZXQtdGhhdC1pcy1hbHNvLTMyLWJ5dGVzLWxvbmc=");
-        String forged = otherIssuer.generateToken("mallory@example.com", "ROLE_CUSTOMER", USER_ID, ACCOUNT_ID);
+        String forged = otherIssuer.generateToken("mallory@example.com", "ROLE_CUSTOMER", USER_ID, UUID.randomUUID());
 
         mvc.perform(post(ANALYSIS_URL).header("Authorization", "Bearer " + forged))
                 .andExpect(status().isUnauthorized());
@@ -87,8 +95,9 @@ class TradeAnalysisEndpointTest {
     }
 
     @Test
-    void leavesTheRestOfTheApiOpen() throws Exception {
-        mvc.perform(get("/api/trades/account/" + UUID.randomUUID())).andExpect(status().isNoContent());
+        void protectsTheRestOfTheApiWithTheLoginToken() throws Exception {
+                mvc.perform(withToken(get("/api/trades/account/" + UUID.randomUUID())))
+                                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -178,6 +187,6 @@ class TradeAnalysisEndpointTest {
 
     private MockHttpServletRequestBuilder withToken(MockHttpServletRequestBuilder request) {
         return request.header("Authorization",
-                "Bearer " + jwtUtil.generateToken("joanna@example.com", "ROLE_CUSTOMER", USER_ID, ACCOUNT_ID));
+                "Bearer " + jwtUtil.generateToken("joanna@example.com", "ROLE_CUSTOMER", USER_ID, UUID.randomUUID()));
     }
 }

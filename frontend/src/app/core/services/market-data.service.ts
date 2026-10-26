@@ -1,7 +1,14 @@
 import { Injectable } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
+import { HttpParams } from "@angular/common/http";
 import { Observable } from "rxjs";
-import { HistoryResponse } from "../models/market.model";
+import {
+	HistoryResponse,
+	MarketHeatmapResponse,
+	MarketQuote,
+	MarketSector,
+	MarketSectorCatalog
+} from "../models/market.model";
 
 export interface FxRateResponse {
 	baseCurrency: string;
@@ -23,6 +30,36 @@ export class MarketDataService{
 		return this.http.get<HistoryResponse>(`${this.apiUrl}/${ticker}/history`, {
 			params: {period}
 		});
+	}
+
+	getHistoryBatch(tickers: string[], period: string = '1y'): Observable<Record<string, HistoryResponse>> {
+		const params = new HttpParams()
+			.set('tickers', tickers.join(','))
+			.set('period', period);
+		return this.http.get<Record<string, HistoryResponse>>(`${this.apiUrl}/history/batch`, { params });
+	}
+	getIntradayHistory(ticker: string): Observable<HistoryResponse>{
+		return this.http.get<HistoryResponse>(`${this.apiUrl}/${ticker}/intraday-history`);
+	}
+
+	getQuote(ticker: string): Observable<MarketQuote> {
+		return this.http.get<MarketQuote>(`${this.apiUrl}/${ticker}/quote`);
+	}
+
+	getSectorCatalog(): Observable<MarketSectorCatalog> {
+		return this.http.get<MarketSectorCatalog>(`${this.apiUrl}/sectors`);
+	}
+
+	getSector(sectorId: string): Observable<MarketSector> {
+		return this.http.get<MarketSector>(`${this.apiUrl}/sectors/${sectorId}`);
+	}
+
+	getHeatmap(sectorId?: string): Observable<MarketHeatmapResponse> {
+		let params = new HttpParams();
+		if (sectorId) {
+			params = params.set('sector', sectorId);
+		}
+		return this.http.get<MarketHeatmapResponse>(`${this.apiUrl}/heatmap`, { params });
 	}
 
 	getExchangeRate(baseCurrency: string, quoteCurrency: string): Observable<FxRateResponse> {

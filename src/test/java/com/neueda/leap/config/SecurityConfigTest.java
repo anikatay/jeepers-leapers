@@ -37,15 +37,17 @@ class SecurityConfigTest {
     @BeforeEach
     void setUp() throws JwtException {
         when(jwtDecoder.decode("valid-token")).thenReturn(validJwt());
+        when(jwtDecoder.decode("analyst-token")).thenReturn(analystJwt());
+        when(jwtDecoder.decode("admin-token")).thenReturn(adminJwt());
         when(jwtDecoder.decode("malformed-token")).thenThrow(new JwtException("Invalid token"));
     }
 
-    // Verifies public and API endpoints are accessible without authentication.
+    // Verifies public endpoints are anonymous while the API requires authentication.
     @Test
-    void publicAndApiEndpointsPermitAnonymousRequests() throws Exception {
+    void publicEndpointsPermitAnonymousRequestsAndApiRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/auth/login")).andExpect(status().isOk());
         mockMvc.perform(get("/public/status")).andExpect(status().isOk());
-        mockMvc.perform(get("/api/status")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/status")).andExpect(status().isUnauthorized());
     }
 
     // Verifies portfolio endpoints reject requests without a bearer token.
@@ -73,6 +75,16 @@ class SecurityConfigTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+        void analystEndpointAcceptsAnalystAndAdminRoles() throws Exception {
+        mockMvc.perform(get("/analyst/status").header("Authorization", "Bearer analyst-token"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/analyst/status").header("Authorization", "Bearer admin-token"))
+            .andExpect(status().isOk());
+        mockMvc.perform(get("/admin/status").header("Authorization", "Bearer admin-token"))
+            .andExpect(status().isOk());
+    }
+
     // Verifies malformed bearer tokens are rejected by the resource server.
     @Test
     void malformedBearerTokenIsUnauthorized() throws Exception {
@@ -89,6 +101,26 @@ class SecurityConfigTest {
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .claims(claims -> claims.putAll(Map.of("scope", "read")))
+                .build();
+    }
+
+    private Jwt analystJwt() {
+        return Jwt.withTokenValue("analyst-token")
+                .header("alg", "HS256")
+                .subject("analyst@example.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claims(claims -> claims.put("role", "ROLE_ANALYST"))
+                .build();
+    }
+
+    private Jwt adminJwt() {
+        return Jwt.withTokenValue("admin-token")
+                .header("alg", "HS256")
+                .subject("admin@example.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claims(claims -> claims.put("role", "ROLE_ADMIN"))
                 .build();
     }
 

@@ -2,7 +2,10 @@ package com.neueda.leap.service;
 
 import com.neueda.leap.client.MarketDataClient;
 import com.neueda.leap.dto.response.InstrumentResponse;
+import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.QuoteStatus;
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
+import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.mapper.ExchangeMapper;
@@ -13,10 +16,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -28,6 +35,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class InstrumentServiceTest {
@@ -45,6 +53,9 @@ class InstrumentServiceTest {
     private StringRedisTemplate redis;
 
     @Mock
+    private ValueOperations<String, String> valueOperations;
+
+    @Mock
     private MarketDataService marketDataService;
     
 
@@ -53,6 +64,8 @@ class InstrumentServiceTest {
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
+        lenient().when(redis.opsForValue()).thenReturn(valueOperations);
+        lenient().when(valueOperations.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
         instrumentService = new InstrumentService(
                 instrumentMapper,
                 marketDataClient,
@@ -371,6 +384,67 @@ class InstrumentServiceTest {
 
         verify(instrumentMapper, times(1)).findById(instrumentId);
         verify(instrumentMapper, never()).updatePrice(any(Instrument.class));
+    }
+
+    @Test
+    void testRefreshPriceIfStaleRejectsLastKnownQuoteForTrading() {
+        UUID instrumentId = UUID.randomUUID();
+        Instrument instrument = new Instrument();
+        instrument.setInstrumentId(instrumentId);
+        instrument.setTicker("AAPL");
+        instrument.setCurrentPrice(BigDecimal.valueOf(180));
+        instrument.setUpdatedAt(OffsetDateTime.now());
+
+        MarketQuote staleQuote = new MarketQuote(
+                "QUOTE",
+                "AAPL",
+                BigDecimal.valueOf(181),
+                Instant.now(),
+                Instant.now(),
+                "test",
+                QuoteStatus.STALE);
+
+        when(instrumentMapper.findById(instrumentId)).thenReturn(instrument);
+        when(marketDataService.getLatestQuote("AAPL")).thenReturn(Optional.of(staleQuote));
+
+        assertThrows(
+                ObjectInvalidException.class,
+                () -> instrumentService.refreshPriceIfStale(instrumentId));
+
+        verify(marketDataService, never()).getHistory(any(), any());
+        verify(instrumentMapper, never()).updatePrice(any(Instrument.class));
+    }
+
+    @Test
+    void testRefreshPriceIfStaleFetchesLiveQuoteWhenNoCachedQuote() {
+        UUID instrumentId = UUID.randomUUID();
+        Instant quoteTime = Instant.now();
+        Instrument instrument = new Instrument();
+        instrument.setInstrumentId(instrumentId);
+        instrument.setTicker("BTC-USD");
+        instrument.setCurrentPrice(BigDecimal.valueOf(575.5));
+        instrument.setUpdatedAt(OffsetDateTime.now().minusHours(1));
+
+        MarketQuote liveQuote = new MarketQuote(
+                "QUOTE",
+                "BTC-USD",
+                BigDecimal.valueOf(81000),
+                quoteTime,
+                quoteTime,
+                "yfinance-rest",
+                QuoteStatus.LIVE);
+
+        when(instrumentMapper.findById(instrumentId)).thenReturn(instrument);
+        when(marketDataService.getLatestQuote("BTC-USD")).thenReturn(Optional.empty());
+        when(marketDataService.fetchLiveQuote("BTC-USD")).thenReturn(liveQuote);
+        when(instrumentMapper.updatePrice(instrument)).thenReturn(1);
+
+        Instrument refreshed = instrumentService.refreshPriceIfStale(instrumentId);
+
+        assertEquals(BigDecimal.valueOf(81000), refreshed.getCurrentPrice());
+        assertEquals(OffsetDateTime.ofInstant(quoteTime, java.time.ZoneOffset.UTC), refreshed.getUpdatedAt());
+        verify(marketDataService).fetchLiveQuote("BTC-USD");
+        verify(instrumentMapper).updatePrice(instrument);
     }
 
     // Verifies updatePrice throws when mapper update fails.

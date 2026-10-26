@@ -1,21 +1,37 @@
 import { Injectable } from '@angular/core';
 import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Router } from '@angular/router';
+import { Observable, catchError, throwError } from 'rxjs';
 
 @Injectable()
 export class ApiInterceptor implements HttpInterceptor {
 
-  private apiUrl = 'http://localhost:8090';
+  constructor(private router: Router) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // Add Content-Type header to API requests
     if (req.url.startsWith('/api')) {
+      const token = sessionStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token && !req.url.includes('/auth/login')) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const clonedReq = req.clone({
-        setHeaders: {
-          'Content-Type': 'application/json'
-        }
+        setHeaders: headers
       });
-      return next.handle(clonedReq);
+      return next.handle(clonedReq).pipe(
+        catchError(error => {
+          if (error.status === 401) {
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('session');
+            this.router.navigate(['/auth/login']);
+          }
+          return throwError(() => error);
+        })
+      );
     }
     return next.handle(req);
   }

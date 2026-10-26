@@ -16,6 +16,7 @@ import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
 import com.neueda.leap.model.Account;
 import com.neueda.leap.service.AccountService;
+import com.neueda.leap.service.AuthorizationService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -46,6 +47,9 @@ class AccountControllerTest {
 
     @MockBean
     private AccountService accountService;
+
+        @MockBean
+        private AuthorizationService authorizationService;
 
     // Checks that getting an existing account returns 200 OK with account details.
     @Test

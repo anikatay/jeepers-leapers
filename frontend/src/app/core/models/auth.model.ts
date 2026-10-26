@@ -19,4 +19,6 @@ export interface AuthResponse{
     userId: string;
     accountId: string | null;
     role: string;
+    firstName?: string;
+    lastName?: string;
 }

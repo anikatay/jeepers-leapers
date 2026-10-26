@@ -1,6 +1,9 @@
 package com.neueda.leap.client;
 
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.MarketSector;
+import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.MarketSectorTicker;
 import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.exception.MarketDataUnavailableException;
 import com.neueda.leap.exception.ObjectInvalidException;
@@ -13,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
@@ -21,7 +25,10 @@ import org.springframework.web.client.RestClientException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import org.springframework.web.util.UriBuilder;
 
@@ -182,6 +189,49 @@ class MarketDataClientTest {
 
         assertEquals("Market data service failed for AAPL", ex.getMessage());
         assertInstanceOf(RestClientException.class, ex.getCause());
+    }
+
+    @Test
+    void testFetchHistoryBatchReturnsResponsesWhenApiSucceeds() {
+        Map<String, HistoryResponse> expected = Map.of("AAPL", history("AAPL"));
+        when(responseSpec.body(
+                org.mockito.ArgumentMatchers.<ParameterizedTypeReference<Map<String, HistoryResponse>>>any()))
+                .thenReturn(expected);
+
+        Map<String, HistoryResponse> actual =
+                marketDataClient.fetchHistoryBatch(Set.of("AAPL"), "5y");
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void testFetchSectorCatalogReturnsResponseWhenApiSucceeds() {
+        MarketSectorCatalog expected = new MarketSectorCatalog(
+                "US",
+                "configured_large_cap_order",
+                "us-large-cap-v1",
+                Instant.parse("2026-10-21T16:00:00Z"),
+                List.of(new MarketSector(
+                        "energy",
+                        "Energy",
+                        List.of(new MarketSectorTicker("XOM", 1)))));
+        when(responseSpec.body(MarketSectorCatalog.class)).thenReturn(expected);
+
+        MarketSectorCatalog actual = marketDataClient.fetchSectorCatalog();
+
+        assertEquals(expected, actual);
+        verify(responseSpec).body(MarketSectorCatalog.class);
+    }
+
+    @Test
+    void testFetchSectorCatalogRejectsEmptyResponse() {
+        when(responseSpec.body(MarketSectorCatalog.class)).thenReturn(null);
+
+        MarketDataUnavailableException ex = assertThrows(
+                MarketDataUnavailableException.class,
+                () -> marketDataClient.fetchSectorCatalog());
+
+        assertEquals("Market service returned an empty sector catalog", ex.getMessage());
     }
 
     private HistoryResponse history(String ticker) {

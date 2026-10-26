@@ -14,6 +14,7 @@ public class AccountResponse {
     private String currency;
     private BigDecimal balance;
     private String status;
+    private String freezeReason;
     private OffsetDateTime createdAt;
 
     public AccountResponse() {
@@ -21,11 +22,17 @@ public class AccountResponse {
 
     public AccountResponse(UUID accountId, UUID userId, String currency, BigDecimal balance, String status,
                            OffsetDateTime createdAt) {
+        this(accountId, userId, currency, balance, status, null, createdAt);
+    }
+
+    public AccountResponse(UUID accountId, UUID userId, String currency, BigDecimal balance, String status,
+                           String freezeReason, OffsetDateTime createdAt) {
         this.accountId = accountId;
         this.userId = userId;
         this.currency = currency;
         this.balance = balance;
         this.status = status;
+        this.freezeReason = freezeReason;
         this.createdAt = createdAt;
     }
 
@@ -61,6 +68,10 @@ public class AccountResponse {
         this.status = status;
     }
 
+    public String getFreezeReason() {
+        return freezeReason;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -72,6 +83,7 @@ public class AccountResponse {
             account.getCurrency(),
             account.getBalance(),
             account.getStatus(),
+            account.getFreezeReason(),
             account.getCreatedAt()
         );
     }

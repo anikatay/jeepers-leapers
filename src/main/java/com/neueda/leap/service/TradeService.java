@@ -5,6 +5,7 @@ import com.neueda.leap.event.TradeExecutedEvent;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
+import com.neueda.leap.exception.ApplicationException;
 import com.neueda.leap.mapper.TradeMapper;
 import com.neueda.leap.model.Account;
 import com.neueda.leap.model.Holding;
@@ -31,6 +32,7 @@ public class TradeService implements IService {
     private final InstrumentService instrumentService;
     private final HoldingService holdingService;
     private final MarketDataService marketDataService;
+    private final AuthorizationService authorizationService;
     private static final int DEFAULT_PAGE_SIZE = 50;
     private static final int MAX_PAGE_SIZE = 200;
     private final MarketSessionService marketSessionService;
@@ -50,31 +52,44 @@ public class TradeService implements IService {
         }
     }
 
-    public TradeService(
-            TradeMapper tradeMapper,
-            AccountService accountService,
-            InstrumentService instrumentService,
-            HoldingService holdingService,
-            MarketDataService marketDataService,
-            ApplicationEventPublisher eventPublisher,
-            MarketSessionService marketSessionService) {
+    public TradeService(TradeMapper tradeMapper, AccountService accountService, InstrumentService instrumentService,
+            HoldingService holdingService, MarketDataService marketDataService, AuthorizationService authorizationService,
+            ApplicationEventPublisher eventPublisher, MarketSessionService marketSessionService) {
         this.tradeMapper = tradeMapper;
         this.accountService = accountService;
         this.instrumentService = instrumentService;
         this.holdingService = holdingService;
         this.marketDataService = marketDataService;
+        this.authorizationService = authorizationService;
         this.eventPublisher = eventPublisher;
         this.marketSessionService = marketSessionService;
     }
-    
-    @Transactional 
-    public Trade createTrade(Trade trade){
+
+    @Transactional
+    public Trade createTrade(Trade trade, UUID authenticatedUserId){
         if(trade == null){
             throw new ObjectInvalidException("Trade cannot be null");
         }
         if(trade.getAccountId() == null){
             throw new ObjectInvalidException("Account ID cannot be null");
         }
+        if(authenticatedUserId == null){
+            throw new ObjectInvalidException("Authenticated user is required");
+        }
+
+        authorizationService.requireAccountOwner(trade.getAccountId(), authenticatedUserId);
+        Account account = accountService.getAccountForTrade(trade.getAccountId());
+
+        if ("FROZEN".equals(account.getStatus())) {
+            throw new ApplicationException(
+                    "ACCOUNT_FROZEN",
+                    "Trading is disabled for this account",
+                    "The account was frozen by an administrator: " + account.getFreezeReason());
+        }
+        if (!"ACTIVE".equals(account.getStatus())) {
+            throw new ObjectInvalidException("Account is not active: " + trade.getAccountId());
+        }
+
         if(trade.getInstrumentId() == null){
             throw new ObjectInvalidException("Instrument ID cannot be null");
         }
@@ -93,11 +108,6 @@ public class TradeService implements IService {
         BigDecimal executionPrice = instrument.getCurrentPrice();
         if(executionPrice == null){
             throw new ObjectInvalidException("Unable to make trade at the moment; quote unavailable");
-        }
-
-        Account account = accountService.getAccount(trade.getAccountId());
-        if(!"ACTIVE".equals(account.getStatus())){
-            throw new ObjectInvalidException("Account is not active: " + trade.getAccountId());
         }
 
         String instrumentCurrency = instrument.getCurrency() == null

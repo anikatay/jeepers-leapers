@@ -40,6 +40,97 @@ BACKEND_QUOTE_URL = os.getenv(
     "BACKEND_QUOTE_URL",
     "http://app:8080/internal/market/quotes",
 )
+SECTOR_STREAM_ENABLED = os.getenv("SECTOR_STREAM_ENABLED", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+SECTOR_UNIVERSE_VERSION = "us-large-cap-v1"
+SECTOR_SELECTION_BASIS = "configured_large_cap_order"
+
+# The sidecar owns the initial universe. The order is the configured rank within
+# each sector; replacing this list is an explicit universe update.
+SECTOR_UNIVERSE = {
+    "communication-services": {
+        "name": "Communication Services",
+        "tickers": ["GOOGL", "META", "NFLX", "DIS", "CMCSA", "VZ", "T", "TMUS", "CHTR", "EA"],
+    },
+    "consumer-discretionary": {
+        "name": "Consumer Discretionary",
+        "tickers": ["AMZN", "TSLA", "HD", "MCD", "TJX", "LOW", "BKNG", "NKE", "SBUX", "ORLY"],
+    },
+    "consumer-staples": {
+        "name": "Consumer Staples",
+        "tickers": ["WMT", "COST", "PG", "KO", "PEP", "PM", "MO", "MDLZ", "CL", "KMB"],
+    },
+    "energy": {
+        "name": "Energy",
+        "tickers": ["XOM", "CVX", "COP", "EOG", "SLB", "OXY", "MPC", "PSX", "VLO", "WMB"],
+    },
+    "financials": {
+        "name": "Financials",
+        "tickers": ["JPM", "V", "MA", "BAC", "WFC", "GS", "MS", "BLK", "C", "AXP"],
+    },
+    "health-care": {
+        "name": "Health Care",
+        "tickers": ["LLY", "UNH", "JNJ", "ABBV", "MRK", "TMO", "ABT", "AMGN", "PFE", "ISRG"],
+    },
+    "industrials": {
+        "name": "Industrials",
+        "tickers": ["GE", "CAT", "RTX", "HON", "UNP", "DE", "BA", "ADP", "ETN", "LMT"],
+    },
+    "information-technology": {
+        "name": "Information Technology",
+        "tickers": ["NVDA", "MSFT", "AAPL", "AVGO", "ORCL", "CRM", "AMD", "CSCO", "IBM", "ADBE"],
+    },
+    "materials": {
+        "name": "Materials",
+        "tickers": ["LIN", "SHW", "APD", "ECL", "NEM", "FCX", "NUE", "DOW", "DD", "CTVA"],
+    },
+    "real-estate": {
+        "name": "Real Estate",
+        "tickers": ["PLD", "AMT", "EQIX", "WELL", "SPG", "O", "PSA", "CCI", "DLR", "VICI"],
+    },
+    "utilities": {
+        "name": "Utilities",
+        "tickers": ["NEE", "SO", "DUK", "CEG", "SRE", "AEP", "EXC", "XEL", "ED", "PCG"],
+    },
+}
+SECTOR_TICKERS = tuple(
+    ticker
+    for sector in SECTOR_UNIVERSE.values()
+    for ticker in sector["tickers"]
+)
+SECTOR_TICKER_SET = set(SECTOR_TICKERS)
+
+
+def sector_catalog_payload() -> dict:
+    return {
+        "market": "US",
+        "selectionBasis": SECTOR_SELECTION_BASIS,
+        "universeVersion": SECTOR_UNIVERSE_VERSION,
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "sectors": [
+            {
+                "id": sector_id,
+                "name": sector["name"],
+                "tickers": [
+                    {"ticker": ticker, "rank": rank}
+                    for rank, ticker in enumerate(sector["tickers"], start=1)
+                ],
+            }
+            for sector_id, sector in SECTOR_UNIVERSE.items()
+        ],
+    }
+
+
+def sector_or_404(raw_sector_id: str) -> tuple[str, dict]:
+    sector_id = raw_sector_id.strip().lower()
+    sector = SECTOR_UNIVERSE.get(sector_id)
+    if sector is None:
+        raise HTTPException(status_code=404, detail=f"Unknown sector: {raw_sector_id}")
+    return sector_id, sector
 
 
 def validate_ticker(raw: str) -> str:
@@ -224,7 +315,7 @@ class YahooStream:
         async with self.lock:
             self.desired.add(ticker)
             websocket = self.websocket
-            if websocket is None:
+            if websocket is None or ticker in self.active:
                 return
             try:
                 await websocket.subscribe(ticker)
@@ -306,6 +397,7 @@ class YahooStream:
             "quoteTime": quote_time.isoformat(),
             "receivedTime": datetime.now(timezone.utc).isoformat(),
             "source": "yfinance-websocket",
+            "status": "LIVE",
         }
         try:
             async with httpx.AsyncClient(timeout=3) as client:
@@ -320,6 +412,8 @@ stream = YahooStream()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if SECTOR_STREAM_ENABLED:
+        stream.desired.update(SECTOR_TICKERS)
     await stream.start()
     yield
     await stream.stop()
@@ -334,12 +428,20 @@ async def health():
         "status": "ok",
         "streamConnected": stream.websocket is not None and stream.websocket.is_connected(),
         "subscribedTickers": sorted(stream.desired),
+        "sectorStreamEnabled": SECTOR_STREAM_ENABLED,
+        "sectorTickerCount": len(SECTOR_TICKERS),
     }
 
 
 @app.post("/stream/subscribe/{ticker}")
 async def subscribe_stream(ticker: str):
     normalized = validate_ticker(ticker)
+    if SECTOR_STREAM_ENABLED and normalized in SECTOR_TICKER_SET:
+        return {
+            "ticker": normalized,
+            "subscribed": True,
+            "persistent": True,
+        }
     await stream.add(normalized)
     return {"ticker": normalized, "subscribed": True}
 
@@ -347,6 +449,12 @@ async def subscribe_stream(ticker: str):
 @app.delete("/stream/subscribe/{ticker}")
 async def unsubscribe_stream(ticker: str):
     normalized = validate_ticker(ticker)
+    if SECTOR_STREAM_ENABLED and normalized in SECTOR_TICKER_SET:
+        return {
+            "ticker": normalized,
+            "subscribed": True,
+            "persistent": True,
+        }
     await stream.remove(normalized)
     return {"ticker": normalized, "subscribed": False}
 
@@ -356,9 +464,81 @@ async def stream_subscriptions():
     return {"tickers": sorted(stream.desired)}
 
 
+@app.get("/sectors")
+def list_sectors():
+    return sector_catalog_payload()
+
+
+@app.get("/sectors/{sector_id}")
+def get_sector(sector_id: str):
+    normalized_id, sector = sector_or_404(sector_id)
+    catalog = sector_catalog_payload()
+    return {
+        "market": catalog["market"],
+        "selectionBasis": catalog["selectionBasis"],
+        "universeVersion": catalog["universeVersion"],
+        "generatedAt": catalog["generatedAt"],
+        "sector": {
+            "id": normalized_id,
+            "name": sector["name"],
+            "tickers": [
+                {"ticker": ticker, "rank": rank}
+                for rank, ticker in enumerate(sector["tickers"], start=1)
+            ],
+        },
+    }
+
+
 @app.get("/lookup/{ticker}")
 def lookup_ticker(ticker: str):
     return market_instrument_metadata(validate_ticker(ticker))
+
+
+@app.get("/quote")
+def quote(ticker: str = Query(...)):
+    ticker = validate_ticker(ticker)
+    try:
+        frame = yf.Ticker(ticker).history(
+            period="1d",
+            interval="1m",
+            auto_adjust=False,
+            timeout=10,
+        )
+    except Exception as exc:
+        log.warning("Market quote lookup failed for %s", ticker, exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Market data provider unavailable",
+        ) from exc
+
+    if frame.empty or "Close" not in frame:
+        raise HTTPException(status_code=404, detail=f"No current quote for {ticker}")
+
+    closes = frame["Close"].dropna()
+    if closes.empty:
+        raise HTTPException(status_code=404, detail=f"No current quote for {ticker}")
+
+    price = scale_price(closes.iloc[-1], ticker)
+    if not math.isfinite(price) or price <= 0:
+        raise HTTPException(status_code=502, detail=f"Invalid current quote for {ticker}")
+
+    quote_time = closes.index[-1]
+    if hasattr(quote_time, "to_pydatetime"):
+        quote_time = quote_time.to_pydatetime()
+    if quote_time.tzinfo is None:
+        quote_time = quote_time.replace(tzinfo=timezone.utc)
+    else:
+        quote_time = quote_time.astimezone(timezone.utc)
+
+    return {
+        "type": "QUOTE",
+        "ticker": ticker,
+        "price": price,
+        "quoteTime": quote_time.isoformat(),
+        "receivedTime": datetime.now(timezone.utc).isoformat(),
+        "source": "yfinance-rest",
+        "status": "LIVE",
+    }
 
 
 def validate_currency(raw: str) -> str:
@@ -433,26 +613,69 @@ def history(ticker: str = Query(...), period: str = Query("1y")):
     ticker = validate_ticker(ticker)
     if period not in ALLOWED_PERIODS:
         raise HTTPException(status_code=400, detail="Invalid period")
+    return _fetch_history(ticker, period, "1d")
+
+
+@app.get("/history/intraday")
+def intraday_history(ticker: str = Query(...)):
+    ticker = validate_ticker(ticker)
+    return _fetch_history(ticker, "1d", "1m")
+
+
+def _fetch_history(ticker: str, period: str, interval: str) -> dict:
     try:
-        df = yf.Ticker(ticker).history(period=period, interval="1d", timeout=10)
+        request_period = "5d" if interval == "1m" else period
+        df = yf.Ticker(ticker).history(period=request_period, interval=interval, timeout=10)
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Market data upstream failure") from exc
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+    # Yahoo returns the current session as a placeholder row with NaN prices, which
+    # is not JSON-serialisable. Drop those before anything reads the frame.
+    df = df.dropna(subset=["Open", "High", "Low", "Close"])
+    if df.empty:
+        raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+    frame = df
+    opening_bar = None
+    if interval == "1m":
+        session_date = max(index.date() for index in df.index)
+        frame = df[df.index.date == session_date]
+        previous_frame = df[df.index.date < session_date]
+        previous_closes = previous_frame["Close"].dropna()
+        if not previous_closes.empty:
+            previous_close = round(
+                scale_price(previous_closes.iloc[-1], ticker),
+                4,
+            )
+            opening_bar = {
+                "date": f"{session_date.isoformat()}T00:00:00Z",
+                "open": previous_close,
+                "high": previous_close,
+                "low": previous_close,
+                "close": previous_close,
+                "volume": 0,
+            }
+
+    bars = [
+        {
+            "date": idx.isoformat() if interval != "1d" else idx.strftime("%Y-%m-%d"),
+            "open": round(scale_price(row["Open"], ticker), 4),
+            "high": round(scale_price(row["High"], ticker), 4),
+            "low": round(scale_price(row["Low"], ticker), 4),
+            "close": round(scale_price(row["Close"], ticker), 4),
+            "volume": int(row["Volume"]),
+        }
+        for idx, row in frame.iterrows()
+    ]
+    if opening_bar is not None:
+        bars.insert(0, opening_bar)
+
     return {
         "ticker": ticker,
         "period": period,
-        "bars": [
-            {
-                "date": idx.strftime("%Y-%m-%d"),
-                "open": round(scale_price(row["Open"], ticker), 4),
-                "high": round(scale_price(row["High"], ticker), 4),
-                "low": round(scale_price(row["Low"], ticker), 4),
-                "close": round(scale_price(row["Close"], ticker), 4),
-                "volume": int(row["Volume"]),
-            }
-            for idx, row in df.iterrows()
-        ],
+        "bars": bars,
     }
 
 

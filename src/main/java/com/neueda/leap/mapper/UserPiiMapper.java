@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Mapper;
 import com.neueda.leap.model.UserPii;
 
 import java.util.UUID;
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
 
 @Mapper
 public interface UserPiiMapper {
@@ -23,7 +23,7 @@ public interface UserPiiMapper {
     String getUserLastNameById(UUID userId);
 
     @Select("SELECT date_of_birth FROM user_pii WHERE user_id = #{userId}")
-    OffsetDateTime getUserDateOfBirthById(UUID userId);
+    LocalDate getUserDateOfBirthById(UUID userId);
 
     @Select("SELECT phone_number FROM user_pii WHERE user_id = #{userId}")
     String getUserPhoneNumberById(UUID userId);

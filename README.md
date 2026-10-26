@@ -34,6 +34,57 @@ cd jeepers-leapers
    "your-ip":8090
    ```
 
+### Market sector and heatmap endpoints
+
+The market sidecar maintains a configured US large-cap universe with ten tickers
+per standard sector. The backend exposes the catalog and combines it with the
+same Redis-backed quote cache used by instrument prices:
+
+```bash
+API_URL=http://localhost:8091
+TOKEN=$(curl -sS -X POST "$API_URL/api/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"bob@example.com","password":"123"}' | jq -r .token)
+
+# Sector catalog and ranked tickers
+curl -sS "$API_URL/api/market/sectors" \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# One sector
+curl -sS "$API_URL/api/market/sectors/information-technology" \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# All sectors with cached prices and quote status
+curl -sS "$API_URL/api/market/heatmap" \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# One sector's heatmap data
+curl -sS "$API_URL/api/market/heatmap?sector=energy" \
+  -H "Authorization: Bearer $TOKEN" | jq
+```
+
+The heatmap loads one month of daily performance history through the backend
+batch history endpoint; requests are split into groups of 50 to match the
+market sidecar's upstream limit.
+
+Each heatmap ticker has `LIVE`, `STALE`, `CLOSED`, or `UNAVAILABLE` status.
+`UNAVAILABLE` means the sidecar has not delivered a quote for that ticker yet.
+The current universe is versioned in the response and uses the configured
+large-cap order as its ranking basis; it is not an automatic market-cap
+screening service.
+
+The sidecar endpoints are also available directly for diagnostics:
+
+```bash
+curl -sS http://localhost:8093/sectors | jq
+curl -sS http://localhost:8093/sectors/energy | jq
+curl -sS http://localhost:8093/health | jq
+```
+
+`SECTOR_STREAM_ENABLED=true` keeps the sector tickers persistently subscribed
+to the sidecar stream. Set it to `false` when running the sidecar without the
+background sector stream.
+
 ## AI Trade Analysis
 
 Reviews any trade on request with OpenAI and returns a verdict (`GOOD`, `MIXED`, `POOR` or

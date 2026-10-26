@@ -23,7 +23,7 @@
     <div class="summary-cards-grid">
       <div *ngFor="let card of summaryCards()" class="summary-card">
         <p class="summary-label">{{ card.label }}</p>
-        <p class="summary-value" [class.positive]="card.isPositive === true">{{ card.value }}</p>
+        <p class="summary-value stat-value" [class.positive]="card.isPositive === true">{{ card.value }}</p>
       </div>
     </div>
 
@@ -59,6 +59,10 @@
 
       <!-- Holdings Table -->
       <div class="table-wrapper">
+        <div *ngIf="isAccountFrozen()" class="account-frozen-notice" role="alert">
+          <strong>Trading is unavailable</strong>
+          <span>{{ account()?.freezeReason || 'This account has been frozen by an administrator.' }}</span>
+        </div>
         <table class="holdings-table">
           <thead>
             <tr>
@@ -139,8 +143,8 @@
               <!-- Buy More / Sell Buttons -->
               <td class="col-actions">
                 <div class="action-buttons">
-                  <button class="btn-buy" (click)="openTradeModal(holding, 'BUY')">{{ 'portfolio.buy_more' | translate }}</button>
-                  <button class="btn-sell" (click)="openTradeModal(holding, 'SELL')">{{ 'portfolio.sell' | translate }}</button>
+                  <button class="btn-buy" [disabled]="isAccountFrozen()" (click)="openTradeModal(holding, 'BUY')">{{ 'portfolio.buy_more' | translate }}</button>
+                  <button class="btn-sell" [disabled]="isAccountFrozen()" (click)="openTradeModal(holding, 'SELL')">{{ 'portfolio.sell' | translate }}</button>
                 </div>
               </td>
             </tr>
@@ -170,6 +174,10 @@
 
       <!-- Trade Form -->
       <div *ngIf="!tradeSuccess()" class="trade-form">
+        <div *ngIf="isAccountFrozen()" class="account-frozen-notice" role="alert">
+          <strong>Trading is unavailable</strong>
+          <span>{{ account()?.freezeReason || 'This account has been frozen by an administrator.' }}</span>
+        </div>
         <!-- Header with Symbol and Price -->
         <div class="modal-header">
           <div>
@@ -282,7 +290,7 @@
         <button class="confirm-button"
                 [class.buy-mode]="modalMode() === 'BUY'"
                 [class.sell-mode]="modalMode() === 'SELL'"
-                [disabled]="resolvedQuantity() <= 0 || isSubmitting()"
+                [disabled]="resolvedQuantity() <= 0 || isSubmitting() || isAccountFrozen()"
                 (click)="confirmTrade()">
           <span *ngIf="isSubmitting()" class="spinner"></span>
           {{ isSubmitting() ? ('common.processing' | translate) : (modalMode() === 'BUY' ? ('portfolio.confirm_buy' | translate) : ('portfolio.confirm_sell' | translate)) }}

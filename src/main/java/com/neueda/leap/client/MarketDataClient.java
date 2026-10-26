@@ -2,8 +2,11 @@ package com.neueda.leap.client;
 
 import com.neueda.leap.exception.MarketDataUnavailableException;
 import com.neueda.leap.dto.response.HistoryResponse;
+import com.neueda.leap.dto.response.IntradayHistoryResponse;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
+import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectInvalidException;
 
@@ -57,6 +60,30 @@ public class MarketDataClient {
 		}
 	}
 
+	public IntradayHistoryResponse fetchIntradayHistory(String ticker){
+		try{
+			IntradayHistoryResponse response = restClient.get()
+					.uri(uri -> uri.path("/history/intraday")
+							.queryParam("ticker", ticker)
+							.build())
+					.retrieve()
+					.body(IntradayHistoryResponse.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException(
+						"Market data service returned empty intraday response for " + ticker);
+			}
+			return response;
+		}catch (HttpClientErrorException.NotFound e) {
+			throw new ObjectNotFoundException("No intraday market data for " + ticker);
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException("Invalid intraday market data request for " + ticker);
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market data service failed for intraday history " + ticker, e);
+		}
+	}
+
 	public Map<String, HistoryResponse> fetchHistoryBatch(Set<String> tickers, String period) {
 		if (tickers == null || tickers.isEmpty()) {
 			throw new ObjectInvalidException("Tickers cannot be empty");
@@ -80,6 +107,24 @@ public class MarketDataClient {
 			throw new ObjectInvalidException("Invalid market data batch request");
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException("Market data service failed for batch request", e);
+		}
+	}
+
+	public MarketSectorCatalog fetchSectorCatalog() {
+		try {
+			MarketSectorCatalog response = restClient.get()
+					.uri(uri -> uri.path("/sectors").build())
+					.retrieve()
+					.body(MarketSectorCatalog.class);
+
+			if (response == null || response.sectors() == null || response.sectors().isEmpty()) {
+				throw new MarketDataUnavailableException(
+						"Market service returned an empty sector catalog");
+			}
+			return response;
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market sector catalog service failed", e);
 		}
 	}
 
@@ -110,6 +155,30 @@ public class MarketDataClient {
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException(
 					"Market lookup failed for " + ticker, e);
+		}
+	}
+
+	public MarketQuote fetchLatestQuote(String ticker) {
+		try {
+			MarketQuote response = restClient.get()
+					.uri(uri -> uri.path("/quote")
+							.queryParam("ticker", ticker)
+							.build())
+					.retrieve()
+					.body(MarketQuote.class);
+
+			if (response == null) {
+				throw new MarketDataUnavailableException(
+						"Market quote service returned an empty response for " + ticker);
+			}
+			return response;
+		} catch (HttpClientErrorException.NotFound e) {
+			throw new ObjectNotFoundException("No current market quote for " + ticker);
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException("Invalid market quote request for " + ticker);
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException(
+					"Market quote service failed for " + ticker, e);
 		}
 	}
 
