@@ -226,7 +226,16 @@
             </td>
             <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ trade.qty }}</td>
             <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ formatCurrency(trade.price, trade.currency) }}</td>
-            <td class="py-3 font-mono font-semibold" style="color: var(--foreground);">{{ formatCurrency(trade.total, trade.currency) }}</td>
+            <td class="py-3 pr-4 font-mono font-semibold" style="color: var(--foreground);">{{ formatCurrency(trade.total, trade.currency) }}</td>
+            <td class="py-3">
+              <!-- aria-disabled rather than disabled, so focus can return here when the dialog closes mid-request -->
+              <button #analyzeButton type="button" class="analyze-button"
+                [attr.aria-disabled]="isAnalysing(trade) ? 'true' : null"
+                [attr.aria-label]="analyzeLabel(trade)"
+                (click)="analyze(trade, analyzeButton)">
+                {{ 'trades.analysis.analyze' | translate }}
+              </button>
+            </td>
           </tr>
 
           <!-- Empty State -->
@@ -243,3 +252,7 @@
     </div>
   </div>
 </div>
+
+@if (analysisDialog(); as dialog) {
+  <app-trade-analysis-dialog [trade]="dialog.trade" [state]="dialog.state" (closed)="closeAnalysis()" />
+}

@@ -1,0 +1,50 @@
+<div class="analysis-overlay" (click)="close()">
+  <div class="analysis-dialog" role="dialog" aria-modal="true" aria-labelledby="trade-analysis-title"
+    (click)="$event.stopPropagation()">
+    <div class="analysis-header">
+      <div>
+        <h2 id="trade-analysis-title" class="analysis-title">{{ 'trades.analysis.title' | translate }}</h2>
+        <p class="analysis-subtitle">{{ subtitle() }}</p>
+      </div>
+      <button #closeButton type="button" class="close-button" (click)="close()"
+        [attr.aria-label]="'trades.analysis.close' | translate">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="analysis-body" aria-live="polite">
+      @if (loading()) {
+        <div class="analysis-loading">
+          <span class="spinner" aria-hidden="true"></span>
+          <p>{{ 'trades.analysis.loading' | translate }}</p>
+        </div>
+      } @else if (analysis(); as analysis) {
+        <span class="verdict" [class]="verdictClass()">
+          {{ 'trades.analysis.verdict.' + analysis.result.verdict | translate }}
+        </span>
+        <p class="analysis-summary">{{ analysis.result.summary }}</p>
+
+        @for (section of sections(); track section.titleKey) {
+          <section class="analysis-section">
+            <h3>{{ section.titleKey | translate }}</h3>
+            <ul>
+              @for (item of section.items; track $index) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (pnlLine(); as pnlLine) {
+          <p class="analysis-pnl">{{ pnlLine }}</p>
+        }
+        <p class="analysis-disclaimer">{{ 'trades.analysis.disclaimer' | translate }}</p>
+      } @else if (errorMessage(); as message) {
+        <p class="analysis-error" role="alert">{{ message }}</p>
+      }
+    </div>
+  </div>
+</div>
