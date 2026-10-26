@@ -26,7 +26,11 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
   readonly page = signal(0);
   readonly totalPages = signal(0);
   readonly totalItems = signal(0);
-  readonly pageSize = 25;
+  readonly pageSize = 15;
+  readonly tradePage = signal(0);
+  readonly tradeTotalPages = signal(0);
+  readonly tradeTotalItems = signal(0);
+  readonly tradePageSize = 10;
   readonly holdingsTableCollapsed = signal(false);
   readonly tradingPanelCollapsed = signal(false);
   readonly detailPanelFullscreen = signal(false);
@@ -48,7 +52,6 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
 
   private readonly searchChanges = new Subject<string>();
   private readonly destroy = new Subject<void>();
-  private readonly loadedTradeAccountIds = new Set<string>();
   private resizingDetailPanel = false;
   private resizeStartY = 0;
   private resizeStartHeight = 0;
@@ -117,40 +120,66 @@ export class AdminHomeComponent implements OnInit, OnDestroy {
 
   selectUser(user: AdminDashboardRow): void {
     const previousSelection = this.selectedUser();
+    const sameAccount = previousSelection?.accountId === user.accountId;
     this.selectedUser.set(user);
     this.tradesError.set(null);
     this.freezeError.set(null);
     this.freezeReason = '';
 
-    if (previousSelection?.accountId === user.accountId && this.loadedTradeAccountIds.has(user.accountId)) {
-      return;
-    }
+    const requestedPage = sameAccount ? this.tradePage() : 0;
+    this.tradePage.set(requestedPage);
+    this.loadSelectedUserTrades(user.accountId, requestedPage);
+  }
 
+  private loadSelectedUserTrades(accountId: string, page: number): void {
     this.selectedUserTrades.set([]);
     this.loadingTrades.set(true);
-    this.adminDashboardService.getAccountTrades(user.accountId).pipe(
+    this.adminDashboardService.getAccountTrades(accountId, page, this.tradePageSize).pipe(
       takeUntil(this.destroy),
       catchError(() => {
         this.tradesError.set('Unable to load trades for this account.');
         return of(null);
       })
-    ).subscribe(trades => {
-      if (!trades) {
+    ).subscribe(response => {
+      if (!response) {
         this.loadingTrades.set(false);
         return;
       }
-      this.loadedTradeAccountIds.add(user.accountId);
-      if (this.selectedUser()?.accountId === user.accountId) {
-        this.selectedUserTrades.set(trades);
+      if (this.selectedUser()?.accountId === accountId) {
+        this.selectedUserTrades.set(response.items);
+        this.tradePage.set(response.page);
+        this.tradeTotalPages.set(response.totalPages);
+        this.tradeTotalItems.set(response.totalItems);
         this.loadingTrades.set(false);
       }
     });
+  }
+
+  previousTradesPage(): void {
+    if (this.tradePage() > 0) {
+      const accountId = this.selectedUser()?.accountId;
+      if (accountId) {
+        this.loadSelectedUserTrades(accountId, this.tradePage() - 1);
+      }
+    }
+  }
+
+  nextTradesPage(): void {
+    if (this.tradePage() + 1 < this.tradeTotalPages()) {
+      const accountId = this.selectedUser()?.accountId;
+      if (accountId) {
+        this.loadSelectedUserTrades(accountId, this.tradePage() + 1);
+      }
+    }
   }
 
   clearSelection(): void {
     this.exitDetailPanelFullscreen();
     this.selectedUser.set(null);
     this.selectedUserTrades.set([]);
+    this.tradePage.set(0);
+    this.tradeTotalPages.set(0);
+    this.tradeTotalItems.set(0);
     this.tradesError.set(null);
     this.freezeError.set(null);
     this.freezeReason = '';

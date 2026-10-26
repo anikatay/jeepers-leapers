@@ -1,6 +1,8 @@
 package com.neueda.leap.service;
 
+import com.neueda.leap.dto.request.TradeFilter;
 import com.neueda.leap.dto.response.TradeResponse;
+import com.neueda.leap.dto.response.PaginatedTradeResponse;
 import com.neueda.leap.event.TradeExecutedEvent;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
@@ -34,6 +36,7 @@ public class TradeService implements IService {
     private final MarketDataService marketDataService;
     private final AuthorizationService authorizationService;
     private static final int DEFAULT_PAGE_SIZE = 50;
+    private static final int DEFAULT_PAGED_PAGE_SIZE = 10;
     private static final int MAX_PAGE_SIZE = 200;
     private final MarketSessionService marketSessionService;
 
@@ -215,6 +218,60 @@ public class TradeService implements IService {
         int safeOffset = (offset == null) ? 0 : Math.max(offset, 0);
 
         return tradeMapper.findAllTradesForAccountWithInstrument(accountId, safeLimit, safeOffset);
+    }
+
+    public PaginatedTradeResponse getTradesPage(UUID accountId, Integer page, Integer size, TradeFilter filter) {
+        if (accountId == null) {
+            throw new ObjectNotFoundException("Account ID cannot be null");
+        }
+
+        int normalizedPage = page == null || page < 0 ? 0 : page;
+        int normalizedSize = size == null
+                ? DEFAULT_PAGED_PAGE_SIZE
+                : Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        TradeFilter normalizedFilter = normalizeFilter(filter);
+        long totalItems = tradeMapper.countTradesForAccountPage(accountId, normalizedFilter);
+        int totalPages = totalItems == 0 ? 0 : (int) ((totalItems + normalizedSize - 1) / normalizedSize);
+        if (totalPages > 0 && normalizedPage >= totalPages) {
+            normalizedPage = 0;
+        }
+
+        List<TradeResponse> items = totalItems == 0
+                ? List.of()
+                : tradeMapper.findTradesForAccountPage(
+                        accountId,
+                        normalizedFilter,
+                        normalizedSize,
+                        normalizedPage * normalizedSize);
+        return new PaginatedTradeResponse(items, normalizedPage, normalizedSize, totalItems, totalPages);
+    }
+
+    private TradeFilter normalizeFilter(TradeFilter filter) {
+        if (filter == null) {
+            return null;
+        }
+        String search = filter.search() == null || filter.search().isBlank() ? null : filter.search().trim();
+        String side = "BUY".equalsIgnoreCase(filter.side()) || "SELL".equalsIgnoreCase(filter.side())
+                ? filter.side().toUpperCase()
+                : null;
+        String currency = filter.currency() == null || filter.currency().isBlank()
+                || "all".equalsIgnoreCase(filter.currency())
+                ? null
+                : filter.currency().trim().toUpperCase();
+        String sortOrder = "oldest".equalsIgnoreCase(filter.sortOrder()) ? "oldest" : "newest";
+        return new TradeFilter(
+                search,
+                side,
+                currency,
+                filter.fromDate(),
+                filter.toDate(),
+                filter.minQuantity(),
+                filter.maxQuantity(),
+                filter.minPrice(),
+                filter.maxPrice(),
+                filter.minTotal(),
+                filter.maxTotal(),
+                sortOrder);
     }
 
 }

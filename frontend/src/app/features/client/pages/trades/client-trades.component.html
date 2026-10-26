@@ -230,16 +230,28 @@
           </tr>
 
           <!-- Empty State -->
-          <tr *ngIf="filteredTrades.length === 0">
+          <tr *ngIf="!pageLoading() && filteredTrades.length === 0">
             <td [attr.colspan]="7" class="py-10 text-center text-sm" style="color: var(--muted-foreground);">
-              <p>No trades match your filters</p>
-              <button (click)="clearFilters()" class="mt-2 text-xs font-semibold underline underline-offset-2" style="color: var(--primary);">
+              <p>{{ tradeTotalItems() === 0 && !hasActiveFilters ? 'No trades yet' : 'No trades match your filters' }}</p>
+              <button *ngIf="hasActiveFilters" (click)="clearFilters()" class="mt-2 text-xs font-semibold underline underline-offset-2" style="color: var(--primary);">
                 Clear Filters
               </button>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <p *ngIf="pageLoading()" class="mt-3 text-sm" style="color: var(--muted-foreground);">Loading trades...</p>
+    <p *ngIf="pageError()" class="mt-3 text-sm text-red-600">{{ pageError() }}</p>
+    <div *ngIf="tradeTotalPages() > 0" class="trade-pagination">
+      <button type="button" (click)="previousTradesPage()" [disabled]="tradePage() === 0">
+        Previous
+      </button>
+      <span>Page {{ tradePage() + 1 }} of {{ tradeTotalPages() }} ({{ tradeTotalItems() }} trades)</span>
+      <button type="button" (click)="nextTradesPage()" [disabled]="tradePage() + 1 >= tradeTotalPages()">
+        Next
+      </button>
     </div>
   </div>
 </div>

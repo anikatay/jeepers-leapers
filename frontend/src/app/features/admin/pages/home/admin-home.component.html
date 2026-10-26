@@ -142,6 +142,12 @@
       <p *ngIf="!loadingTrades() && !tradesError() && selectedUserTrades().length === 0" class="no-trades">
         No trades found for this account.
       </p>
+
+      <div class="pagination" *ngIf="tradeTotalPages() > 0">
+        <button type="button" (click)="previousTradesPage()" [disabled]="tradePage() === 0">Previous</button>
+        <span>Trades {{ tradePage() + 1 }} of {{ tradeTotalPages() }} ({{ tradeTotalItems() }})</span>
+        <button type="button" (click)="nextTradesPage()" [disabled]="tradePage() + 1 >= tradeTotalPages()">Next</button>
+      </div>
     </section>
 
     <aside class="account-control-panel" aria-labelledby="account-controls-heading">

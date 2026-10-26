@@ -2,7 +2,9 @@ package com.neueda.leap.service;
 
 import com.neueda.leap.dto.response.AdminDashboardResponse;
 import com.neueda.leap.dto.response.AdminDashboardRow;
+import com.neueda.leap.dto.response.PaginatedTradeResponse;
 import com.neueda.leap.dto.response.TradeResponse;
+import com.neueda.leap.dto.request.TradeFilter;
 import com.neueda.leap.mapper.AdminDashboardMapper;
 import com.neueda.leap.mapper.TradeMapper;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ public class AdminDashboardService {
     private static final int DEFAULT_PAGE_SIZE = 25;
     private static final int MAX_PAGE_SIZE = 100;
     private static final int MAX_TRADE_PAGE_SIZE = 200;
+    private static final int DEFAULT_TRADE_PAGE_SIZE = 10;
 
     private final AdminDashboardMapper dashboardMapper;
     private final TradeMapper tradeMapper;
@@ -43,5 +46,22 @@ public class AdminDashboardService {
         int normalizedLimit = limit == null ? DEFAULT_PAGE_SIZE : Math.min(Math.max(limit, 1), MAX_TRADE_PAGE_SIZE);
         int normalizedOffset = offset == null || offset < 0 ? 0 : offset;
         return tradeMapper.findAllTradesForAccountWithInstrument(accountId, normalizedLimit, normalizedOffset);
+    }
+
+    public PaginatedTradeResponse getTradesPage(UUID accountId, Integer page, Integer size) {
+        int normalizedPage = page == null || page < 0 ? 0 : page;
+        int normalizedSize = size == null
+                ? DEFAULT_TRADE_PAGE_SIZE
+                : Math.min(Math.max(size, 1), MAX_TRADE_PAGE_SIZE);
+        TradeFilter filter = new TradeFilter(null, null, null, null, null, null, null, null, null, null, null, "newest");
+        long totalItems = tradeMapper.countTradesForAccountPage(accountId, filter);
+        int totalPages = totalItems == 0 ? 0 : (int) ((totalItems + normalizedSize - 1) / normalizedSize);
+        if (totalPages > 0 && normalizedPage >= totalPages) {
+            normalizedPage = 0;
+        }
+        List<TradeResponse> items = totalItems == 0
+                ? List.of()
+                : tradeMapper.findTradesForAccountPage(accountId, filter, normalizedSize, normalizedPage * normalizedSize);
+        return new PaginatedTradeResponse(items, normalizedPage, normalizedSize, totalItems, totalPages);
     }
 }

@@ -21,6 +21,21 @@ export interface TradeResponse {
   executedAt: string;
 }
 
+export interface TradePageFilters {
+  search?: string;
+  side?: string;
+  currency?: string;
+  fromDate?: string;
+  toDate?: string;
+  minQuantity?: number;
+  maxQuantity?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minTotal?: number;
+  maxTotal?: number;
+  sortOrder?: string;
+}
+
 // Legacy Trade interface - kept for compatibility
 export interface Trade {
 

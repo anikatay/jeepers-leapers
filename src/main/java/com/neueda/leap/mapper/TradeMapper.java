@@ -1,5 +1,6 @@
 package com.neueda.leap.mapper;
 
+import com.neueda.leap.dto.request.TradeFilter;
 import java.util.UUID;
 import java.util.List;
 
@@ -7,6 +8,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.SelectProvider;
 
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.model.Trade;
@@ -37,6 +39,16 @@ public interface TradeMapper {
         "ORDER BY t.executed_at DESC " +
         "LIMIT #{limit} OFFSET #{offset}")
     List<TradeResponse> findAllTradesForAccountWithInstrument(@Param("accountId") UUID accountId, @Param("limit") int limit, @Param("offset") int offset);
+
+        @SelectProvider(type = TradeMapperSqlProvider.class, method = "findTradesForAccountPage")
+        List<TradeResponse> findTradesForAccountPage(
+            @Param("accountId") UUID accountId,
+            @Param("filter") TradeFilter filter,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+        @SelectProvider(type = TradeMapperSqlProvider.class, method = "countTradesForAccountPage")
+        long countTradesForAccountPage(@Param("accountId") UUID accountId, @Param("filter") TradeFilter filter);
 
 
     @Select(    "SELECT t.trade_id, t.account_id, t.instrument_id, i.ticker, i.name, i.currency AS instrument_currency, " +

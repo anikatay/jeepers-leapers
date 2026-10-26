@@ -27,10 +27,10 @@ export class AdminDashboardService {
     return this.http.get<AdminDashboardResponse>(`${this.apiUrl}/dashboard`, { params });
   }
 
-  getAccountTrades(accountId: string, limit = 50, offset = 0): Observable<AdminAccountTrades> {
+  getAccountTrades(accountId: string, page = 0, size = 10): Observable<AdminAccountTrades> {
     const params = new HttpParams()
-      .set('limit', limit)
-      .set('offset', offset);
+      .set('page', page)
+      .set('size', size);
 
     return this.http.get<AdminAccountTrades>(
       `${this.apiUrl}/accounts/${accountId}/trades`,

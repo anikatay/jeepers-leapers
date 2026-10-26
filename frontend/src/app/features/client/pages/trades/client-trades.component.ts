@@ -10,7 +10,7 @@ import { MarketDataService } from '../../../../core/services/market-data.service
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { TranslationService } from '../../../../core/services/translation.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
-import { TradeResponse } from '../../../../core/models/trade.model';
+import { TradePageFilters, TradeResponse } from '../../../../core/models/trade.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { HoldingResponse } from '../../../../core/models/holding.model';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
@@ -52,8 +52,15 @@ export class ClientTradesComponent implements OnInit {
 
   // Real trade data from backend
   allTrades = signal<Trade[]>([]);
+  pagedTrades = signal<Trade[]>([]);
   loading = signal(false);
   error = signal<string | null>(null);
+  pageLoading = signal(false);
+  pageError = signal<string | null>(null);
+  tradePage = signal(0);
+  tradeTotalPages = signal(0);
+  tradeTotalItems = signal(0);
+  readonly tradePageSize = 10;
 
   // Filter controls
   search = signal('');
@@ -103,6 +110,7 @@ export class ClientTradesComponent implements OnInit {
 
   ngOnInit() {
     this.loadTrades();
+    this.loadPagedTrades();
     this.loadOverallPnl();
   }
 
@@ -122,6 +130,65 @@ export class ClientTradesComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  private loadPagedTrades(page = this.tradePage()): void {
+    this.pageLoading.set(true);
+    this.pageError.set(null);
+    this.tradesService.getTradesPage(
+      this.ACCOUNT_ID,
+      page,
+      this.tradePageSize,
+      this.getTradePageFilters()
+    ).subscribe({
+      next: response => {
+        this.pagedTrades.set(response.items.map(trade => this.mapToTrade(trade)));
+        this.tradePage.set(response.page);
+        this.tradeTotalPages.set(response.totalPages);
+        this.tradeTotalItems.set(response.totalItems);
+        this.pageLoading.set(false);
+      },
+      error: err => {
+        console.error('Failed to load paged trades:', err);
+        this.pageError.set('Failed to load trades');
+        this.pagedTrades.set([]);
+        this.pageLoading.set(false);
+      }
+    });
+  }
+
+  private getTradePageFilters(): TradePageFilters {
+    return {
+      search: this.search(),
+      side: this.typeFilter() === 'all' ? undefined : this.typeFilter().toUpperCase(),
+      currency: this.currencyFilter() === 'all' ? undefined : this.currencyFilter(),
+      fromDate: this.fromDate() || undefined,
+      toDate: this.toDate() || undefined,
+      minQuantity: this.parseFilterValue(this.minQuantity()) ?? undefined,
+      maxQuantity: this.parseFilterValue(this.maxQuantity()) ?? undefined,
+      minPrice: this.parseFilterValue(this.minPrice()) ?? undefined,
+      maxPrice: this.parseFilterValue(this.maxPrice()) ?? undefined,
+      minTotal: this.parseFilterValue(this.minTotal()) ?? undefined,
+      maxTotal: this.parseFilterValue(this.maxTotal()) ?? undefined,
+      sortOrder: this.sortOrder()
+    };
+  }
+
+  private resetTradePage(): void {
+    this.tradePage.set(0);
+    this.loadPagedTrades(0);
+  }
+
+  previousTradesPage(): void {
+    if (this.tradePage() > 0) {
+      this.loadPagedTrades(this.tradePage() - 1);
+    }
+  }
+
+  nextTradesPage(): void {
+    if (this.tradePage() + 1 < this.tradeTotalPages()) {
+      this.loadPagedTrades(this.tradePage() + 1);
+    }
   }
 
     private loadOverallPnl(): void {
@@ -277,66 +344,7 @@ export class ClientTradesComponent implements OnInit {
   }
 
   get filteredTrades(): Trade[] {
-    const trades = this.allTrades();
-    const searchLower = this.search().toLowerCase().trim();
-    const type = this.typeFilter();
-    const from = this.fromDate();
-    const to = this.toDate();
-    const currency = this.currencyFilter();
-    const minQuantity = this.parseFilterValue(this.minQuantity());
-    const maxQuantity = this.parseFilterValue(this.maxQuantity());
-    const minPrice = this.parseFilterValue(this.minPrice());
-    const maxPrice = this.parseFilterValue(this.maxPrice());
-    const minTotal = this.parseFilterValue(this.minTotal());
-    const maxTotal = this.parseFilterValue(this.maxTotal());
-    const order = this.sortOrder();
-
-    let filtered = trades.filter(trade => {
-      // Search filter
-      if (searchLower && !trade.symbol.toLowerCase().includes(searchLower) && !trade.name.toLowerCase().includes(searchLower)) {
-        return false;
-      }
-
-      // Type filter
-      if (type !== 'all' && trade.type !== type) {
-        return false;
-      }
-
-      // Currency filter
-      if (currency !== 'all' && trade.currency !== currency) {
-        return false;
-      }
-
-      // Numeric range filters
-      if (minQuantity !== null && trade.qty < minQuantity) return false;
-      if (maxQuantity !== null && trade.qty > maxQuantity) return false;
-      if (minPrice !== null && trade.price < minPrice) return false;
-      if (maxPrice !== null && trade.price > maxPrice) return false;
-      if (minTotal !== null && trade.total < minTotal) return false;
-      if (maxTotal !== null && trade.total > maxTotal) return false;
-
-      // Date range filter
-      const tradeDate = new Date(trade.date);
-      if (from) {
-        const fromDateTime = new Date(`${from}T00:00:00`);
-        if (tradeDate < fromDateTime) return false;
-      }
-      if (to) {
-        const toDateTime = new Date(`${to}T23:59:59`);
-        if (tradeDate > toDateTime) return false;
-      }
-
-      return true;
-    });
-
-    // Sort
-    filtered.sort((a, b) => {
-      const aTime = new Date(`${a.date} ${a.time}`).getTime();
-      const bTime = new Date(`${b.date} ${b.time}`).getTime();
-      return order === 'newest' ? bTime - aTime : aTime - bTime;
-    });
-
-    return filtered;
+    return this.pagedTrades();
   }
 
   get hasActiveFilters(): boolean {
@@ -383,6 +391,7 @@ export class ClientTradesComponent implements OnInit {
     this.currencyFilter.set('all');
     this.sortOrder.set('newest');
     this.showFilterPanel.set(false);
+    this.resetTradePage();
   }
 
   toggleFilterPanel() {
@@ -391,54 +400,66 @@ export class ClientTradesComponent implements OnInit {
 
   onSearchChange(value: string) {
     this.search.set(value);
+    this.resetTradePage();
   }
 
   onTypeFilterChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     this.typeFilter.set(value as TypeFilter);
+    this.resetTradePage();
   }
 
   onCurrencyFilterChange(event: Event) {
     this.currencyFilter.set((event.target as HTMLSelectElement).value);
+    this.resetTradePage();
   }
 
   onMinQuantityChange(event: Event) {
     this.minQuantity.set((event.target as HTMLInputElement).value);
+    this.resetTradePage();
   }
 
   onMaxQuantityChange(event: Event) {
     this.maxQuantity.set((event.target as HTMLInputElement).value);
+    this.resetTradePage();
   }
 
   onMinPriceChange(event: Event) {
     this.minPrice.set((event.target as HTMLInputElement).value);
+    this.resetTradePage();
   }
 
   onMaxPriceChange(event: Event) {
     this.maxPrice.set((event.target as HTMLInputElement).value);
+    this.resetTradePage();
   }
 
   onMinTotalChange(event: Event) {
     this.minTotal.set((event.target as HTMLInputElement).value);
+    this.resetTradePage();
   }
 
   onMaxTotalChange(event: Event) {
     this.maxTotal.set((event.target as HTMLInputElement).value);
+    this.resetTradePage();
   }
 
   onSortChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     this.sortOrder.set(value as SortOrder);
+    this.resetTradePage();
   }
 
   onFromDateChange(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.fromDate.set(value);
+    this.resetTradePage();
   }
 
   onToDateChange(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.toDate.set(value);
+    this.resetTradePage();
   }
 
   openNewTrade() {

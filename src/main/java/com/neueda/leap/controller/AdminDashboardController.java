@@ -3,6 +3,7 @@ package com.neueda.leap.controller;
 import com.neueda.leap.dto.request.FreezeAccountRequest;
 import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.dto.response.AdminDashboardResponse;
+import com.neueda.leap.dto.response.PaginatedTradeResponse;
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.service.AccountService;
 import com.neueda.leap.service.AdminDashboardService;
@@ -48,13 +49,13 @@ public class AdminDashboardController {
     }
 
     @GetMapping("/accounts/{accountId}/trades")
-    public ResponseEntity<List<TradeResponse>> getAccountTrades(
+    public ResponseEntity<PaginatedTradeResponse> getAccountTrades(
             @PathVariable(name = "accountId") UUID accountId,
-            @RequestParam(name = "limit", required = false) Integer limit,
-            @RequestParam(name = "offset", required = false) Integer offset,
+            @RequestParam(name = "page", required = false) Integer page,
+            @RequestParam(name = "size", required = false) Integer size,
             @AuthenticationPrincipal Jwt jwt) {
         authorizationService.requireAdmin(jwt);
-        return ResponseEntity.ok(adminDashboardService.getTrades(accountId, limit, offset));
+        return ResponseEntity.ok(adminDashboardService.getTradesPage(accountId, page, size));
     }
 
     @PatchMapping("/accounts/{accountId}/freeze")
