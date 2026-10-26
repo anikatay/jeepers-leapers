@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -103,6 +104,11 @@ public class InstrumentService implements IService {
                 metadata.currency());
         exchangeMapper.insertIfAbsent(exchange);
 
+        // The lookup price is a convenience for display: the market service falls back to the
+        // last daily close when regularMarketPrice is absent, so it can be days old over a
+        // weekend. Stamping it now() would present it as a live observation and let the first
+        // trade execute against it, so it is backdated and only a real quote refresh sets a
+        // current updated_at.
         instrumentMapper.insertIfAbsent(
                 UUID.randomUUID(),
                 ticker,
@@ -111,7 +117,7 @@ public class InstrumentService implements IService {
                 metadata.currency(),
                 metadata.priceScale(),
                 metadata.currentPrice(),
-                OffsetDateTime.now());
+                Instant.EPOCH.atOffset(ZoneOffset.UTC));
 
         Instrument resolved = instrumentMapper.findByTicker(ticker);
         if (resolved == null) {

@@ -57,7 +57,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(var(--ring-rgb), 0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent);
 }
 
 input::placeholder {
@@ -108,4 +108,25 @@ a:hover {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* Keep charts, sliders, tickers, and numeric inputs left-to-right */
+.client-app {
+  text-align: start;
+}
+
+.client-app .font-mono-data,
+.client-app .font-mono,
+.client-app input[type='number'],
+.client-app input[inputmode='decimal'],
+.client-app input[type='range'],
+.client-app .ltr-keep,
+.client-app .chart-container,
+.client-app .pie-chart-wrapper,
+.client-app .area-chart,
+.client-app .sd-chart-box,
+.client-app .tp-slider,
+.client-app .tp-slider-scale {
+  direction: ltr;
+  unicode-bidi: isolate;
 }

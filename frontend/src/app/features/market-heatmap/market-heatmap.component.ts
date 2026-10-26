@@ -3,10 +3,12 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Subscription, bufferTime, filter, interval } from 'rxjs';
 import { ConnectionStatusComponent } from '../../shared/components/connection.status.component';
+import { TranslatePipe } from '../../core/pipes/translate.pipe';
 import { MarketDataService } from '../../core/services/market-data.service';
 import { MarketQuoteService } from '../../core/services/market-quote.service';
+import { TranslationService } from '../../core/services/translation.service';
 import { MarketHeatmapResponse, MarketHeatmapSector, MarketHeatmapTicker, MarketQuote, PriceBar } from '../../core/models/market.model';
-import { HISTORY_TTL_MS, HeatmapHistoryCache, PerformancePeriod, percentChange, sparkline } from './market-performance';
+import { HISTORY_TTL_MS, HeatmapHistoryCache, PerformancePeriod, percentChange, sparkline } from '../../shared/utils/market-performance';
 import { Rect, squarify } from './treemap';
 
 type Sizing = 'rank' | 'equal';
@@ -16,11 +18,13 @@ interface Stock extends MarketHeatmapTicker {
   sectorId: string;
   sectorName: string;
   sectorSize: number;
-  /** Snapshot price used to size tile text, so live ticks do not reflow labels. */
-  layoutPrice: number | null;
   change: number | null;
-  spark: number[] | null;
   historyState: 'pending' | 'ready' | 'failed';
+}
+
+/** A stock with its sparkline resolved, built only for the few rows the detail panel shows. */
+interface Peer extends Stock {
+  spark: number[] | null;
 }
 
 interface TileText {
@@ -59,13 +63,15 @@ const COLOR_CAP: Record<PerformancePeriod, number> = { '1D': 3, '1W': 6, '1M': 1
 // Widest expected change label; fitting against it keeps tiles from switching layout as values change.
 const CHANGE_TEMPLATE = '+00.00%';
 const QUOTE_FLUSH_MS = 500;
+// Window for coalescing per-ticker history arrivals into one map write.
+const HISTORY_FLUSH_MS = 120;
 
 const price = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 @Component({
   selector: 'app-market-heatmap',
   standalone: true,
-  imports: [FormsModule, ConnectionStatusComponent],
+  imports: [FormsModule, ConnectionStatusComponent, TranslatePipe],
   templateUrl: './market-heatmap.component.html',
   styleUrl: './market-heatmap.component.css'
 })
@@ -104,9 +110,7 @@ export class MarketHeatmapComponent implements AfterViewInit {
         sectorId: sector.id,
         sectorName: sector.name,
         sectorSize: sector.tickers.length,
-        layoutPrice: base.price ?? ticker.price,
         change: percentChange(ticker, bars, period),
-        spark: sparkline(ticker, bars),
         historyState: !histories.has(ticker.ticker) ? 'pending' : bars ? 'ready' : 'failed'
       } satisfies Stock;
     }));
@@ -170,15 +174,34 @@ export class MarketHeatmapComponent implements AfterViewInit {
       return { id: sector.id, name: sector.name, rect, cells };
     });
   });
+  /**
+   * Tile text metrics, keyed by ticker. These depend only on geometry and the snapshot price,
+   * so live quotes never re-run the fitting pass or reflow a label.
+   */
+  private readonly tileText = computed(() => {
+    const prices = new Map(this.sectors().flatMap(s => s.tickers.map(t => [t.ticker, t.price])));
+    const text = new Map<string, TileText | null>();
+    for (const sector of this.geometry()) {
+      for (const cell of sector.cells) {
+        const layoutPrice = prices.get(cell.ticker) ?? null;
+        // Size against a slightly larger price than the snapshot so ordinary moves still fit.
+        const priceTemplate = layoutPrice === null ? '' : this.price(layoutPrice * 1.1);
+        text.set(cell.ticker, fitText(cell.ticker, priceTemplate, CHANGE_TEMPLATE, layoutPrice !== null, cell));
+      }
+    }
+    return text;
+  });
 
   readonly layout = computed(() => {
     const period = this.period();
+    const text = this.tileText();
     const stocks = new Map(this.stocks().map(stock => [stock.ticker, stock]));
     return this.geometry().map(({ cells, ...sector }) => ({
       ...sector,
-      tiles: cells.flatMap(cell => {
+      tiles: cells.flatMap<Tile>(cell => {
         const stock = stocks.get(cell.ticker);
-        return stock ? [this.tile(cell, stock, period)] : [];
+        if (!stock) return [];
+        return [{x:cell.x, y: cell.y, w: cell.w, h: cell.h, stock, text: text.get(cell.ticker) ?? null, ...tone(stock.change, period) }];
       })
     }));
   });
@@ -193,9 +216,16 @@ export class MarketHeatmapComponent implements AfterViewInit {
 
   readonly activeStock = computed(() => this.stocks().find(stock => stock.ticker === this.active()?.ticker) ?? null);
 
-  readonly peers = computed(() => {
+  /** Sparklines are built here, not in `stocks`: only these rows render one, and only while a panel is open. */
+  readonly peers = computed<Peer[]>(() => {
     const active = this.activeStock();
-    return active ? this.stocks().filter(stock => stock.sectorId === active.sectorId).sort((a, b) => a.rank - b.rank).slice(0, 10) : [];
+    if (!active) return [];
+    const histories = this.histories();
+    return this.stocks()
+      .filter(stock => stock.sectorId === active.sectorId)
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, 10)
+      .map(stock => ({ ...stock, spark: sparkline(stock, histories.get(stock.ticker)) }));
   });
 
   readonly panelPosition = computed(() => {
@@ -216,6 +246,7 @@ export class MarketHeatmapComponent implements AfterViewInit {
     private market: MarketDataService,
     private quotes: MarketQuoteService,
     private historyCache: HeatmapHistoryCache,
+    private translation: TranslationService,
     private destroyRef: DestroyRef,
     private host: ElementRef<HTMLElement>
   ) {
@@ -251,7 +282,7 @@ export class MarketHeatmapComponent implements AfterViewInit {
       },
       error: () => {
         this.loading.set(false);
-        this.error.set('Market data could not be loaded. The market service may be unavailable.');
+        this.error.set(this.translation.t('heatmap.load_error'));
       }
     });
   }
@@ -401,20 +432,25 @@ export class MarketHeatmapComponent implements AfterViewInit {
   private loadHistories(tickers: string[], keep = false): void {
     this.historySub?.unsubscribe();
     if (!keep) this.histories.set(new Map());
-    this.historySub = this.historyCache.load(tickers).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(([ticker, bars]) =>
+    // The cache emits per ticker, but the bars arrive in whole batches. Writing the map once per
+    // ticker would recompute every tile ~110 times during load, so coalesce into a few writes.
+    this.historySub = this.historyCache.load(tickers).pipe(
+      bufferTime(HISTORY_FLUSH_MS),
+      filter(batch => batch.length > 0),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(batch =>
       this.histories.update(current => {
-        const existing = current.get(ticker);
-        if (existing === bars || (bars === null && existing)) return current;
-        return new Map(current).set(ticker, bars);
+        const next = new Map(current);
+        let changed = false;
+        for (const [ticker, bars] of batch) {
+          const existing = next.get(ticker);
+          if (existing === bars || (bars === null && existing)) continue;
+          next.set(ticker, bars);
+          changed = true;
+        }
+        return changed ? next : current;
       })
     );
-  }
-
-  private tile(cell: Cell, stock: Stock, period: PerformancePeriod): Tile {
-    // Size text for a slightly larger price than the snapshot so ordinary live moves never change the layout.
-    const priceTemplate = stock.layoutPrice === null ? '' : this.price(stock.layoutPrice * 1.1);
-    const text = fitText(stock.ticker, priceTemplate, CHANGE_TEMPLATE, stock.layoutPrice !== null, cell);
-    return { x: cell.x, y: cell.y, w: cell.w, h: cell.h, stock, text, ...tone(stock.change, period) };
   }
 }
 

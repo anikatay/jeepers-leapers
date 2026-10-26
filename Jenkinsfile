@@ -92,8 +92,8 @@ pipeline {
                     # their trades, covering auth and both databases; does not call OpenAI
                     analysis_context_ready() {
                         token="$(curl -fsS -X POST -H 'Content-Type: application/json' \
-                            -d '{"email":"bob@example.com","password":"123"}' \
-                            "http://localhost:${app_host_port}/api/auth/login" | sed -n 's/.*"token":"\\([^"]*\\)".*/\\1/p')""
+                            -d '{"email":"bob@example.com","password":"abcd1234"}' \
+                            "http://localhost:${app_host_port}/api/auth/login" | sed -n 's/.*"token":"\\([^"]*\\)".*/\\1/p')"
                         [ -n "$token" ] && curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
                             "http://localhost:${app_host_port}/api/trades/c3000000-0000-0000-0000-000000000007/analysis/context"
                     }

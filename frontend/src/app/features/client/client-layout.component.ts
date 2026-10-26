@@ -2,7 +2,6 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router } from '@angular/router';
 import { NavbarComponent, NavItem } from '../../shared/components/navbar.component';
-import { TradeModalService } from '../../core/services/trade-modal.service';
 import { InstrumentService } from '../../core/services/instrument.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -12,21 +11,25 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterOutlet, NavbarComponent],
   template: `
-    <app-navbar 
-      [navItems]="navItems" 
-      [userName]="userName"
-      (profileOptionSelected)="onProfileOptionSelected($event)">
-    </app-navbar>
-    <router-outlet></router-outlet>
+    <div class="client-app" dir="ltr">
+      <app-navbar 
+        [navItems]="navItems" 
+        [userName]="userName"
+        (profileOptionSelected)="onProfileOptionSelected($event)">
+      </app-navbar>
+      <router-outlet></router-outlet>
+    </div>
   `,
-  styles: []
+  styles: [`
+    .client-app { min-height: 100%; }
+  `]
 })
 export class ClientLayoutComponent implements OnInit {
   navItems: NavItem[] = [
-    { label: 'Home', path: '/client' },
-    { label: 'Portfolio', path: '/client/portfolio' },
-    { label: 'Trades', path: '/client/trades' },
-    { label: 'Market Heatmap', path: '/client/heatmap' }
+    { label: 'nav.home', path: '/client' },
+    { label: 'nav.portfolio', path: '/client/portfolio' },
+    { label: 'nav.trades', path: '/client/trades' },
+    { label: 'nav.heatmap', path: '/client/heatmap' }
   ];
 
   userName: string;
@@ -34,7 +37,6 @@ export class ClientLayoutComponent implements OnInit {
   private allInstruments = signal<InstrumentResponse[]>([]);
 
   constructor(
-    private tradeModalService: TradeModalService,
     private instrumentService: InstrumentService,
     private router: Router,
     private authService: AuthService
@@ -95,7 +97,6 @@ export class ClientLayoutComponent implements OnInit {
   }
 
   private openTrade(instrument: InstrumentResponse) {
-    this.tradeModalService.openTradeModal(instrument, 'BUY');
-    this.router.navigate(['/client/portfolio']);
+    this.router.navigate(['/client/stock', instrument.ticker]);
   }
 }
