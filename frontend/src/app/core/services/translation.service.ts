@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { CLIENT_UI_TRANSLATIONS } from './client-ui-translations';
 import { CLIENT_UI_TRANSLATIONS_MORE } from './client-ui-translations-more';
 
-export type Language = 'en' | 'es' | 'bn' | 'hi' |  'pa' | 'te' | 'ta' | 'gu' | 'ga';
+export type Language = 'en' | 'es' | 'bn' | 'hi' | 'pa' | 'te' | 'ta' | 'gu' | 'ga' | 'ur';
 
 export interface LanguageOption {
   code: Language;
@@ -19,7 +19,8 @@ export const LANGUAGES: LanguageOption[] = [
   { code: 'te', englishName: 'Telugu', nativeName: 'తెలుగు' },
   { code: 'ta', englishName: 'Tamil', nativeName: 'தமிழ்' },
   { code: 'gu', englishName: 'Gujarati', nativeName: 'ગુજરાતી' },
-  { code: 'ga', englishName: 'Irish', nativeName: 'Gaeilge' }
+  { code: 'ga', englishName: 'Irish', nativeName: 'Gaeilge' },
+  { code: 'ur', englishName: 'Urdu', nativeName: 'اردو' }
 ];
 
 type TranslationKey = string;
@@ -42,6 +43,9 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'home.portfolio_value': 'Portfolio Value',
     'home.your_profile': 'Your Profile',
     'home.portfolio_performance': 'Portfolio Performance',
+    'home.portfolio_insights': 'Portfolio Insights',
+    'home.previous_portfolio_insights': 'Previous portfolio insights',
+    'home.next_portfolio_insights': 'Next portfolio insights',
     'home.view_investments': 'View Investments',
     'home.todays_gain': "Today's Gain",
     'home.overall_gain': 'Overall Gain',
@@ -118,6 +122,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.close': 'Close',
     'common.processing': 'Processing...',
     'common.invalid_quantity': 'Invalid quantity',
+    'common.not_available': 'N/A',
   },
   es: {
     'nav.home': 'Inicio',
@@ -794,6 +799,33 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.close': 'Dún',
     'common.processing': 'Ag Próiseáil...',
     'common.invalid_quantity': 'Méid Neamhbhailí',
+  },
+  ur: {
+    'nav.home': 'ہوم',
+    'nav.portfolio': 'پورٹ فولیو',
+    'nav.trades': 'تجارت',
+    'nav.profile': 'پروفائل',
+    'nav.settings': 'ترتیبات',
+    'nav.logout': 'لاگ آؤٹ',
+    'nav.theme': 'تھیم',
+    'nav.language': 'زبان',
+    'home.title': 'پورٹ فولیو ڈیش بورڈ',
+    'home.portfolio_value': 'پورٹ فولیو کی مالیت',
+    'home.portfolio_allocation': 'پورٹ فولیو کی تقسیم',
+    'home.total_value': 'کل مالیت',
+    'home.performance': 'کارکردگی',
+    'home.trading_history': 'تجارتی تاریخ',
+    'home.time': 'وقت',
+    'home.symbol': 'علامت',
+    'home.type': 'قسم',
+    'home.quantity': 'مقدار',
+    'home.price': 'قیمت',
+    'home.total': 'کل',
+    'home.view_all_trades': 'تمام تجارت دیکھیں',
+    'portfolio.title': 'پورٹ فولیو',
+    'portfolio.company': 'کمپنی',
+    'portfolio.no_holdings': 'کوئی ہولڈنگ نہیں ملی',
+    'common.not_available': 'دستیاب نہیں',
   }
 };
 

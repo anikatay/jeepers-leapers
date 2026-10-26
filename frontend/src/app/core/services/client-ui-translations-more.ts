@@ -1,14 +1,90 @@
 /** Extra Client UI strings. Irish extras live here; other languages use the main catalog plus English fallback. */
 export const CLIENT_UI_TRANSLATIONS_MORE: Record<string, Record<string, string>> = {
+  es: {
+    'common.not_available': 'No disponible',
+    'home.portfolio_insights': 'Perspectivas de la cartera',
+    'home.previous_portfolio_insights': 'Perspectivas anteriores de la cartera',
+    'home.next_portfolio_insights': 'Siguientes perspectivas de la cartera'
+  },
+  bn: {
+    'common.not_available': 'উপলব্ধ নয়',
+    'home.portfolio_insights': 'পোর্টফোলিও অন্তর্দৃষ্টি',
+    'home.previous_portfolio_insights': 'আগের পোর্টফোলিও অন্তর্দৃষ্টি',
+    'home.next_portfolio_insights': 'পরের পোর্টফোলিও অন্তর্দৃষ্টি'
+  },
+  hi: {
+    'common.not_available': 'उपलब्ध नहीं',
+    'home.portfolio_insights': 'पोर्टफोलियो अंतर्दृष्टि',
+    'home.previous_portfolio_insights': 'पिछली पोर्टफोलियो अंतर्दृष्टि',
+    'home.next_portfolio_insights': 'अगली पोर्टफोलियो अंतर्दृष्टि'
+  },
+  ur: {
+    'common.not_available': 'دستیاب نہیں',
+    'home.portfolio_insights': 'پورٹ فولیو کی بصیرت',
+    'home.previous_portfolio_insights': 'پچھلی پورٹ فولیو بصیرت',
+    'home.next_portfolio_insights': 'اگلی پورٹ فولیو بصیرت'
+  },
+  pa: {
+    'common.not_available': 'ਉਪਲਬਧ ਨਹੀਂ',
+    'home.portfolio_insights': 'ਪੋਰਟਫੋਲੀਓ ਜਾਣਕਾਰੀ',
+    'home.previous_portfolio_insights': 'ਪਿਛਲੀ ਪੋਰਟਫੋਲੀਓ ਜਾਣਕਾਰੀ',
+    'home.next_portfolio_insights': 'ਅਗਲੀ ਪੋਰਟਫੋਲੀਓ ਜਾਣਕਾਰੀ',
+    'nav.search_placeholder': 'ਕੰਪਨੀ ਜਾਂ ਚਿੰਨ੍ਹ ਦਰਜ ਕਰੋ (ਉਦਾਹਰਨ ਲਈ AAPL, TSLA, NVDA)',
+    'home.greeting_morning': 'ਸ਼ੁਭ ਸਵੇਰ, {{name}}!',
+    'home.greeting_afternoon': 'ਸ਼ੁਭ ਦੁਪਹਿਰ, {{name}}!',
+    'home.greeting_evening': 'ਸ਼ੁਭ ਸ਼ਾਮ, {{name}}!',
+    'home.overview_subtitle': 'ਅੱਜ ਲਈ ਤੁਹਾਡੇ ਪੋਰਟਫੋਲੀਓ ਦਾ ਸੰਖੇਪ।'
+  },
+  te: {
+    'common.not_available': 'అందుబాటులో లేదు',
+    'home.portfolio_insights': 'పోర్ట్‌ఫోలియో అంతర్దృష్టులు',
+    'home.previous_portfolio_insights': 'మునుపటి పోర్ట్‌ఫోలియో అంతర్దృష్టులు',
+    'home.next_portfolio_insights': 'తదుపరి పోర్ట్‌ఫోలియో అంతర్దృష్టులు',
+    'nav.search_placeholder': 'కంపెనీ లేదా సింబల్ నమోదు చేయండి (ఉదా. AAPL, TSLA, NVDA)',
+    'home.greeting_morning': 'శుభోదయం, {{name}}!',
+    'home.greeting_afternoon': 'శుభ మధ్యాహ్నం, {{name}}!',
+    'home.greeting_evening': 'శుభ సాయంత్రం, {{name}}!',
+    'home.overview_subtitle': 'ఈ రోజు మీ పోర్ట్‌ఫోలియో అవలోకనం.'
+  },
+  ta: {
+    'common.not_available': 'கிடைக்கவில்லை',
+    'home.portfolio_insights': 'போர்ட்ஃபோலியோ பார்வைகள்',
+    'home.previous_portfolio_insights': 'முந்தைய போர்ட்ஃபோலியோ பார்வைகள்',
+    'home.next_portfolio_insights': 'அடுத்த போர்ட்ஃபோலியோ பார்வைகள்',
+    'nav.search_placeholder': 'நிறுவனம் அல்லது குறியீட்டை உள்ளிடவும் (எ.கா. AAPL, TSLA, NVDA)',
+    'home.greeting_morning': 'காலை வணக்கம், {{name}}!',
+    'home.greeting_afternoon': 'மதிய வணக்கம், {{name}}!',
+    'home.greeting_evening': 'மாலை வணக்கம், {{name}}!',
+    'home.overview_subtitle': 'இன்றைய உங்கள் போர்ட்ஃபோலியோ கண்ணோட்டம்.'
+  },
+  gu: {
+    'common.not_available': 'ઉપલબ્ધ નથી',
+    'home.portfolio_insights': 'પોર્ટફોલિયો ઝલક',
+    'home.previous_portfolio_insights': 'પહેલાની પોર્ટફોલિયો ઝલક',
+    'home.next_portfolio_insights': 'આગામી પોર્ટફોલિયો ઝલક',
+    'nav.search_placeholder': 'કંપની અથવા સિમ્બોલ દાખલ કરો (દા.ત. AAPL, TSLA, NVDA)',
+    'home.greeting_morning': 'સુપ્રભાત, {{name}}!',
+    'home.greeting_afternoon': 'શુભ બપોર, {{name}}!',
+    'home.greeting_evening': 'શુભ સાંજ, {{name}}!',
+    'home.overview_subtitle': 'આજના તમારા પોર્ટફોલિયોનો અવલોકન.'
+  },
   ga: {
+    'common.not_available': 'Níl ar fáil',
+    'home.portfolio_insights': 'Léargais ar an bPunann',
+    'home.previous_portfolio_insights': 'Léargais roimhe seo ar an bPunann',
+    'home.next_portfolio_insights': 'Na chéad léargais eile ar an bPunann',
     'nav.select_language': 'Roghnaigh Teanga',
     'nav.hi': 'Haigh,',
     'nav.sign_out': 'Logáil Amach',
-    'nav.search_placeholder': 'Cuardaigh Apple, Tesla, Nvidia…',
+    'nav.search_placeholder': 'Cuir isteach cuideachta nó siombail (m.sh. AAPL, TSLA, NVDA)',
     'nav.search_aria': 'Cuardaigh stoic de réir ainm cuideachta nó siombail',
     'nav.trade': 'Trádáil',
     'nav.no_results': 'Níor aimsíodh aon torthaí',
     'nav.main_navigation': 'Príomhnascleanúint',
+    'home.greeting_morning': 'Maidin mhaith, {{name}}!',
+    'home.greeting_afternoon': 'Tráthnóna maith, {{name}}!',
+    'home.greeting_evening': 'Dea-thráthnóna, {{name}}!',
+    'home.overview_subtitle': 'Seo forbhreathnú ar do phunann don lá inniu.',
     'home.your_profile': 'Do Phróifíl',
     'home.portfolio_performance': 'Feidhmíocht an Phunainn',
     'home.view_investments': 'Féach ar Infheistíochtaí',
@@ -93,7 +169,6 @@ export const CLIENT_UI_TRANSLATIONS_MORE: Record<string, Record<string, string>>
     'trade.of': 'de',
     'trade.execution_price': 'Praghas forghníomhaithe',
     'trade.order_amount': 'Méid an ordaithe',
-    'trade.available_cash': 'Airgead ar fáil',
     'trade.done': 'Déanta',
     'trade.place_another': 'Cuir ordú eile',
     'trade.market_price': 'Praghas an mhargaidh',
