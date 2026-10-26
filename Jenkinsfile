@@ -119,4 +119,12 @@ pipeline {
             }
         }
     }
+    post {
+        always {
+            sh '''
+                set -eu
+                docker-compose down --remove-orphans
+            '''
+        }
+    }
 }
