@@ -116,12 +116,10 @@ public class TradeController {
     @GetMapping("/{tradeId}/analysis/context")
     public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable(name = "tradeId") UUID tradeId,
             @AuthenticationPrincipal Jwt jwt) {
-<<<<<<< HEAD
-        return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId, userIdOf(jwt)));
-=======
+
         return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId,
                 authorizationService.getAuthenticatedUserId(jwt)));
->>>>>>> main
+
     }
 
 }

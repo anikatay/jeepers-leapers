@@ -85,6 +85,14 @@ curl -sS http://localhost:8093/health | jq
 to the sidecar stream. Set it to `false` when running the sidecar without the
 background sector stream.
 
+## Analyst dashboard loading
+
+The analyst dashboard initially loads its instrument catalog and trade snapshot
+without fetching market history for the full catalog. Chart history is requested
+separately for the two initially selected instruments, then on demand when an
+instrument is selected. Loaded histories are reused until the dashboard reloads;
+chart loading and retry errors are displayed independently of dashboard data.
+
 ## AI Trade Analysis
 
 Reviews any trade on request with OpenAI and returns a verdict (`GOOD`, `MIXED`, `POOR` or

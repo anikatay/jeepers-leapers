@@ -19,10 +19,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.math.BigDecimal;
-<<<<<<< HEAD
-=======
+
 import java.time.Duration;
->>>>>>> main
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;

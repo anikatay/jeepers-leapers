@@ -137,19 +137,6 @@ public class AccountService implements IService {
         }
 
         UUID accountId = accountMapper.findAccountIdByUserId(userId);
-<<<<<<< HEAD
-        if (accountId == null) {
-            return null;
-        }
-        return accountId;
-    }
-
-    public UUID findAccountIdByUserId(UUID userId) {
-        if (userId == null) {
-            return null;
-        }
-        return accountMapper.findAccountIdByUserId(userId);
-=======
 
         return accountId;
     }
@@ -160,7 +147,6 @@ public class AccountService implements IService {
             throw new ObjectNotFoundException("User ID cannot be null");
         }
         return null;
->>>>>>> main
     }
 
     @Transactional 

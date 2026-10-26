@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.neueda.leap.dto.request.analytics.DashboardFlowRequest;
 import com.neueda.leap.dto.request.analytics.DashboardRangeRequest;
@@ -101,8 +102,12 @@ public class AnalyticsController {
     @GetMapping("/instruments/{ticker}/prices")
     public PriceHistoryResponse getInstrumentPrices(
             @PathVariable String ticker,
-            @RequestBody PriceHistoryRequest request) {
-        PriceHistory history = instrumentService.getPriceHistory(toModel(ticker, request));
+            @RequestBody(required = false) PriceHistoryRequest request,
+            @RequestParam(defaultValue = "day") String interval) {
+        PriceHistoryRequest effectiveRequest = request == null
+                ? new PriceHistoryRequest(null, null, interval)
+                : request;
+        PriceHistory history = instrumentService.getPriceHistory(toModel(ticker, effectiveRequest));
         return PriceHistoryResponse.from(history);
     }
 

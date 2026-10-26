@@ -4,30 +4,24 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-<<<<<<< HEAD
+
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-=======
+
 import org.springframework.http.HttpMethod;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
->>>>>>> main
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
-<<<<<<< HEAD
 import java.util.Base64;
-import java.util.List;
-=======
+
 import com.neueda.leap.util.JwtSecret;
-import java.util.Base64;
->>>>>>> main
+
 
 @Configuration
 public class SecurityConfig {
@@ -49,22 +43,14 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
-<<<<<<< HEAD
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            String role = jwt.getClaimAsString("role");
-            return role == null || role.isBlank()
-                    ? List.of()
-                    : List.of(new SimpleGrantedAuthority(role));
-        });
-=======
+
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
         authoritiesConverter.setAuthoritiesClaimName("role");
         authoritiesConverter.setAuthorityPrefix("");
 
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
->>>>>>> main
+
         return converter;
     }
 
@@ -81,15 +67,12 @@ public class SecurityConfig {
                         // Admin endpoints - ADMIN role only
                         .requestMatchers("/admin/**", "/api/admin/**").hasAuthority("ROLE_ADMIN")
                         
-<<<<<<< HEAD
+
                         // Analyst UI and analytics data - ANALYST role only
                         .requestMatchers("/analyst/**").hasRole("ANALYST")
                         .requestMatchers("/api/analytics/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/analytics/**").hasRole("ANALYST")
-=======
-                        // Analyst endpoints - ANALYST or ADMIN role
-                        .requestMatchers("/analyst/**").hasAnyRole("ANALYST", "ADMIN")
->>>>>>> main
+
                         
                         // Live market quotes over websockets -public, same as /api/market
                         .requestMatchers("/ws/**").permitAll()

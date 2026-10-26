@@ -8,10 +8,9 @@ import com.neueda.leap.dto.response.InstrumentResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.dto.response.QuoteStatus;
-<<<<<<< HEAD
+
 import com.neueda.leap.dto.response.PriceBar;
-=======
->>>>>>> main
+
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
@@ -196,20 +195,13 @@ public class InstrumentService implements IService {
         Instrument instrument = getInstrumentById(instrumentId);
 
         Optional<MarketQuote> latestQuote = marketDataService.getLatestQuote(instrument.getTicker());
-<<<<<<< HEAD
-        if (latestQuote.isPresent()
-                && !QuoteStatus.LIVE.equals(latestQuote.get().status())) {
-            throw new ObjectInvalidException(
-                    "Unable to make trade at the moment; live quote unavailable");
-        }
-        if (latestQuote.isPresent() && isFresh(latestQuote.get().quoteTime())
-=======
+
         boolean cachedQuoteIsStale = latestQuote.isPresent()
                 && !QuoteStatus.LIVE.equals(latestQuote.get().status());
         if (latestQuote.isPresent()
                 && QuoteStatus.LIVE.equals(latestQuote.get().status())
                 && isFresh(latestQuote.get().quoteTime())
->>>>>>> main
+
                 && isNewerThanInstrument(latestQuote.get(), instrument)) {
             MarketQuote quote = latestQuote.get();
             instrument.setCurrentPrice(quote.price());
@@ -246,16 +238,11 @@ public class InstrumentService implements IService {
                         "Unable to make trade at the moment; live quote unavailable");
             }
 
-<<<<<<< HEAD
-            PriceBar latest = history.bars().get(history.bars().size() - 1);
-            instrument.setCurrentPrice(latest.close());
-            instrument.setUpdatedAt(
-                    latest.date().atStartOfDay(ZoneOffset.UTC).toOffsetDateTime());
-=======
+
             instrument.setCurrentPrice(liveQuote.price());
             instrument.setUpdatedAt(
                     liveQuote.quoteTime().atOffset(ZoneOffset.UTC));
->>>>>>> main
+
 
             int updated = instrumentMapper.updatePrice(instrument);
             if (updated < 1) {

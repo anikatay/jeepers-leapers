@@ -95,7 +95,10 @@ public class DashboardService {
         Map<String, List<PriceBar>> history = new LinkedHashMap<>();
         Map<String, List<PriceBar>> intraday = new LinkedHashMap<>();
 
-        for (Instrument instrument : instruments) {
+        List<Instrument> historyInstruments = validatedQuery.symbols() == null || validatedQuery.symbols().isEmpty()
+                ? List.of()
+                : instruments;
+        for (Instrument instrument : historyInstruments) {
             String ticker = instrument.getTicker();
             PriceHistory priceHistory = instrumentService.getPriceHistory(
                     new PriceHistoryQuery(ticker, validatedQuery.from(), validatedQuery.to(), "day"));

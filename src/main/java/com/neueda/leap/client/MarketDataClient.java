@@ -6,11 +6,8 @@ import com.neueda.leap.dto.response.IntradayHistoryResponse;
 import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketSectorCatalog;
-<<<<<<< HEAD
-=======
 import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.dto.response.NewsResponse;
->>>>>>> main
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectInvalidException;
 

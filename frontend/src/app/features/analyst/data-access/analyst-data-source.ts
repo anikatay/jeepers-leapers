@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, map, of } from 'rxjs';
 
 export interface AnalystInstrument {
   instrumentId: string;
@@ -42,6 +42,7 @@ export interface AnalystSnapshot {
 
 export abstract class AnalystDataSource {
   abstract load(): Observable<AnalystSnapshot>;
+  abstract loadHistory(ticker: string): Observable<PriceBar[]>;
 }
 
 @Injectable()
@@ -52,6 +53,12 @@ export class AnalystApiDataSource implements AnalystDataSource {
 
   load(): Observable<AnalystSnapshot> {
     return this.http.get<AnalystSnapshot>(this.snapshotUrl);
+  }
+
+  loadHistory(ticker: string): Observable<PriceBar[]> {
+    return this.http.get<{ bars: PriceBar[] }>(
+      `/api/analytics/instruments/${encodeURIComponent(ticker)}/prices`
+    ).pipe(map(response => response.bars));
   }
 }
 
@@ -73,6 +80,10 @@ type Profile = (typeof PROFILES)[number];
 export class AnalystMockDataSource implements AnalystDataSource {
   load(): Observable<AnalystSnapshot> {
     return of(buildSnapshot(new Date()));
+  }
+
+  loadHistory(ticker: string): Observable<PriceBar[]> {
+    return of(buildSnapshot(new Date()).history[ticker] ?? []);
   }
 }
 

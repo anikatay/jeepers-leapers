@@ -46,13 +46,9 @@ CREATE TABLE IF NOT EXISTS analytics.dim_exchanges (
     name VARCHAR(255) NOT NULL,
     region VARCHAR(64) NOT NULL,
     timezone VARCHAR(32) NOT NULL,
-<<<<<<< HEAD
-    currency VARCHAR(8) NOT NULL CHECK (currency IN ('USD', 'EUR', 'INR', 'GBP')),
-=======
     -- No currency list here: the app's schema validates currencies, and a copy of its list
     -- here stops the whole pipeline whenever the app supports a new one
     currency VARCHAR(8) NOT NULL,
->>>>>>> main
     etl_run_id VARCHAR(255),
     etl_timestamp TIMESTAMPTZ DEFAULT NOW()
 );
