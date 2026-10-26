@@ -37,6 +37,9 @@ class SecurityConfigTest {
     @BeforeEach
     void setUp() throws JwtException {
         when(jwtDecoder.decode("valid-token")).thenReturn(validJwt());
+        when(jwtDecoder.decode("analyst-token")).thenReturn(jwtWithRole("ROLE_ANALYST"));
+        when(jwtDecoder.decode("customer-token")).thenReturn(jwtWithRole("ROLE_CUSTOMER"));
+        when(jwtDecoder.decode("admin-token")).thenReturn(jwtWithRole("ROLE_ADMIN"));
         when(jwtDecoder.decode("malformed-token")).thenThrow(new JwtException("Invalid token"));
     }
 
@@ -73,6 +76,18 @@ class SecurityConfigTest {
                 .andExpect(status().isForbidden());
     }
 
+        @Test
+        void analyticsRequireAnalystRoleAndRefreshRequiresAdminRole() throws Exception {
+        mockMvc.perform(get("/api/analytics/status").header("Authorization", "Bearer analyst-token"))
+            .andExpect(status().isOk());
+        mockMvc.perform(get("/api/analytics/status").header("Authorization", "Bearer customer-token"))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/analytics/admin/status").header("Authorization", "Bearer analyst-token"))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/analytics/admin/status").header("Authorization", "Bearer admin-token"))
+            .andExpect(status().isOk());
+        }
+
     // Verifies malformed bearer tokens are rejected by the resource server.
     @Test
     void malformedBearerTokenIsUnauthorized() throws Exception {
@@ -92,6 +107,16 @@ class SecurityConfigTest {
                 .build();
     }
 
+    private Jwt jwtWithRole(String role) {
+        return Jwt.withTokenValue(role + "-token")
+                .header("alg", "HS256")
+                .subject("alex@example.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("role", role)
+                .build();
+    }
+
     @Configuration
     @Import(SecurityConfig.class)
     static class TestConfiguration {
@@ -101,7 +126,8 @@ class SecurityConfigTest {
     static class TestEndpoints {
 
         @GetMapping({"/api/auth/login", "/public/status", "/api/status", "/admin/status",
-                "/analyst/status", "/holdings/status", "/trades/status"})
+            "/analyst/status", "/holdings/status", "/trades/status", "/api/analytics/status",
+            "/api/analytics/admin/status"})
         String status() {
             return "ok";
         }

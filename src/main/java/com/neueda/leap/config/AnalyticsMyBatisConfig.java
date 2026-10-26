@@ -4,8 +4,7 @@ import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-
-import org.apache.ibatis.annotations.Mapper;
+import com.neueda.leap.mapper.OltpMapper;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
@@ -17,16 +16,19 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FullyQualifiedAnnotationBeanNameGenerator;
+import org.springframework.context.annotation.Primary;
 
 @Configuration
 @MapperScans({
-        @MapperScan(
-                basePackages = "com.neueda.leap.mapper",
-                annotationClass = Mapper.class,
-                sqlSessionTemplateRef = "oltpSqlSessionTemplate"),
-        @MapperScan(
-                basePackages = "com.neueda.leap.mapper.analytics",
-                sqlSessionTemplateRef = "analyticsSqlSessionTemplate")
+    @MapperScan(
+        basePackages = "com.neueda.leap.mapper",
+        markerInterface = OltpMapper.class,
+        sqlSessionTemplateRef = "oltpSqlSessionTemplate"),
+    @MapperScan(
+        basePackages = "com.neueda.leap.mapper.analytics",
+        nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class,
+        sqlSessionTemplateRef = "analyticsSqlSessionTemplate")
 })
 public class AnalyticsMyBatisConfig implements DisposableBean {
 
@@ -50,6 +52,7 @@ public class AnalyticsMyBatisConfig implements DisposableBean {
     }
 
     @Bean(name = "oltpSqlSessionFactory")
+    @Primary
     public SqlSessionFactory oltpSqlSessionFactory(DataSource dataSource) throws Exception {
         return createSqlSessionFactory(dataSource);
     }
@@ -60,6 +63,7 @@ public class AnalyticsMyBatisConfig implements DisposableBean {
     }
 
     @Bean(name = "oltpSqlSessionTemplate")
+    @Primary
     public SqlSessionTemplate oltpSqlSessionTemplate(
             @Qualifier("oltpSqlSessionFactory") SqlSessionFactory sqlSessionFactory) {
         return new SqlSessionTemplate(sqlSessionFactory);

@@ -14,7 +14,6 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,8 +23,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;
 import java.util.UUID;
@@ -45,7 +42,11 @@ public class TradeController {
         this.authorizationService = authorizationService;
         this.tradeAnalysisService = tradeAnalysisService;
         this.analysisRateLimiter = analysisRateLimiter;
-    private final AuthorizationService authorizationService;
+    }
+    
+    private UUID userIdOf(Jwt jwt) {
+        return authorizationService.getAuthenticatedUserId(jwt);
+    }
 
 
     
@@ -116,15 +117,6 @@ public class TradeController {
     public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable UUID tradeId,
             @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId, userIdOf(jwt)));
-    }
-
-    // JwtUtil puts the user's ID in every token it issues
-    private static UUID userIdOf(Jwt jwt) {
-        String userId = jwt.getClaimAsString("userId");
-        if (userId == null) {
-            throw new BadCredentialsException("Token has no userId claim");
-        }
-        return UUID.fromString(userId);
     }
 
 }

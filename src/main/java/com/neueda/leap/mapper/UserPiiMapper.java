@@ -11,7 +11,7 @@ import java.util.UUID;
 import java.time.LocalDate;
 
 @Mapper
-public interface UserPiiMapper {
+public interface UserPiiMapper extends OltpMapper {
     
     @Select("SELECT * FROM user_pii WHERE user_id = #{userId}")
     UserPii getUserPiiById(UUID userId);

@@ -82,9 +82,16 @@ public class AccountService implements IService {
 
         UUID accountId = accountMapper.findAccountIdByUserId(userId);
         if (accountId == null) {
-            throw new ObjectNotFoundException("Account not found for user ID: " + userId);
+            return null;
         }
         return accountId;
+    }
+
+    public UUID findAccountIdByUserId(UUID userId) {
+        if (userId == null) {
+            return null;
+        }
+        return accountMapper.findAccountIdByUserId(userId);
     }
 
     @Transactional 
