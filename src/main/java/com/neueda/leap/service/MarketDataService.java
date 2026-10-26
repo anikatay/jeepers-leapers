@@ -13,6 +13,7 @@ import com.neueda.leap.dto.response.PriceBar;
 import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.dto.response.MarketSector;
 import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.NewsResponse;
 import com.neueda.leap.dto.response.MarketSectorTicker;
 import com.neueda.leap.dto.response.QuoteStatus;
 import com.neueda.leap.websocket.MarketQuoteWebSocketHandler;
@@ -55,6 +56,13 @@ public class MarketDataService implements IService {
     private static final String FETCH_PERIOD = "5y";
     private static final String NOT_FOUND_MARKER = "NOT_FOUND";
     private static final Duration HISTORY_TTL = Duration.ofHours(6);
+
+    private static final Duration INTRADAY_HISTORY_TTL = Duration.ofSeconds(60);
+    private static final String INTRADAY_HISTORY_PREFIX = "history:intraday:";
+
+    /** Headlines move on the order of minutes and every client asks for the same few tickers. */
+    private static final Duration NEWS_TTL = Duration.ofMinutes(5);
+    private static final String NEWS_PREFIX = "news:";
     private static final Duration NOT_FOUND_TTL = Duration.ofMinutes(10);
     private static final int HISTORY_BATCH_SIZE = 50;
     private static final String BATCH_HISTORY_PREFIX = "history:batch:";
@@ -180,7 +188,84 @@ public class MarketDataService implements IService {
         return result;
     }
     public IntradayHistoryResponse getIntradayHistory(String rawTicker) {
-        return client.fetchIntradayHistory(normalizeTicker(rawTicker));
+        String ticker = normalizeTicker(rawTicker);
+        String cacheKey = INTRADAY_HISTORY_PREFIX + ticker;
+
+        String cached = readCache(cacheKey);
+        if (NOT_FOUND_MARKER.equals(cached)) {
+            throw new ObjectNotFoundException("No intraday market data for " + ticker);
+        }
+        if (cached != null) {
+            try {
+                IntradayHistoryResponse parsed =
+                        objectMapper.readValue(cached, IntradayHistoryResponse.class);
+                if (parsed.bars() != null && !parsed.bars().isEmpty()) {
+                    return parsed;
+                }
+                log.warn("Cached intraday history has no bars for {}", ticker);
+            } catch (JsonProcessingException e) {
+                log.warn("Discarding unreadable cache entry {}", cacheKey, e);
+            }
+        }
+
+        try {
+            IntradayHistoryResponse fresh = client.fetchIntradayHistory(ticker);
+            try {
+                writeCache(cacheKey, objectMapper.writeValueAsString(fresh), INTRADAY_HISTORY_TTL);
+            } catch (JsonProcessingException e) {
+                log.warn("Could not serialize intraday history for {}", ticker, e);
+            }
+            return fresh;
+        } catch (ObjectNotFoundException e) {
+            writeCache(cacheKey, NOT_FOUND_MARKER, NOT_FOUND_TTL);
+            throw e;
+        }
+    }
+
+    /**
+     * Headlines for the given tickers, newest first. The whole response is cached under the
+     * normalised ticker set, so the usual case — every client on the home page asking about
+     * the same holdings — costs one upstream call per TTL rather than one per visitor.
+     */
+    public NewsResponse getNews(String rawTickers, int limit) {
+        Set<String> tickers = normalizeTickers(rawTickers);
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        String cacheKey = NEWS_PREFIX + safeLimit + ":" + String.join(",", tickers);
+
+        String cached = readCache(cacheKey);
+        if (cached != null) {
+            try {
+                NewsResponse parsed = objectMapper.readValue(cached, NewsResponse.class);
+                if (parsed.items() != null) {
+                    return parsed;
+                }
+            } catch (JsonProcessingException e) {
+                log.warn("Discarding unreadable cache entry {}", cacheKey, e);
+            }
+        }
+
+        NewsResponse fresh = client.fetchNews(tickers, safeLimit);
+        try {
+            writeCache(cacheKey, objectMapper.writeValueAsString(fresh), NEWS_TTL);
+        } catch (JsonProcessingException e) {
+            log.warn("Could not serialize news for {}", cacheKey, e);
+        }
+        return fresh;
+    }
+
+    public Map<String, IntradayHistoryResponse> getIntradayHistoryBatch(String rawTickers) {
+        Set<String> tickers = normalizeTickers(rawTickers);
+        Map<String, IntradayHistoryResponse> result = new LinkedHashMap<>();
+
+        for (String ticker : tickers) {
+            try {
+                result.put(ticker, getIntradayHistory(ticker));
+            } catch (RuntimeException e) {
+                log.warn("No intraday history for {}", ticker, e);
+                result.put(ticker, new IntradayHistoryResponse(ticker, "1d", List.of()));
+            }
+        }
+        return result;
     }
 
     public MarketQuote cacheLatestQuote(MarketQuote quote) {
@@ -235,6 +320,29 @@ public class MarketDataService implements IService {
         return withStatus(
                 cached.quote(),
                 resolveQuoteStatus(ticker, cached.live()));
+    }
+
+    /**
+     * The cached quote, falling back to a live fetch when nothing is cached.
+     *
+     * <p>The quote cache is fed by the stream, and the stream only carries the sidecar's
+     * configured sector universe plus whatever a page has transiently subscribed. Everything
+     * outside that — crypto, LSE, NSE, and the rest of the seeded instruments — never gets a
+     * cached quote, so a snapshot read would fail for it indefinitely even though the price is
+     * one call away. This is the same cache-then-fetch order the trade path already uses in
+     * InstrumentService#refreshPriceIfStale.
+     *
+     * <p>Deliberately separate from {@link #getQuoteSnapshot}: the heatmap resolves ~110 tickers
+     * in a loop and relies on the not-found signal to render an UNAVAILABLE tile, so it must not
+     * pay for a fetch per empty tile.
+     */
+    public MarketQuote getQuoteOrFetch(String rawTicker) {
+        String ticker = normalizeTicker(rawTicker);
+        return readCachedQuote(ticker)
+                .map(cached -> withStatus(cached.quote(), resolveQuoteStatus(ticker, cached.live())))
+                // A freshly fetched quote is live by definition, but it still goes through
+                // resolveQuoteStatus so a closed session is reported as CLOSED rather than LIVE.
+                .orElseGet(() -> withStatus(fetchLiveQuote(ticker), resolveQuoteStatus(ticker, true)));
     }
 
     public MarketSectorCatalog getSectorCatalog() {

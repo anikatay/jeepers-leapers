@@ -8,6 +8,7 @@ import com.neueda.leap.dto.response.MarketHeatmapResponse;
 import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.dto.response.MarketSector;
 import com.neueda.leap.dto.response.MarketSectorCatalog;
+import com.neueda.leap.dto.response.NewsResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +37,18 @@ public class MarketDataController {
 		return marketDataService.getHistoryBatch(tickers, period);
 	}
 
+	@GetMapping("/news")
+	public NewsResponse news(
+			@RequestParam String tickers,
+			@RequestParam(defaultValue = "8") int limit) {
+		return marketDataService.getNews(tickers, limit);
+	}
+
+	@GetMapping("/history/intraday/batch")
+	public Map<String, IntradayHistoryResponse> intradayHistoryBatch(@RequestParam String tickers) {
+		return marketDataService.getIntradayHistoryBatch(tickers);
+	}
+
 	@GetMapping("/{ticker}/history")
 	public HistoryResponse history(@PathVariable String ticker,
 									@RequestParam(defaultValue = "1y") String period) {
@@ -49,7 +62,7 @@ public class MarketDataController {
 
 	@GetMapping("/{ticker}/quote")
 	public MarketQuote quote(@PathVariable String ticker) {
-		return marketDataService.getQuoteSnapshot(ticker);
+		return marketDataService.getQuoteOrFetch(ticker);
 	}
 
 	@GetMapping("/sectors")

@@ -12,6 +12,7 @@ import { NavbarComponent, NavItem } from '../../shared/components/navbar.compone
       [homePath]="'/admin'"
       [navItems]="navItems"
       [showSearch]="false"
+      [showSectorMovers]="false"
       [userName]="userName"
       [brandName]="'Bull Exchange'"
       (profileOptionSelected)="onProfileOptionSelected($event)">

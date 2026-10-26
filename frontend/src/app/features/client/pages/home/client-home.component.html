@@ -43,7 +43,7 @@
             </div>
             <div class="stat-content">
               <p class="stat-label">{{ 'home.todays_gain' | translate }}</p>
-              <p class="stat-value font-mono-data" [class.positive]="!todaysGain().startsWith('-')" [class.negative]="todaysGain().startsWith('-')">{{ todaysGain() }}</p>
+              <p class="stat-value font-mono-data" [class.positive]="todaysGain().startsWith('+')" [class.negative]="todaysGain().startsWith('-')">{{ todaysGain() }}</p>
             </div>
           </div>
 
@@ -58,7 +58,7 @@
             </div>
             <div class="stat-content">
               <p class="stat-label">{{ 'home.overall_gain' | translate }}</p>
-              <p class="stat-value font-mono-data" [class.positive]="!overallGain().startsWith('-')" [class.negative]="overallGain().startsWith('-')">{{ overallGain() }}</p>
+              <p class="stat-value font-mono-data" [class.positive]="overallGain().startsWith('+')" [class.negative]="overallGain().startsWith('-')">{{ overallGain() }}</p>
             </div>
           </div>
           <!-- Cash Remaining -->
@@ -76,24 +76,36 @@
           </div>
 
         </div>
+
+        <!-- Headlines for the tickers the viewer actually holds -->
+        <app-market-news [tickers]="newsTickers()"></app-market-news>
       </div>
 
       <!-- Right column: Portfolio Allocation (Pie Chart) -->
       <div class="allocation-section">
-        <h2 class="section-title font-display">Portfolio Allocation</h2>
+        <h2 class="section-title font-display">{{ 'home.portfolio_allocation' | translate }}</h2>
         <div class="allocation-content">
           <!-- Pie Chart (SVG) -->
-          <div class="pie-chart-wrapper">
-            <svg class="pie-chart" viewBox="0 0 200 200" aria-label="Portfolio allocation pie chart">
+          <div class="pie-chart-wrapper" dir="ltr">
+            <svg class="pie-chart" viewBox="0 0 200 200" [class.donut-entrance]="donutEntrance()" [attr.aria-label]="'home.portfolio_allocation' | translate">
+              <defs>
+                <mask id="client-home-donut-reveal" maskUnits="userSpaceOnUse">
+                  <circle class="donut-reveal-sweep" cx="100" cy="100" r="45" fill="none"
+                          stroke="#fff" stroke-width="90" pathLength="1"
+                          transform="rotate(-90 100 100)" />
+                </mask>
+              </defs>
               <!-- Dynamic pie slices based on real holdings -->
-              <path *ngFor="let slice of pieSlices(); let i = index"
-                    [attr.d]="slice.d"
-                    [attr.fill]="slice.color"
-                    [attr.opacity]="activePieIndex() === undefined || activePieIndex() === i ? '1' : '0.55'"
-                    (mouseenter)="setPieActive(i)"
-                    (mouseleave)="clearPieActive()"
-                    (click)="holdings()[i] && onStockClick(holdings()[i])"
-                    class="pie-slice" />
+              <g [attr.mask]="donutEntrance() ? 'url(#client-home-donut-reveal)' : null">
+                <path *ngFor="let slice of pieSlices(); let i = index"
+                      [attr.d]="slice.d"
+                      [attr.fill]="slice.color"
+                      [attr.opacity]="activePieIndex() === undefined || activePieIndex() === i ? '1' : '0.55'"
+                      (pointerenter)="onPieEnter(i, $event)"
+                      (pointerleave)="onPieLeave($event)"
+                      (pointerup)="onPieUp(i, $event)"
+                      class="pie-slice" />
+              </g>
 
               <!-- Center circle overlay (donut) -->
               <circle cx="100" cy="100" r="50" fill="var(--card)" />
@@ -103,6 +115,31 @@
             <div class="pie-center-text">
               <p class="pie-value font-mono-data">{{ portfolioValue() }}</p>
               <p class="pie-label">{{ 'home.total_value' | translate }}</p>
+            </div>
+
+            <div class="pie-tooltip" *ngIf="pieTooltip() as tip" role="tooltip">
+              <div class="pie-tip-head">
+                <span class="pie-tip-name">{{ tip.name }}</span>
+                <span class="pie-tip-ticker font-mono-data">{{ tip.ticker }}</span>
+              </div>
+              <div class="pie-tip-row">
+                <span>{{ 'stock.shares_owned' | translate }}</span>
+                <span class="font-mono-data">{{ tip.shares }}</span>
+              </div>
+              <div class="pie-tip-row">
+                <span>{{ 'stock.market_value' | translate }}</span>
+                <span class="font-mono-data">{{ tip.marketValue }}</span>
+              </div>
+              <div class="pie-tip-row">
+                <span>{{ 'home.portfolio_allocation' | translate }}</span>
+                <span class="font-mono-data">{{ tip.allocation }}</span>
+              </div>
+              <div class="pie-tip-row">
+                <span>{{ 'portfolio.gain_loss' | translate }}</span>
+                <span class="font-mono-data"
+                      [class.positive]="tip.pnlTone === 'positive'"
+                      [class.negative]="tip.pnlTone === 'negative'">{{ tip.pnl }}</span>
+              </div>
             </div>
           </div>
 
@@ -150,13 +187,14 @@
         </div>
 
         <!-- Portfolio performance chart, driven by /api/market/{ticker}/history -->
-        <div class="chart-container">
+        <div class="chart-container" dir="ltr">
           <app-portfolio-chart
             *ngIf="chartPoints().length > 0"
             [points]="chartPoints()"
+            [currency]="accountCurrency()"
           ></app-portfolio-chart>
-          <p *ngIf="chartLoading()" class="chart-empty-state">Loading chart…</p>
-          <p *ngIf="!chartLoading() && chartPoints().length === 0" class="chart-empty-state">No holdings yet — buy a stock to see your performance here.</p>
+          <p *ngIf="chartLoading()" class="chart-empty-state">{{ 'home.chart_loading' | translate }}</p>
+          <p *ngIf="!chartLoading() && chartPoints().length === 0" class="chart-empty-state">{{ 'home.chart_empty' | translate }}</p>
         </div>
 
       </div>
@@ -189,7 +227,7 @@
                   </div>
                 </td>
                 <td class="type-cell" [class.buy]="trade.type === 'Buy'" [class.sell]="trade.type === 'Sell'">
-                  {{ trade.type }}
+                  {{ (trade.type === 'Buy' ? 'home.buy' : 'home.sell') | translate }}
                 </td>
                 <td class="qty-cell font-mono-data">{{ trade.qty }}</td>
                 <td class="price-cell font-mono-data">{{ formatCurrency(trade.price, trade.currency) }}</td>
