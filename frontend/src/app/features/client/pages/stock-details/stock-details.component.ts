@@ -1,7 +1,5 @@
 import {
-  AfterViewInit,
   Component,
-  ElementRef,
   OnDestroy,
   OnInit,
   ViewChild,
@@ -19,12 +17,16 @@ import { InstrumentService } from '../../../../core/services/instrument.service'
 import { MarketDataService } from '../../../../core/services/market-data.service';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { MarketSession, MarketSessionService } from '../../../../core/services/market-session.service';
-import { AppearanceService } from '../../../../core/services/appearance.service';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { PriceBar, QuoteStatus } from '../../../../core/models/market.model';
 import { TranslationService } from '../../../../core/services/translation.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
+import { PortfolioChartComponent } from '../../../../shared/components/portfolio-chart.component';
+import {
+  normalizeIntradayBaseline,
+  PortfolioHistoryPoint
+} from '../../../../shared/utils/portfolio-history';
 import { getStockIcon } from '../../../../shared/utils/stock-icon';
 import {
   LoadStatus,
@@ -37,37 +39,39 @@ type ChartRange = '1D' | '5D' | '1M' | '1Y' | 'All';
 
 interface RangeConfig {
   label: string;
-  /** Backend history period; null when the API has no data for this range. */
-  period: string | null;
+  /** Backend history period. */
+  period: string;
+  /** Minute bars from /intraday-history rather than daily bars from /history. */
+  intraday?: boolean;
   /** Keep only the most recent N daily bars. */
   take?: number;
 }
 
-// /api/market/{ticker}/history only serves daily bars for 1mo, 3mo, 6mo, 1y, 2y and max.
+// /api/market/{ticker}/history serves daily bars for 1mo, 3mo, 6mo, 1y, 2y and max; 1D comes
+// from /api/market/{ticker}/intraday-history, the same source the home chart uses.
 const RANGES: Record<ChartRange, RangeConfig> = {
-  '1D': { label: 'today', period: null },
+  '1D': { label: 'today', period: '1d', intraday: true },
   '5D': { label: 'past 5 days', period: '1mo', take: 5 },
   '1M': { label: 'past month', period: '1mo' },
   '1Y': { label: 'past year', period: '1y' },
   All: { label: 'all time', period: 'max' }
 };
 
-interface ChartPoint {
-  x: number;
-  y: number;
-  bar: PriceBar;
-}
-
-const CHART_PAD = { top: 16, right: 64, bottom: 28, left: 8 };
-
 @Component({
   selector: 'app-stock-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, ConnectionStatusComponent, TradePanelComponent, TranslatePipe],
+  imports: [
+    CommonModule,
+    RouterLink,
+    ConnectionStatusComponent,
+    TradePanelComponent,
+    TranslatePipe,
+    PortfolioChartComponent
+  ],
   templateUrl: './stock-details.component.html',
   styleUrl: './stock-details.component.css'
 })
-export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
+export class StockDetailsComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly instrumentService = inject(InstrumentService);
@@ -76,10 +80,9 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly marketDataService = inject(MarketDataService);
   private readonly marketQuoteService = inject(MarketQuoteService);
   private readonly marketSessionService = inject(MarketSessionService);
-  private readonly appearance = inject(AppearanceService);
   private readonly translation = inject(TranslationService);
 
-  @ViewChild('chartBox') private chartBox?: ElementRef<HTMLElement>;
+  @ViewChild(PortfolioChartComponent) private priceChart?: PortfolioChartComponent;
 
   readonly ranges = Object.keys(RANGES) as ChartRange[];
   readonly Math = Math;
@@ -96,9 +99,7 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly range = signal<ChartRange>('1M');
   readonly bars = signal<PriceBar[]>([]);
-  readonly chartStatus = signal<'loading' | 'ready' | 'error' | 'unsupported'>('loading');
-  readonly chartSize = signal({ width: 0, height: 0 });
-  readonly hoverIndex = signal<number | null>(null);
+  readonly chartStatus = signal<'loading' | 'ready' | 'error'>('loading');
 
   readonly holdingsStatus = signal<LoadStatus>('loading');
   readonly ownedShares = signal<number | null>(null);
@@ -112,7 +113,6 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   private quoteSub?: Subscription;
   private tickerSubs = new Subscription();
   private historySub?: Subscription;
-  private resizeObserver?: ResizeObserver;
   private subscribedTicker: string | null = null;
 
   readonly icon = computed(() => getStockIcon(this.ticker()));
@@ -186,73 +186,19 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly trendUp = computed(() => (this.periodChange()?.amount ?? 0) >= 0);
 
-  readonly chart = computed(() => {
-    const bars = this.bars();
-    const { width, height } = this.chartSize();
-    // Axis labels are rem-sized, so their gutters grow with the text-size setting.
-    const textScale = this.appearance.textScale();
-    const padRight = Math.round(CHART_PAD.right * textScale);
-    const padBottom = Math.round(CHART_PAD.bottom * textScale);
-    const plotW = Math.max(0, width - CHART_PAD.left - padRight);
-    const plotH = Math.max(0, height - CHART_PAD.top - padBottom);
-    if (bars.length === 0 || plotW <= 0 || plotH <= 0) return null;
-
-    const closes = bars.map(b => b.close);
-    const min = Math.min(...closes);
-    const max = Math.max(...closes);
-    const spread = max - min || Math.max(1, max * 0.01);
-    const lo = min - spread * 0.08;
-    const hi = max + spread * 0.08;
-    const yFor = (v: number) => CHART_PAD.top + (1 - (v - lo) / (hi - lo)) * plotH;
-    const step = bars.length > 1 ? plotW / (bars.length - 1) : 0;
-
-    const points: ChartPoint[] = bars.map((bar, i) => ({
-      x: CHART_PAD.left + (bars.length > 1 ? i * step : plotW / 2),
-      y: yFor(bar.close),
-      bar
-    }));
-
-    const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    const baseY = CHART_PAD.top + plotH;
-    const first = points[0];
-    const last = points[points.length - 1];
-    const area = `${line} L${last.x.toFixed(1)},${baseY} L${first.x.toFixed(1)},${baseY} Z`;
-
-    const yTicks = [max, (max + min) / 2, min].map(v => ({ value: v, y: yFor(v) }));
-    const xIdx = bars.length > 2 ? [0, Math.floor((bars.length - 1) / 2), bars.length - 1] : bars.map((_, i) => i);
-    const xTicks = xIdx.map(i => ({ label: this.formatAxisDate(bars[i].date), x: points[i].x }));
-
-    return { points, line, area, yTicks, xTicks, baseY, plotRight: CHART_PAD.left + plotW, width, height };
-  });
-
-  readonly hoverPoint = computed(() => {
-    const idx = this.hoverIndex();
-    const chart = this.chart();
-    if (idx === null || !chart) return null;
-    return chart.points[idx] ?? null;
-  });
-
-  readonly chartSummary = computed(() => {
-    this.translation.currentLanguage();
-    const bars = this.bars();
-    if (bars.length === 0) return this.translation.t('stock.no_history', { ticker: this.ticker() });
-    const first = bars[0];
-    const last = bars[bars.length - 1];
-    return this.translation.t('stock.chart_summary', {
-      ticker: this.ticker(),
-      range: this.rangeLabel(),
-      first: this.formatCurrency(first.close),
-      firstDate: this.formatFullDate(first.date),
-      last: this.formatCurrency(last.close),
-      lastDate: this.formatFullDate(last.date)
-    });
-  });
+  /** Closing price per bar, in the shape the shared chart renders. */
+  readonly chartPoints = computed<PortfolioHistoryPoint[]>(() =>
+    this.bars().map(bar => ({ date: bar.date, value: bar.close }))
+  );
 
   ngOnInit(): void {
     this.quoteSub = this.marketQuoteService.quotes$.subscribe(quote => {
       if (quote.ticker !== this.ticker()) return;
       this.quoteStatus.set(quote.status);
-      if (quote.price > 0) this.livePrice.set(quote.price);
+      if (quote.price > 0) {
+        this.livePrice.set(quote.price);
+        this.pushLivePriceToChart(quote.price);
+      }
     });
 
     this.routeSub = this.route.paramMap.subscribe(params => {
@@ -260,16 +206,11 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  ngAfterViewInit(): void {
-    this.observeChartBox();
-  }
-
   ngOnDestroy(): void {
     this.routeSub?.unsubscribe();
     this.quoteSub?.unsubscribe();
     this.tickerSubs.unsubscribe();
     this.historySub?.unsubscribe();
-    this.resizeObserver?.disconnect();
     this.releaseQuoteSubscription();
   }
 
@@ -291,7 +232,6 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.exchangeName.set(null);
     this.previousClose.set(null);
     this.bars.set([]);
-    this.hoverIndex.set(null);
     this.holdingsStatus.set('loading');
     this.ownedShares.set(null);
     this.panelOpen.set(false);
@@ -301,8 +241,12 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // Resolve rather than fetch: most of the market universe the user can reach from search
+    // or the sector movers strip has never been inserted into instruments, and a plain GET
+    // 404s for those. Resolve looks the ticker up and persists it, which is what the search
+    // bar already does for the same symbols.
     this.tickerSubs.add(
-      this.instrumentService.getInstrumentByTicker(ticker).subscribe({
+      this.instrumentService.resolveInstrument(ticker).subscribe({
         next: instrument => {
           this.instrument.set(instrument);
           this.instrumentStatus.set('ready');
@@ -321,10 +265,10 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
               })
             );
           }
+          this.loadLiveQuote(instrument.ticker);
           this.loadPreviousClose();
           this.loadRange(this.range());
           this.loadHoldings();
-          setTimeout(() => this.observeChartBox());
         },
         error: err => {
           console.error(`Failed to load instrument ${ticker}:`, err);
@@ -362,9 +306,21 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   private loadPreviousClose(): void {
     // Same "previous daily close" approximation the portfolio and home pages use.
     this.tickerSubs.add(
-      this.getBars('1mo').subscribe({
+      this.getBars(RANGES['1M']).subscribe({
         next: bars => this.previousClose.set(bars.length >= 2 ? bars[bars.length - 2].close : null),
         error: () => this.previousClose.set(null)
+      })
+    );
+  }
+
+  private loadLiveQuote(ticker: string): void {
+    this.tickerSubs.add(
+      this.marketDataService.getQuote(ticker).subscribe({
+        next: quote => {
+          this.quoteStatus.set(quote.status);
+          if (quote.price > 0 && this.livePrice() === null) this.livePrice.set(quote.price);
+        },
+        error: () => {}
       })
     );
   }
@@ -384,16 +340,9 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
   private loadRange(range: ChartRange): void {
     const config = RANGES[range];
     this.historySub?.unsubscribe();
-    this.hoverIndex.set(null);
-
-    if (!config.period) {
-      this.bars.set([]);
-      this.chartStatus.set('unsupported');
-      return;
-    }
 
     this.chartStatus.set('loading');
-    this.historySub = this.getBars(config.period).subscribe({
+    this.historySub = this.getBars(config).subscribe({
       next: bars => {
         if (this.range() !== range) return;
         this.bars.set(config.take ? bars.slice(-config.take) : bars);
@@ -408,20 +357,38 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private getBars(period: string): Observable<PriceBar[]> {
-    let request = this.historyCache.get(period);
+  private getBars(config: RangeConfig): Observable<PriceBar[]> {
+    // Intraday is keyed separately so it never shares a cache entry with the daily 1mo series.
+    const cacheKey = config.intraday ? 'intraday' : config.period;
+    let request = this.historyCache.get(cacheKey);
     if (!request) {
-      request = this.marketDataService.getHistory(this.ticker(), period).pipe(
+      const source = config.intraday
+        ? this.marketDataService.getIntradayHistory(this.ticker()).pipe(map(normalizeIntradayBaseline))
+        : this.marketDataService.getHistory(this.ticker(), config.period);
+
+      request = source.pipe(
         map(response => response.bars ?? []),
         catchError(err => {
-          this.historyCache.delete(period);
+          this.historyCache.delete(cacheKey);
           return throwError(() => err);
         }),
         shareReplay(1)
       );
-      this.historyCache.set(period, request);
+      this.historyCache.set(cacheKey, request);
     }
     return request;
+  }
+
+  /**
+   * Only the intraday range has a minute grid for a live tick to extend; on a daily range the
+   * last bar is a completed close, so appending today's price would misreport it as one.
+   */
+  private pushLivePriceToChart(price: number): void {
+    if (this.range() !== '1D' || this.chartStatus() !== 'ready') return;
+
+    const minute = new Date();
+    minute.setSeconds(0, 0);
+    this.priceChart?.updateLivePoint(minute.toISOString(), price);
   }
 
   private releaseQuoteSubscription(): void {
@@ -448,54 +415,6 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadHoldings();
   }
 
-  // ── Chart interaction ──────────────────────────────────────────
-
-  onChartPointer(event: PointerEvent): void {
-    const chart = this.chart();
-    const box = this.chartBox?.nativeElement;
-    if (!chart || !box || chart.points.length === 0) return;
-    const x = event.clientX - box.getBoundingClientRect().left;
-    this.hoverIndex.set(this.nearestIndex(x, chart.points));
-  }
-
-  clearHover(): void {
-    this.hoverIndex.set(null);
-  }
-
-  onChartKey(event: KeyboardEvent): void {
-    const count = this.chart()?.points.length ?? 0;
-    if (count === 0) return;
-    const current = this.hoverIndex();
-    if (event.key === 'ArrowLeft') {
-      this.hoverIndex.set(current === null ? count - 1 : Math.max(0, current - 1));
-    } else if (event.key === 'ArrowRight') {
-      this.hoverIndex.set(current === null ? count - 1 : Math.min(count - 1, current + 1));
-    } else if (event.key === 'Escape') {
-      this.hoverIndex.set(null);
-    } else {
-      return;
-    }
-    event.preventDefault();
-  }
-
-  private nearestIndex(x: number, points: ChartPoint[]): number {
-    if (points.length === 1) return 0;
-    const step = points[1].x - points[0].x;
-    const idx = Math.round((x - points[0].x) / step);
-    return Math.min(points.length - 1, Math.max(0, idx));
-  }
-
-  private observeChartBox(): void {
-    const el = this.chartBox?.nativeElement;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = new ResizeObserver(entries => {
-      const rect = entries[0]?.contentRect;
-      if (rect) this.chartSize.set({ width: rect.width, height: rect.height });
-    });
-    this.resizeObserver.observe(el);
-  }
-
   // ── Formatting ─────────────────────────────────────────────────
 
   formatCurrency(value: number | null | undefined, maxDigits = 2): string {
@@ -517,11 +436,6 @@ export class StockDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private formatAxisDate(date: string): string {
-    const longRange = this.range() === '1Y' || this.range() === 'All';
-    return this.parseDate(date).toLocaleDateString('en-US',
-      longRange ? { month: 'short', year: 'numeric' } : { month: 'short', day: 'numeric' });
-  }
 
   private parseDate(date: string): Date {
     // Bars are calendar dates (YYYY-MM-DD); parse as local to avoid an off-by-one day.

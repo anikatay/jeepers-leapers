@@ -132,7 +132,7 @@ button {
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0,1fr));
   gap: 0.75rem;
 }
 
@@ -145,6 +145,7 @@ button {
   border-radius: 0.75rem;
   background: var(--card);
   transition: all 0.2s ease;
+  min-width: 0;
 }
 
 .stat-card:hover {
@@ -186,7 +187,10 @@ button {
   font-weight: 700;
   color: var(--foreground);
   margin: 0.25rem 0 0 0;
-  overflow-wrap: anywhere;
+  transition: color 2000ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-value.positive {
@@ -265,6 +269,7 @@ button {
   font-weight: 700;
   color: var(--foreground);
   margin: 0;
+  transition: color 2000ms ease;
 }
 
 .pie-label {
@@ -330,12 +335,14 @@ button {
   font-weight: 500;
   color: var(--foreground);
   min-width: 2rem;
+  transition: color 2000ms ease;
 }
 
 .holding-value {
   font-size: 0.75rem;
   color: var(--muted-foreground);
   white-space: nowrap;
+  transition: color 2000ms ease;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -421,36 +428,7 @@ button {
 /* Chart Container */
 .chart-container {
   position: relative;
-  display: flex;
-  gap: 1rem;
   min-height: 220px;
-}
-
-.chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-end;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-  padding: 0.5rem 0;
-  min-width: 3rem;
-}
-
-.area-chart {
-  flex: 1;
-  min-height: 220px;
-}
-
-.chart-x-axis {
-  position: absolute;
-  bottom: -1.5rem;
-  inset-inline-start: 3rem;
-  inset-inline-end: 0;
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
 }
 
 /* Trades Section */
@@ -631,4 +609,3 @@ button {
   color: var(--muted-foreground);
   padding: 2rem 0;
 }
-

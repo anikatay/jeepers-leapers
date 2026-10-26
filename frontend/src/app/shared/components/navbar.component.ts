@@ -6,11 +6,13 @@ import { InstrumentService } from '../../core/services/instrument.service';
 import { TranslationService, LANGUAGES, type Language, type LanguageOption } from '../../core/services/translation.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
 import { AppearanceControlsComponent } from './appearance-controls.component';
+import { SectorMoversCarouselComponent } from './sector-movers-carousel.component';
 import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
 export interface NavItem {
   label: string;
   path: string;
+  exact?: boolean;
 }
 
 export interface StockSymbol {
@@ -22,7 +24,15 @@ export interface StockSymbol {
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule, AppearanceControlsComponent, TranslatePipe],
+  imports: [
+    CommonModule,
+    RouterLink,
+    RouterLinkActive,
+    FormsModule,
+    AppearanceControlsComponent,
+    TranslatePipe,
+    SectorMoversCarouselComponent
+  ],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css'
 })
@@ -34,6 +44,10 @@ export class NavbarComponent implements OnInit {
     { label: 'nav.portfolio', path: '/client/portfolio' },
     { label: 'nav.trades', path: '/client/trades' }
   ];
+  @Input() homePath = '/client';
+  @Input() showSearch = true;
+  /** Sector movers strip above the search; the admin shell has no instrument page to link into. */
+  @Input() showSectorMovers = true;
   @Input() userName = 'User';
   @Input() brandName = 'Bull Exchange';
 
@@ -87,7 +101,9 @@ export class NavbarComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loadInstruments();
+    if (this.showSearch) {
+      this.loadInstruments();
+    }
   }
 
   private loadInstruments() {

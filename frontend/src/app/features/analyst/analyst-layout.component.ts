@@ -16,6 +16,7 @@ import { AppearanceControlsComponent } from '../../shared/components/appearance-
 
       <nav aria-label="Analyst">
         <a routerLink="/analyst/dashboard" routerLinkActive="active">Analytics</a>
+        <a routerLink="/analyst/heatmap" routerLinkActive="active">Market Heatmap</a>
       </nav>
 
       <div class="actions">
@@ -57,6 +58,7 @@ import { AppearanceControlsComponent } from '../../shared/components/appearance-
       text-decoration: none;
     }
 
+    nav { display: flex; gap: 1.5rem; }
     nav a.active { border-color: var(--primary); color: var(--primary); }
 
     .actions { align-items: center; display: flex; gap: 0.5rem; justify-self: end; }

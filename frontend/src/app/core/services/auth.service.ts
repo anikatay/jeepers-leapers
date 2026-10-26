@@ -26,7 +26,7 @@ export class AuthService{
   login(request: AuthRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>('/api/auth/login', request).pipe(
       switchMap(res => {
-        localStorage.setItem(this.TOKEN_KEY, res.token);
+        sessionStorage.setItem(this.TOKEN_KEY, res.token);
 
         return this.usersService.getUserById(res.userId).pipe(
           map(user => ({
@@ -37,7 +37,7 @@ export class AuthService{
         );
       }),
       tap(res => {
-        localStorage.setItem(this.SESSION_KEY, JSON.stringify(res));
+        sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(res));
         this._session.set(res);
       }),
       catchError(error => {
@@ -53,7 +53,7 @@ export class AuthService{
     );
   }
 
-  get token() { return localStorage.getItem(this.TOKEN_KEY); }
+  get token() { return sessionStorage.getItem(this.TOKEN_KEY); }
   get userId() { return this._session()?.userId ?? null; }
   get role() { return this._session()?.role ?? null; }
   get accountId() { return this._session()?.accountId ?? null; }
@@ -64,14 +64,14 @@ export class AuthService{
 
   private loadSession(): AuthResponse | null {
     try {
-      const raw = localStorage.getItem(this.SESSION_KEY);
+      const raw = sessionStorage.getItem(this.SESSION_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   }
 
   private saveSession(response: AuthResponse) {
-    localStorage.setItem(this.TOKEN_KEY, response.token);
-    localStorage.setItem(this.SESSION_KEY, JSON.stringify(response));
+    sessionStorage.setItem(this.TOKEN_KEY, response.token);
+    sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(response));
     this._session.set(response);
   }
 
@@ -80,8 +80,8 @@ export class AuthService{
   }
 
   private clearSession() {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.SESSION_KEY);
+    sessionStorage.removeItem(this.TOKEN_KEY);
+    sessionStorage.removeItem(this.SESSION_KEY);
     this._session.set(null);
   }
 }

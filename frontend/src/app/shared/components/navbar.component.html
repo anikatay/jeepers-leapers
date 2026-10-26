@@ -4,7 +4,7 @@
   <div class="navbar-top">
     <!-- Logo and Brand (left) -->
     <div class="navbar-logo">
-      <button class="logo-button" [routerLink]="['/client']">
+      <button class="logo-button" [routerLink]="[homePath]">
         <img src="/symbol.PNG" alt="LEAP logo" class="logo-image" />
         <span class="brand-text font-display">{{ brandName }}</span>
       </button>
@@ -15,7 +15,7 @@
       <a *ngFor="let item of navItems"
          [routerLink]="[item.path]"
          routerLinkActive="active"
-         [routerLinkActiveOptions]="{ exact: item.path === '/client' }"
+         [routerLinkActiveOptions]="{ exact: item.exact ?? item.path === homePath }"
          class="nav-link">
         {{ item.label | translate }}
         <span class="nav-underline" *ngIf="false"></span>
@@ -83,8 +83,11 @@
     </div>
   </div>
 
+  <!-- Sector movers strip (above the search row) -->
+  <app-sector-movers-carousel *ngIf="showSectorMovers"></app-sector-movers-carousel>
+
   <!-- Search row (below top row) -->
-  <div class="navbar-search-row">
+  <div class="navbar-search-row" *ngIf="showSearch">
     <div class="search-container" (click)="$event.stopPropagation()">
       <div class="search-input-wrapper">
         <!-- Search icon -->

@@ -9,6 +9,7 @@ import { TradeModalService } from '../../../../core/services/trade-modal.service
 import { TranslationService } from '../../../../core/services/translation.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Subscription, forkJoin } from 'rxjs';
+import { throttleTime } from 'rxjs/operators';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { HoldingResponse } from '../../../../core/models/holding.model';
@@ -257,24 +258,41 @@ export class ClientPortfolioComponent implements OnInit {
 
   private subscribeToLiveQuotes(holdings: Holding[]): void{
     const tickers = new Set(holdings.map(h => h.symbol));
+    const selectedTicker = this.selectedHolding()?.symbol;
+    if (selectedTicker) {
+      tickers.add(selectedTicker);
+    }
+
     this.subscribedTickers.forEach(ticker => {
       if (!tickers.has(ticker)) {
         this.marketQuoteService.unsubscribe(ticker);
       }
     });
-    tickers.forEach(ticker => this.marketQuoteService.subscribe(ticker));
+
+    tickers.forEach(ticker => {
+      if (!this.subscribedTickers.has(ticker)) {
+        this.marketQuoteService.subscribe(ticker);
+      }
+    });
     this.subscribedTickers = tickers;
 
     if (!this.quoteSubscription) {
-      this.quoteSubscription = this.marketQuoteService.quotes$.subscribe(quote => {
-        this.allHoldings.update(holdings =>
-          holdings.map(h => {
-            if (h.symbol !== quote.ticker) return h;
-            const { gain, gainPct } = calculateHoldingGain(h.shares, quote.price, h.avgCostBasis);
-            return { ...h, currentPrice: quote.price, currentValue: h.shares * quote.price, gain, gainPct };
-          })
-        );
-      });
+      this.quoteSubscription = this.marketQuoteService.quotes$
+        .pipe(throttleTime(2000, undefined, { leading: true, trailing: true }))
+        .subscribe(quote => {
+          this.allHoldings.update(holdings =>
+            holdings.map(h => {
+              if (h.symbol !== quote.ticker) return h;
+              const { gain, gainPct } = calculateHoldingGain(h.shares, quote.price, h.avgCostBasis);
+              return { ...h, currentPrice: quote.price, currentValue: h.shares * quote.price, gain, gainPct };
+            })
+          );
+          this.selectedHolding.update(holding =>
+            holding?.symbol === quote.ticker
+              ? { ...holding, currentPrice: quote.price }
+              : holding
+          );
+        });
     }
   }
 
@@ -397,13 +415,26 @@ export class ClientPortfolioComponent implements OnInit {
   }
 
   openTradeModal(holding: Holding, mode: TradeSide): void {
+    // The frozen reason is already shown by the page-level notice.
+    if (this.isAccountFrozen()) return;
+
     this.selectedHolding.set(holding);
+    if (!this.subscribedTickers.has(holding.symbol)) {
+      this.marketQuoteService.subscribe(holding.symbol);
+      this.subscribedTickers.add(holding.symbol);
+    }
     this.modalMode.set(mode);
     this.isModalOpen.set(true);
   }
 
   closeModal(): void {
     this.isModalOpen.set(false);
+    // Drop the live quote subscription if the ticker is no longer held.
+    const ticker = this.selectedHolding()?.symbol;
+    if (ticker && !this.allHoldings().some(holding => holding.symbol === ticker)) {
+      this.marketQuoteService.unsubscribe(ticker);
+      this.subscribedTickers.delete(ticker);
+    }
     this.selectedHolding.set(null);
   }
 
@@ -421,6 +452,10 @@ export class ClientPortfolioComponent implements OnInit {
       minimumFractionDigits: 2,
       maximumFractionDigits: 4
     }).format(amount);
+  }
+
+  isAccountFrozen(): boolean {
+    return this.account()?.status === 'FROZEN';
   }
 
   // Expose Math for template

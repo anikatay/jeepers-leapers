@@ -132,50 +132,19 @@
           </div>
         </div>
 
-        <div #chartBox class="sd-chart-box ltr-keep" dir="ltr"
-             [class.trend-down]="!trendUp()"
-             [attr.tabindex]="chartStatus() === 'ready' ? 0 : null"
-             [attr.role]="chartStatus() === 'ready' ? 'img' : null"
-             [attr.aria-label]="chartStatus() === 'ready' ? chartSummary() : null"
-             (pointermove)="onChartPointer($event)"
-             (pointerdown)="onChartPointer($event)"
-             (pointerleave)="clearHover()"
-             (keydown)="onChartKey($event)"
-             (blur)="clearHover()">
+        <div class="sd-chart-box ltr-keep" dir="ltr" [class.trend-down]="!trendUp()">
 
-          <svg *ngIf="chartStatus() === 'ready' && chart() as c" class="sd-chart-svg"
-               [attr.width]="c.width" [attr.height]="c.height" [attr.viewBox]="'0 0 ' + c.width + ' ' + c.height"
-               aria-hidden="true">
-            <defs>
-              <linearGradient id="sd-area-gradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" class="sd-grad-top" />
-                <stop offset="100%" class="sd-grad-bottom" />
-              </linearGradient>
-            </defs>
-            <g class="sd-grid">
-              <line *ngFor="let t of c.yTicks" [attr.x1]="0" [attr.x2]="c.plotRight" [attr.y1]="t.y" [attr.y2]="t.y" />
-            </g>
-            <path class="sd-area" [attr.d]="c.area" fill="url(#sd-area-gradient)" />
-            <path class="sd-line" [attr.d]="c.line" />
-            <g class="sd-axis-y">
-              <text *ngFor="let t of c.yTicks" [attr.x]="c.plotRight + 8" [attr.y]="t.y + 4">{{ formatCurrency(t.value) }}</text>
-            </g>
-            <g class="sd-axis-x">
-              <text *ngFor="let t of c.xTicks; let i = index; let last = last"
-                    [attr.x]="t.x" [attr.y]="c.height - 8"
-                    [attr.text-anchor]="i === 0 ? 'start' : last ? 'end' : 'middle'">{{ t.label }}</text>
-            </g>
-            <g *ngIf="hoverPoint() as hp" class="sd-hover">
-              <line [attr.x1]="hp.x" [attr.x2]="hp.x" [attr.y1]="12" [attr.y2]="c.baseY" />
-              <circle [attr.cx]="hp.x" [attr.cy]="hp.y" r="5" />
-            </g>
-          </svg>
-
-          <div *ngIf="chartStatus() === 'ready' && hoverPoint() as hp" class="sd-tooltip" aria-live="polite"
-               [style.left.px]="Math.min(Math.max(hp.x, 80), chartSize().width - 80)">
-            <span class="sd-tooltip-price font-mono-data">{{ formatCurrency(hp.bar.close) }}</span>
-            <span class="sd-tooltip-date">{{ formatFullDate(hp.bar.date) }} · {{ 'stock.close' | translate }}</span>
-          </div>
+          <!-- Same renderer as the home portfolio chart: time-proportional axis, zoom, pan,
+               market-time labels and a screen-reader table. -->
+          <app-portfolio-chart
+            *ngIf="chartStatus() === 'ready' && chartPoints().length > 0"
+            [points]="chartPoints()"
+            [currency]="currency()"
+            ariaLabelKey="chart.price_aria_label"
+            summaryKey="chart.price_summary"
+            emptySummaryKey="chart.price_summary_empty"
+            tableCaptionKey="chart.price_table_caption"
+          ></app-portfolio-chart>
 
           <div *ngIf="chartStatus() === 'loading'" class="sd-chart-overlay" aria-busy="true">
             <span class="sd-spinner" aria-hidden="true"></span>
@@ -187,17 +156,8 @@
             <button type="button" class="sd-retry" (click)="retryChart()">{{ 'stock.try_again' | translate }}</button>
           </div>
 
-          <!-- 1D: no intraday endpoint exists, so show a labeled placeholder instead of invented data -->
-          <div *ngIf="chartStatus() === 'unsupported'" class="sd-chart-overlay sd-placeholder">
-            <svg class="sd-placeholder-art" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
-              <line x1="0" y1="60" x2="400" y2="60" />
-            </svg>
-            <span class="sd-placeholder-badge">{{ 'stock.placeholder_badge' | translate }}</span>
-            <p class="sd-placeholder-text">{{ 'stock.intraday_unavailable' | translate }}</p>
-            <dl class="sd-placeholder-stats font-mono-data">
-              <div><dt>{{ 'stock.previous_close' | translate }}</dt><dd>{{ previousClose() ? formatCurrency(previousClose()) : '—' }}</dd></div>
-              <div><dt>{{ 'stock.live_price' | translate }}</dt><dd>{{ price() > 0 ? formatCurrency(price(), 4) : '—' }}</dd></div>
-            </dl>
+          <div *ngIf="chartStatus() === 'ready' && chartPoints().length === 0" class="sd-chart-overlay">
+            <span>{{ 'stock.no_history' | translate:{ ticker: ticker() } }}</span>
           </div>
         </div>
         <p *ngIf="chartStatus() === 'ready'" class="sd-chart-foot">{{ 'stock.chart_foot' | translate }}</p>

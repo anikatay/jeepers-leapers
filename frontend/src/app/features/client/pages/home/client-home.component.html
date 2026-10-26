@@ -76,6 +76,9 @@
           </div>
 
         </div>
+
+        <!-- Headlines for the tickers the viewer actually holds -->
+        <app-market-news [tickers]="newsTickers()"></app-market-news>
       </div>
 
       <!-- Right column: Portfolio Allocation (Pie Chart) -->
@@ -151,31 +154,13 @@
 
         <!-- Portfolio performance chart, driven by /api/market/{ticker}/history -->
         <div class="chart-container" dir="ltr">
-          <svg *ngIf="chartLinePath()" class="area-chart" viewBox="0 0 800 220" preserveAspectRatio="none" [attr.aria-label]="'home.portfolio_performance' | translate">
-            <defs>
-              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stop-color="var(--primary)" stop-opacity="0.3" />
-                <stop offset="95%" stop-color="var(--primary)" stop-opacity="0.02" />
-              </linearGradient>
-            </defs>
-            <line x1="0" y1="50" x2="800" y2="50" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" />
-            <line x1="0" y1="110" x2="800" y2="110" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" />
-            <line x1="0" y1="170" x2="800" y2="170" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" />
-            <path [attr.d]="chartAreaPath()" fill="url(#chartGrad)" stroke="none" />
-            <path [attr.d]="chartLinePath()" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+          <app-portfolio-chart
+            *ngIf="chartPoints().length > 0"
+            [points]="chartPoints()"
+            [currency]="accountCurrency()"
+          ></app-portfolio-chart>
           <p *ngIf="chartLoading()" class="chart-empty-state">{{ 'home.chart_loading' | translate }}</p>
-          <p *ngIf="!chartLoading() && !chartLinePath()" class="chart-empty-state">{{ 'home.chart_empty' | translate }}</p>
-          <div class="chart-y-axis" *ngIf="chartLinePath()">
-            <span>{{ chartYAxisLabels()[0] }}</span>
-            <span>{{ chartYAxisLabels()[1] }}</span>
-            <span>{{ chartYAxisLabels()[2] }}</span>
-          </div>
-          <div class="chart-x-axis" *ngIf="chartLinePath()">
-            <span>{{ chartXAxisLabels()[0] }}</span>
-            <span>{{ chartXAxisLabels()[1] }}</span>
-            <span>{{ chartXAxisLabels()[2] }}</span>
-          </div>
+          <p *ngIf="!chartLoading() && chartPoints().length === 0" class="chart-empty-state">{{ 'home.chart_empty' | translate }}</p>
         </div>
 
       </div>

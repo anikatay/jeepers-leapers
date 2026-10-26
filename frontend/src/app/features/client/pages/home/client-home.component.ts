@@ -1,4 +1,4 @@
-import { Component, OnInit,OnDestroy, signal, effect, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, computed, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AccountService } from '../../../../core/services/account.service';
@@ -11,11 +11,20 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
 import { TradeResponse } from '../../../../core/models/trade.model';
-import { Subscription, forkJoin } from 'rxjs';
+import { Subscription, forkJoin, of, timer } from 'rxjs';
+import { catchError, map, throttleTime } from 'rxjs/operators';
 import { MarketDataService } from '../../../../core/services/market-data.service';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
+import { HistoryResponse } from '../../../../core/models/market.model';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
 import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../shared/utils/portfolio-calculation';
+import {
+  combinePortfolioHistory,
+  normalizeIntradayBaseline,
+  PortfolioHistoryPoint
+} from '../../../../shared/utils/portfolio-history';
+import { PortfolioChartComponent } from '../../../../shared/components/portfolio-chart.component';
+import { MarketNewsComponent } from '../../../../shared/components/market-news.component';
 
 
 export interface StockHolding {
@@ -52,7 +61,7 @@ export interface PieSlice {
 @Component({
   selector: 'app-client-home',
   standalone: true,
-  imports: [CommonModule, TranslatePipe, ConnectionStatusComponent],
+  imports: [CommonModule, TranslatePipe, ConnectionStatusComponent, PortfolioChartComponent, MarketNewsComponent],
   templateUrl: './client-home.component.html',
   styleUrl: './client-home.component.css'
 })
@@ -83,19 +92,28 @@ export class ClientHomeComponent implements OnInit {
   overallGain = signal<string>('N/A');
   cashRemaining = signal<string>('N/A');
 
-    chartLinePath = signal<string>('');
-  chartAreaPath = signal<string>('');
-  chartYAxisLabels = signal<string[]>(['N/A', 'N/A', 'N/A']);
-  chartXAxisLabels = signal<string[]>(['Start', 'Mid', 'Now']);
+  chartPoints = signal<PortfolioHistoryPoint[]>([]);
   chartLoading = signal<boolean>(false);
+  accountCurrency = signal<string>('USD');
+
+  /** Holdings drive the news panel; it falls back to a default set when the account is empty. */
+  newsTickers = computed(() => this.holdings().map(holding => holding.symbol));
+
+  @ViewChild(PortfolioChartComponent)
+  private portfolioChart?: PortfolioChartComponent;
 
   private heldInstruments: Array<{ ticker: string; quantity: number }> = [];
+
+  private lastBarCloseByTicker = new Map<string, number>();
+  private lastBarValue: number | null = null;
+  private allTrades: TradeResponse[] = [];
   private quoteSubscription?: Subscription;
+  private liveChartSubscription?: Subscription;
   private subscribedTickers = new Set<string>();
 
-  // Backend only supports these periods; 1D/1W are approximated by slicing the 1mo result
+  // 1D uses minute history; 1W is approximated by slicing the 1mo result.
   private readonly periodMap: Record<Period, string> = {
-    '1D': '1mo', '1W': '1mo', '1M': '1mo', '3M': '3mo', '1Y': '1y', 'All': 'max'
+    '1D': '1d', '1W': '1mo', '1M': '1mo', '3M': '3mo', '1Y': '1y', 'All': 'max'
   };
 
 
@@ -147,6 +165,7 @@ export class ClientHomeComponent implements OnInit {
     this.accountService.getAccount(this.ACCOUNT_ID).subscribe({
       next: (account) => {
         const balance = account.balance ?? 0;
+        this.accountCurrency.set(account.currency || 'USD');
         this.cashRemaining.set(
           `$${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         );
@@ -167,11 +186,13 @@ export class ClientHomeComponent implements OnInit {
           next: (holdingsData) => {
             this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
               next: (trades) => {
+                this.allTrades = trades;
                 this.computeTradesUI(trades);
                 this.computeHoldingsUI(holdingsData, instrumentMap, trades);
               },
               error: (err) => {
                 console.error('Failed to load trades:', err);
+                this.allTrades = [];
                 this.completedTrades.set([]);
                 this.computeHoldingsUI(holdingsData, instrumentMap, []);
               }
@@ -317,7 +338,6 @@ export class ClientHomeComponent implements OnInit {
     const x2 = cx + radius * Math.cos(endRad);
     const y2 = cy + radius * Math.sin(endRad);
 
-    // Create path: M (move to center), L (line to start), A (arc), Z (close)
     return `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
   }
 
@@ -354,6 +374,43 @@ export class ClientHomeComponent implements OnInit {
   setPeriod(period: Period) {
     this.selectedPeriod.set(period);
     this.loadChartData();
+    this.refreshLiveChartTimer();
+  }
+
+  private refreshLiveChartTimer(): void {
+    this.liveChartSubscription?.unsubscribe();
+    this.liveChartSubscription = undefined;
+
+    if (this.selectedPeriod() !== '1D' || this.heldInstruments.length === 0) {
+      return;
+    }
+
+    this.updateLiveChartPoint();
+
+    const millisecondsUntilNextFiveSeconds = 5_000 - (Date.now() % 5_000);
+    this.liveChartSubscription = timer(millisecondsUntilNextFiveSeconds, 5_000).subscribe(() => {
+      this.updateLiveChartPoint();
+    });
+  }
+
+  private updateLiveChartPoint(): void {
+    if (this.selectedPeriod() !== '1D' || this.lastBarValue === null) {
+      return;
+    }
+
+    const livePriceBySymbol = new Map(this.holdings().map(holding => [holding.symbol, holding.price]));
+    let value = this.lastBarValue;
+
+    this.heldInstruments.forEach(({ ticker, quantity }) => {
+      const barClose = this.lastBarCloseByTicker.get(ticker);
+      const livePrice = livePriceBySymbol.get(ticker);
+      if (barClose === undefined || livePrice === undefined || !Number.isFinite(livePrice)) return;
+      value += quantity * (livePrice - barClose);
+    });
+
+    const date = new Date();
+    date.setSeconds(0, 0);
+    this.portfolioChart?.updateLivePoint(date.toISOString(), value);
   }
 
   private subscribeToLiveQuotes(): void {
@@ -368,127 +425,109 @@ export class ClientHomeComponent implements OnInit {
     this.subscribedTickers = tickers;
 
     if (!this.quoteSubscription) {
-      this.quoteSubscription = this.marketQuoteService.quotes$.subscribe(quote => {
-        const updated = this.holdings().map(h =>
-          h.symbol === quote.ticker
-            ? { ...h, price: quote.price, value: (h.value / h.price) * quote.price }
-            : h
-        );
-        const totalValue = updated.reduce((sum, h) => sum + h.value, 0);
-        const totalGain = updated.reduce((sum, h) => {
-          const shares = h.price > 0 ? h.value / h.price : 0;
-          return sum + (h.price - h.avgCostBasis) * shares;
-        }, 0);
-        const withPct = updated.map(h => ({
-          ...h,
-          pct: totalValue > 0 ? Math.round((h.value / totalValue) * 100) : 0
-        }));
+      // Throttle so bursts of ticker pushes don't repaint the UI on every tick
+      this.quoteSubscription = this.marketQuoteService.quotes$
+        .pipe(throttleTime(2000, undefined, { leading: true, trailing: true }))
+        .subscribe(quote => {
+          const updated = this.holdings().map(h =>
+            h.symbol === quote.ticker
+              ? { ...h, price: quote.price, value: (h.value / h.price) * quote.price }
+              : h
+          );
+          const totalValue = updated.reduce((sum, h) => sum + h.value, 0);
+          const totalGain = updated.reduce((sum, h) => {
+            const shares = h.price > 0 ? h.value / h.price : 0;
+            return sum + (h.price - h.avgCostBasis) * shares;
+          }, 0);
+          const withPct = updated.map(h => ({
+            ...h,
+            pct: totalValue > 0 ? Math.round((h.value / totalValue) * 100) : 0
+          }));
 
-        this.holdings.set(withPct);
-        this.portfolioValue.set(
-          `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-        );
-        this.setGainSignal(this.overallGain, totalGain);
-        this.generatePieSlices(withPct, totalValue);
-      });
+          this.holdings.set(withPct);
+          this.portfolioValue.set(
+            `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          );
+          this.setGainSignal(this.overallGain, totalGain);
+          this.generatePieSlices(withPct, totalValue);
+        });
     }
 
+    this.refreshLiveChartTimer();
   }
 
   private loadChartData(): void {
-    if (this.heldInstruments.length === 0) {
-      this.chartLinePath.set('');
-      this.chartAreaPath.set('');
-      this.chartYAxisLabels.set(['N/A', 'N/A', 'N/A']);
+    if (this.allTrades.length === 0) {
+      this.chartPoints.set([]);
+      this.chartLoading.set(false);
       return;
     }
 
     this.chartLoading.set(true);
-    const backendPeriod = this.periodMap[this.selectedPeriod()];
-    const requests = this.heldInstruments.map(h => this.marketDataService.getHistory(h.ticker, backendPeriod));
+    const period = this.selectedPeriod();
+    const isIntraday = period === '1D';
+    const backendPeriod = this.periodMap[period];
+    const tickers = Array.from(new Set(this.allTrades.map(trade => trade.ticker)));
 
-    forkJoin(requests).subscribe({
+    const batch$ = isIntraday
+      ? this.marketDataService.getIntradayHistoryBatch(tickers)
+      : this.marketDataService.getHistoryBatch(tickers, backendPeriod);
+
+    const histories$ = batch$.pipe(
+      map(byTicker => tickers.map(ticker => {
+        const history = byTicker[ticker] ?? emptyHistory(ticker, backendPeriod);
+        return isIntraday ? normalizeIntradayBaseline(history) : history;
+      })),
+      catchError(err => {
+        console.error('Failed to load chart history:', err);
+        return of(tickers.map(ticker => emptyHistory(ticker, backendPeriod)));
+      })
+    );
+
+    histories$.subscribe({
       next: (histories) => {
-        // Approximation: values current holdings' quantities against historical closes.
-        // Does not account for quantity changes over time (trades aren't backdated).
-        const totalsByDate = new Map<string, number>();
-        histories.forEach((history, idx) => {
-          const quantity = this.heldInstruments[idx].quantity;
-          history.bars.forEach(bar => {
-            totalsByDate.set(bar.date, (totalsByDate.get(bar.date) ?? 0) + quantity * bar.close);
-          });
-        });
+        let points = combinePortfolioHistory(this.allTrades, histories);
 
-        let dates = Array.from(totalsByDate.keys()).sort();
-        if (this.selectedPeriod() === '1D') {
-          dates = dates.slice(-2);
-        } else if (this.selectedPeriod() === '1W') {
-          dates = dates.slice(-5);
+        // Anchor for the live tail: the closing price each ticker was last valued at.
+        this.lastBarCloseByTicker = new Map(
+          histories
+            .filter(history => history.bars.length > 0)
+            .map(history => [history.ticker, history.bars[history.bars.length - 1].close])
+        );
+        this.lastBarValue = isIntraday && points.length > 0
+          ? points[points.length - 1].value
+          : null;
+
+        if (period === 'All') {
+          const oldestTrade = this.allTrades.reduce((oldest, trade) =>
+            new Date(trade.executedAt).getTime() < new Date(oldest.executedAt).getTime()
+              ? trade
+              : oldest
+          );
+          const oldestTradeDate = oldestTrade.executedAt.slice(0, 10);
+          points = points.filter(point => point.date.slice(0, 10) >= oldestTradeDate);
+        } else if (period === '1W') {
+          // A trading week by elapsed time, not by bar count, which drifts across holidays.
+          const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          points = points.filter(point => new Date(
+            point.date.length === 10 ? `${point.date}T00:00:00Z` : point.date
+          ).getTime() >= cutoff);
         }
 
-        const values = dates.map(d => totalsByDate.get(d)!);
-        const { line, area } = this.buildChartPaths(values);
-        this.chartLinePath.set(line);
-        this.chartAreaPath.set(area);
-        this.updateAxisLabels(values, dates);
+        this.chartPoints.set(points);
         this.chartLoading.set(false);
       },
       error: (err) => {
         console.error('Failed to load chart history:', err);
-        this.chartLinePath.set('');
-        this.chartAreaPath.set('');
+        this.chartPoints.set([]);
         this.chartLoading.set(false);
       }
     });
   }
 
-  private buildChartPaths(values: number[]): { line: string; area: string } {
-    const width = 800;
-    const top = 20;
-    const bottom = 200;
-    const n = values.length;
-
-    if (n === 0) {
-      return { line: '', area: '' };
-    }
-    if (n === 1) {
-      const y = (top + bottom) / 2;
-      return { line: `M0,${y} L${width},${y}`, area: `M0,${y} L${width},${y} L${width},220 L0,220 Z` };
-    }
-
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-    const stepX = width / (n - 1);
-
-    const points = values.map((v, i) => ({
-      x: i * stepX,
-      y: top + (1 - (v - min) / range) * (bottom - top)
-    }));
-
-    const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    return { line, area: `${line} L${width},220 L0,220 Z` };
-  }
-
-  private updateAxisLabels(values: number[], dates: string[]): void {
-    if (values.length === 0) {
-      this.chartYAxisLabels.set(['N/A', 'N/A', 'N/A']);
-      this.chartXAxisLabels.set(['Start', 'Mid', 'Now']);
-      return;
-    }
-
-    const max = Math.max(...values);
-    const min = Math.min(...values);
-    const fmt = (v: number) => `$${Math.round(v / 1000)}k`;
-    this.chartYAxisLabels.set([fmt(max), fmt((max + min) / 2), fmt(min)]);
-
-    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const n = dates.length;
-    this.chartXAxisLabels.set([fmtDate(dates[0]), fmtDate(dates[Math.floor(n / 2)]), fmtDate(dates[n - 1])]);
-  }
-
   ngOnDestroy(): void {
     this.quoteSubscription?.unsubscribe();
+    this.liveChartSubscription?.unsubscribe();
     this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker));
   }
 
@@ -522,4 +561,9 @@ export class ClientHomeComponent implements OnInit {
   handleProfileOption(option: string) {
     console.log('Profile option:', option);
   }
+}
+
+/** Stand-in for a ticker whose history could not be loaded, so it values at zero. */
+function emptyHistory(ticker: string, period: string): HistoryResponse {
+  return { ticker, period, bars: [] };
 }

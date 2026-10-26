@@ -31,6 +31,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'Home',
     'nav.portfolio': 'Portfolio',
     'nav.trades': 'Trades',
+    'nav.heatmap': 'Market Heatmap',
     'nav.profile': 'Profile',
     'nav.settings': 'Settings',
     'nav.logout': 'Logout',

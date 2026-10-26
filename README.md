@@ -63,6 +63,10 @@ curl -sS "$API_URL/api/market/heatmap?sector=energy" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
+The heatmap loads one month of daily performance history through the backend
+batch history endpoint; requests are split into groups of 50 to match the
+market sidecar's upstream limit.
+
 Each heatmap ticker has `LIVE`, `STALE`, `CLOSED`, or `UNAVAILABLE` status.
 `UNAVAILABLE` means the sidecar has not delivered a quote for that ticker yet.
 The current universe is versioned in the response and uses the configured

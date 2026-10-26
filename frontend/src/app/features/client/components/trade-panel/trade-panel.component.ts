@@ -119,6 +119,7 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly needsFx = computed(() => this.instrumentCurrency() !== this.accountCurrency());
   readonly cash = computed(() => this.account()?.balance ?? 0);
   readonly owned = computed(() => this.ownedShares() ?? 0);
+  readonly isFrozen = computed(() => this.account()?.status === 'FROZEN');
   readonly canSell = computed(() => this.holdingsStatus() === 'ready' && this.owned() > 0);
   readonly isBuy = computed(() => this.side() === 'BUY');
 
@@ -185,6 +186,10 @@ export class TradePanelComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.accountStatus() === 'loading') return { text: t('trade.loading_cash'), tone: 'info' };
     if (this.accountStatus() === 'error') {
       return { text: t('trade.cash_error'), tone: 'error' };
+    }
+    // An admin freeze blocks both sides outright; the reason is author-supplied text.
+    if (this.isFrozen()) {
+      return { text: this.account()?.freezeReason || t('trade.account_frozen'), tone: 'error' };
     }
     if (this.price() <= 0) return { text: t('trade.no_price'), tone: 'error' };
     if (this.fxStatus() === 'loading') return { text: t('trade.loading_fx'), tone: 'info' };

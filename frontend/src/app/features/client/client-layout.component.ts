@@ -29,7 +29,8 @@ export class ClientLayoutComponent implements OnInit {
   navItems: NavItem[] = [
     { label: 'nav.home', path: '/client' },
     { label: 'nav.portfolio', path: '/client/portfolio' },
-    { label: 'nav.trades', path: '/client/trades' }
+    { label: 'nav.trades', path: '/client/trades' },
+    { label: 'nav.heatmap', path: '/client/heatmap' }
   ];
 
   userName: string;
