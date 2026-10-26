@@ -17,9 +17,9 @@ import { CommonModule } from '@angular/common';
   `,
   styles: [`
     .gain-indicator { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600; font-size: 0.875rem; white-space: nowrap; transition: color 2000ms ease; }
-    .gain-indicator.positive { color: #16a34a; }
-    .gain-indicator.negative { color: #dc2626; }
-    .arrow { width: 14px; height: 14px; flex-shrink: 0; }
+    .gain-indicator.positive { color: var(--gain); }
+    .gain-indicator.negative { color: var(--loss); }
+    .arrow { width: 1em; height: 1em; flex-shrink: 0; }
     .pct { opacity: 0.8; font-weight: 500; }
   `]
 })

@@ -4,7 +4,6 @@ import com.neueda.leap.dto.request.FreezeAccountRequest;
 import com.neueda.leap.dto.response.AccountResponse;
 import com.neueda.leap.dto.response.AdminDashboardResponse;
 import com.neueda.leap.dto.response.PaginatedTradeResponse;
-import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.service.AccountService;
 import com.neueda.leap.service.AdminDashboardService;
 import com.neueda.leap.service.AuthorizationService;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 
 import jakarta.validation.Valid;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -53,9 +51,10 @@ public class AdminDashboardController {
             @PathVariable(name = "accountId") UUID accountId,
             @RequestParam(name = "page", required = false) Integer page,
             @RequestParam(name = "size", required = false) Integer size,
+            @RequestParam(name = "search", required = false) String search,
             @AuthenticationPrincipal Jwt jwt) {
         authorizationService.requireAdmin(jwt);
-        return ResponseEntity.ok(adminDashboardService.getTradesPage(accountId, page, size));
+        return ResponseEntity.ok(adminDashboardService.getTradesPage(accountId, page, size, search));
     }
 
     @PatchMapping("/accounts/{accountId}/freeze")

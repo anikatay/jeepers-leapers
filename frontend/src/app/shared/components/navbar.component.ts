@@ -5,6 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { InstrumentService } from '../../core/services/instrument.service';
 import { TranslationService, LANGUAGES, type Language, type LanguageOption } from '../../core/services/translation.service';
 import { InstrumentResponse } from '../../core/models/instrument.model';
+import { AppearanceControlsComponent } from './appearance-controls.component';
+import { SectorMoversCarouselComponent } from './sector-movers-carousel.component';
+import { TranslatePipe } from '../../core/pipes/translate.pipe';
 
 export interface NavItem {
   label: string;
@@ -21,7 +24,15 @@ export interface StockSymbol {
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule],
+  imports: [
+    CommonModule,
+    RouterLink,
+    RouterLinkActive,
+    FormsModule,
+    AppearanceControlsComponent,
+    TranslatePipe,
+    SectorMoversCarouselComponent
+  ],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css'
 })
@@ -29,12 +40,14 @@ export class NavbarComponent implements OnInit {
   private static readonly TICKER_PATTERN = /^[A-Z0-9][A-Z0-9._=-]{0,31}$/;
 
   @Input() navItems: NavItem[] = [
-    { label: 'Home', path: '/client' },
-    { label: 'Portfolio', path: '/client/portfolio' },
-    { label: 'Trades', path: '/client/trades' }
+    { label: 'nav.home', path: '/client' },
+    { label: 'nav.portfolio', path: '/client/portfolio' },
+    { label: 'nav.trades', path: '/client/trades' }
   ];
   @Input() homePath = '/client';
   @Input() showSearch = true;
+  /** Sector movers strip above the search; the admin shell has no instrument page to link into. */
+  @Input() showSectorMovers = true;
   @Input() userName = 'User';
   @Input() brandName = 'Bull Exchange';
 
@@ -43,7 +56,6 @@ export class NavbarComponent implements OnInit {
   // Dropdown state signals
   searchOpen = signal(false);
   profileOpen = signal(false);
-  appearanceOpen = signal(false);
   languageOpen = signal(false);
   
   // Search state
@@ -63,8 +75,9 @@ export class NavbarComponent implements OnInit {
   }
 
   constructor(private instrumentService: InstrumentService, private translationService: TranslationService) {
-    // Sync selected language with translation service
-    this.selectedLanguage.set(this.translationService.currentLanguage());
+    effect(() => {
+      this.selectedLanguage.set(this.translationService.currentLanguage());
+    });
     
     // Filter search results when search query changes
     effect(() => {
@@ -117,9 +130,6 @@ export class NavbarComponent implements OnInit {
     }
     if (!target.closest('.language-container') && !target.closest('.language-menu')) {
       this.languageOpen.set(false);
-    }
-    if (!target.closest('.appearance-container') && !target.closest('.appearance-menu')) {
-      this.appearanceOpen.set(false);
     }
   }
 
@@ -218,26 +228,7 @@ export class NavbarComponent implements OnInit {
   }
 
   selectProfileOption(option: string) {
-    this.profileOptionSelected.emit(option);
     this.profileOpen.set(false);
-  }
-
-  // Appearance handlers
-  toggleAppearance() {
-    this.appearanceOpen.set(!this.appearanceOpen());
-  }
-
-  toggleDarkMode() {
-    const html = document.documentElement;
-    html.classList.toggle('dark');
-  }
-
-  changeTheme(theme: string) {
-    const html = document.documentElement;
-    // Remove all theme classes
-    html.className = html.className.replace(/(bull|ocean|lavender|rose|sage|mono|midnight|a11y-bo|a11y-bg|a11y-hc)\s*/g, '');
-    // Add new theme
-    html.classList.add(theme);
-    this.appearanceOpen.set(false);
+    this.profileOptionSelected.emit(option);
   }
 }

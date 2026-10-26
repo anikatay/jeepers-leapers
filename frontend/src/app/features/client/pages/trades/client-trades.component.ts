@@ -1,7 +1,8 @@
-import { Component, inject , OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, DestroyRef, inject , OnInit, OnDestroy, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription, from } from 'rxjs';
+import { Subscription, finalize, forkJoin, from} from 'rxjs';
 import { mergeMap, throttleTime, toArray } from 'rxjs/operators';
 import { TradesService } from '../../../../core/services/trades.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
@@ -19,6 +20,9 @@ import { combinePortfolioHistory } from '../../../../shared/utils/portfolio-hist
 import { GainIndicatorComponent } from '../../../../shared/components/gain-indicator.component';
 import { SparklineComponent } from '../../../../shared/components/sparkline.component';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
+import { TradeAnalysisService } from '../../../../core/services/trade-analysis.service';
+import { AnalysisError, TradeAnalysis, TradeAnalysisDialogState } from '../../../../core/models/trade-analysis.model';
+import { TradeAnalysisDialogComponent } from './trade-analysis-dialog/trade-analysis-dialog.component';
 
 
 interface Trade {
@@ -40,12 +44,14 @@ type TypeFilter = 'all' | 'Buy' | 'Sell';
 @Component({
   selector: 'app-client-trades',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent],
+  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent, TradeAnalysisDialogComponent],
   templateUrl: './client-trades.component.html',
   styleUrl: './client-trades.component.css'
 })
 export class ClientTradesComponent implements OnInit {
   private auth = inject(AuthService);
+  private tradeAnalysisService = inject(TradeAnalysisService);
+  private destroyRef = inject(DestroyRef);
   private get ACCOUNT_ID(): string {
     return this.auth.session()?.accountId ?? '';
   }
@@ -79,6 +85,12 @@ export class ClientTradesComponent implements OnInit {
   overallGain = signal<number>(0);
   overallGainPct = signal<number>(0);
   portfolioSparkline = signal<number[]>([]);
+
+  // Trade analysis dialog; results are kept per trade while the page is open, errors are not
+  analysisDialog = signal<{ trade: Trade; state: TradeAnalysisDialogState } | null>(null);
+  private analysingTradeIds = signal<ReadonlySet<string>>(new Set());
+  private analyses = new Map<string, TradeAnalysis>();
+  private analysisTrigger: HTMLElement | null = null;
 
   private heldPositions: Array<{ ticker: string; quantity: number; currentPrice: number; avgCostBasis: number }> = [];
   private allTradeResponses: TradeResponse[] = [];
@@ -125,7 +137,7 @@ export class ClientTradesComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load trades:', err);
-        this.error.set('Failed to load trades');
+        this.error.set(this.translationService.t('trades.failed'));
         this.allTrades.set([]);
         this.loading.set(false);
       }
@@ -460,6 +472,71 @@ export class ClientTradesComponent implements OnInit {
     const value = (event.target as HTMLInputElement).value;
     this.toDate.set(value);
     this.resetTradePage();
+  }
+
+  isAnalysing(trade: Trade): boolean {
+    return !!trade.id && this.analysingTradeIds().has(trade.id);
+  }
+
+  analyzeLabel(trade: Trade): string {
+    return this.translationService.format('trades.analysis.analyze_label', {
+      symbol: trade.symbol,
+      side: this.translationService.translate(trade.type === 'Buy' ? 'trades.buy' : 'trades.sell'),
+      date: trade.date,
+    });
+  }
+
+  analyze(trade: Trade, trigger: HTMLElement): void {
+    const tradeId = trade.id;
+    if (!tradeId || this.isAnalysing(trade)) {
+      return;
+    }
+    this.analysisTrigger = trigger;
+
+    const stored = this.analyses.get(tradeId);
+    if (stored) {
+      this.analysisDialog.set({ trade, state: { status: 'done', analysis: stored } });
+      return;
+    }
+
+    this.analysisDialog.set({ trade, state: { status: 'loading' } });
+    this.setAnalysing(tradeId, true);
+    this.tradeAnalysisService.analyze(tradeId).pipe(
+      finalize(() => this.setAnalysing(tradeId, false)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: analysis => {
+        this.analyses.set(tradeId, analysis);
+        this.showAnalysisIfOpen(tradeId, { status: 'done', analysis });
+      },
+      error: (error: AnalysisError) => this.showAnalysisIfOpen(tradeId, { status: 'error', error }),
+    });
+  }
+
+  closeAnalysis(): void {
+    this.analysisDialog.set(null);
+    this.analysisTrigger?.focus();
+    this.analysisTrigger = null;
+  }
+
+  // The dialog may have been closed, or opened for another trade, while the request ran
+  private showAnalysisIfOpen(tradeId: string, state: TradeAnalysisDialogState): void {
+    const dialog = this.analysisDialog();
+    if (dialog?.trade.id === tradeId) {
+      this.analysisDialog.set({ trade: dialog.trade, state });
+    }
+  }
+
+  private setAnalysing(tradeId: string, analysing: boolean): void {
+    this.analysingTradeIds.update(ids => {
+      const next = new Set(ids);
+      if (analysing) {
+        next.add(tradeId);
+      } else {
+        next.delete(tradeId);
+      }
+      return next;
+    });
   }
 
   openNewTrade() {

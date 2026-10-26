@@ -1,15 +1,12 @@
-import { Component, HostListener, signal } from '@angular/core';
-import { TitleCasePipe } from '@angular/common';
+import { Component } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-
-// Global theme classes on <html>, defined in styles-theme.css.
-const THEMES = ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight'];
+import { AppearanceControlsComponent } from '../../shared/components/appearance-controls.component';
 
 @Component({
   selector: 'app-analyst-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TitleCasePipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppearanceControlsComponent],
   template: `
     <header class="bar">
       <a class="brand" routerLink="/analyst/dashboard">
@@ -23,25 +20,7 @@ const THEMES = ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']
       </nav>
 
       <div class="actions">
-        <button type="button" class="switch" role="switch" [class.on]="dark()" [attr.aria-checked]="dark()" aria-label="Dark mode" (click)="toggleDark()">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
-          <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
-          <span class="knob"></span>
-        </button>
-
-        <div class="theme" (click)="$event.stopPropagation()">
-          <button type="button" class="pill" aria-label="Color theme" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())">
-            <span class="swatch"></span>
-            <svg viewBox="0 0 24 24" class="caret"><path d="m6 9 6 6 6-6" /></svg>
-          </button>
-          @if (menuOpen()) {
-            <div class="menu" role="menu">
-              @for (item of themes; track item) {
-                <button type="button" role="menuitemradio" [attr.aria-checked]="theme() === item" [class.active]="theme() === item" (click)="setTheme(item)">{{ item | titlecase }}</button>
-              }
-            </div>
-          }
-        </div>
+        <app-appearance-controls />
 
         <span class="user"><span class="avatar">A</span>Analyst</span>
         <button type="button" class="pill" aria-label="Sign out" title="Sign out" (click)="logout()">
@@ -86,7 +65,6 @@ const THEMES = ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']
 
     svg { fill: none; height: 14px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 14px; }
 
-    .switch,
     .pill {
       align-items: center;
       background: var(--card);
@@ -95,67 +73,16 @@ const THEMES = ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']
       color: var(--muted-foreground);
       cursor: pointer;
       display: inline-flex;
+      gap: 0.35rem;
       height: 2rem;
+      justify-content: center;
+      min-width: 2rem;
+      padding: 0 0.55rem;
       transition: background 0.2s;
     }
 
-    .switch:hover,
     .pill:hover { background: var(--secondary); }
-    .switch:focus-visible,
-    .pill:focus-visible,
-    .menu button:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
-
-    .switch { justify-content: space-between; padding: 0 0.45rem; position: relative; width: 4rem; }
-    .switch svg { position: relative; transition: color 0.2s; z-index: 1; }
-    .switch:not(.on) svg:first-child,
-    .switch.on svg:nth-child(2) { color: var(--primary-foreground); }
-
-    .knob {
-      background: var(--primary);
-      border-radius: 50%;
-      height: 1.625rem;
-      left: 2px;
-      position: absolute;
-      top: 2px;
-      transition: transform 0.25s cubic-bezier(0.3, 0.7, 0.3, 1);
-      width: 1.625rem;
-    }
-
-    .switch.on .knob { transform: translateX(calc(4rem - 1.625rem - 6px)); }
-
-    .theme { position: relative; }
-    .pill { gap: 0.35rem; justify-content: center; min-width: 2rem; padding: 0 0.55rem; }
-    .swatch { background: var(--primary); border-radius: 50%; height: 0.8rem; width: 0.8rem; }
-    .caret { height: 10px; width: 10px; }
-
-    .menu {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      box-shadow: 0 12px 28px rgb(0 0 0 / 0.14);
-      display: grid;
-      margin-top: 0.4rem;
-      min-width: 9rem;
-      padding: 0.3rem;
-      position: absolute;
-      right: 0;
-      top: 100%;
-    }
-
-    .menu button {
-      background: transparent;
-      border: 0;
-      border-radius: 0.45rem;
-      color: var(--foreground);
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.8rem;
-      padding: 0.45rem 0.65rem;
-      text-align: left;
-    }
-
-    .menu button:hover { background: var(--secondary); }
-    .menu button.active { color: var(--primary); font-weight: 600; }
+    .pill:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 
     .user { align-items: center; color: var(--foreground); display: inline-flex; font-size: 0.85rem; font-weight: 600; gap: 0.5rem; margin-left: 0.35rem; }
 
@@ -178,30 +105,7 @@ const THEMES = ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']
   `
 })
 export class AnalystLayoutComponent {
-  readonly themes = THEMES;
-  private readonly root = document.documentElement;
-  readonly dark = signal(this.root.classList.contains('dark'));
-  readonly theme = signal(THEMES.find(item => this.root.classList.contains(item)) ?? 'bull');
-  readonly menuOpen = signal(false);
-
   constructor(private authService: AuthService, private router: Router) {}
-
-  @HostListener('document:click')
-  @HostListener('document:keydown.escape')
-  closeMenu(): void {
-    this.menuOpen.set(false);
-  }
-
-  toggleDark(): void {
-    this.dark.set(this.root.classList.toggle('dark'));
-  }
-
-  setTheme(theme: string): void {
-    this.root.classList.remove(...THEMES);
-    this.root.classList.add(theme);
-    this.theme.set(theme);
-    this.menuOpen.set(false);
-  }
 
   logout(): void {
     this.authService.logout();

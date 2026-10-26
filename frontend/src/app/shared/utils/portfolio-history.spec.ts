@@ -1,5 +1,5 @@
 import { HistoryResponse } from '../../core/models/market.model';
-import { combinePortfolioHistory } from './portfolio-history';
+import { combinePortfolioHistory, normalizeIntradayBaseline } from './portfolio-history';
 
 function makeHistory(ticker: string, closes: Record<string, number>): HistoryResponse {
   return {
@@ -154,5 +154,71 @@ describe('combinePortfolioHistory', () => {
       { date: '2025-01-02T14:31:00Z', value: 210 },
       { date: '2025-01-02T14:32:00Z', value: 220 }
     ]);
+  });
+
+  it('values a ticker whose series starts late from its earliest close', () => {
+    const points = combinePortfolioHistory(
+      [
+        { ticker: 'AAPL', side: 'BUY', quantity: 1, executedAt: '2025-01-01T09:00:00Z' },
+        { ticker: 'MSFT', side: 'BUY', quantity: 1, executedAt: '2025-01-01T09:00:00Z' }
+      ],
+      [
+        makeHistory('AAPL', { '2025-01-01': 100, '2025-01-02': 100 }),
+        // No bar on 01-01, so without seeding MSFT would count as zero and the total
+        // would ramp from 100 to 300 purely because its history starts a day later.
+        makeHistory('MSFT', { '2025-01-02': 200 })
+      ]
+    );
+
+    expect(points).toEqual([
+      { date: '2025-01-01', value: 300 },
+      { date: '2025-01-02', value: 300 }
+    ]);
+  });
+});
+
+describe('normalizeIntradayBaseline', () => {
+  const session = (bars: HistoryResponse['bars']): HistoryResponse => ({
+    ticker: 'AAPL',
+    period: '1d',
+    bars
+  });
+
+  const flatBar = (date: string, price: number, volume = 0) => ({
+    date,
+    open: price,
+    high: price,
+    low: price,
+    close: price,
+    volume
+  });
+
+  it('re-stamps the synthetic midnight baseline to just before the first real bar', () => {
+    const result = normalizeIntradayBaseline(session([
+      flatBar('2025-01-02T00:00:00Z', 95),
+      { date: '2025-01-02T14:30:00Z', open: 100, high: 104, low: 99, close: 102, volume: 1_000 }
+    ]));
+
+    expect(result.bars[0].date).toBe('2025-01-02T14:29:00.000Z');
+    expect(result.bars[0].close).toBe(95);
+    expect(result.bars[1].date).toBe('2025-01-02T14:30:00Z');
+  });
+
+  it('leaves a genuine midnight bar alone when it carries volume', () => {
+    const bars = [
+      flatBar('2025-01-02T00:00:00Z', 95, 500),
+      { date: '2025-01-02T00:01:00Z', open: 95, high: 96, low: 94, close: 96, volume: 400 }
+    ];
+
+    expect(normalizeIntradayBaseline(session(bars)).bars).toEqual(bars);
+  });
+
+  it('leaves a session without a midnight bar alone', () => {
+    const bars = [
+      { date: '2025-01-02T14:30:00Z', open: 100, high: 104, low: 99, close: 102, volume: 1_000 },
+      { date: '2025-01-02T14:31:00Z', open: 102, high: 105, low: 101, close: 104, volume: 900 }
+    ];
+
+    expect(normalizeIntradayBaseline(session(bars)).bars).toEqual(bars);
   });
 });

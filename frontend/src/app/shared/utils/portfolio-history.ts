@@ -5,6 +5,37 @@ export interface PortfolioHistoryPoint {
   value: number;
 }
 
+const MINUTE_MS = 60_000;
+
+export function normalizeIntradayBaseline(history: HistoryResponse): HistoryResponse {
+  const bars = history?.bars;
+  if (!bars || bars.length < 2) return history;
+
+  const [first, second] = bars;
+  const firstTimestamp = parseBarTimestamp(first.date);
+  const secondTimestamp = parseBarTimestamp(second.date);
+
+  const isSynthetic =
+    Number.isFinite(firstTimestamp) &&
+    Number.isFinite(secondTimestamp) &&
+    firstTimestamp % (24 * 60 * MINUTE_MS) === 0 &&
+    first.volume === 0 &&
+    first.open === first.close &&
+    first.high === first.close &&
+    first.low === first.close &&
+    secondTimestamp - firstTimestamp > MINUTE_MS;
+
+  if (!isSynthetic) return history;
+
+  return {
+    ...history,
+    bars: [
+      { ...first, date: new Date(secondTimestamp - MINUTE_MS).toISOString() },
+      ...bars.slice(1)
+    ]
+  };
+}
+
 export interface TradeForHistory {
   ticker: string;
   side: string;
@@ -68,17 +99,22 @@ export function combinePortfolioHistory(
       }
     });
 
+    const bars = history.bars
+      .map(bar => ({
+        date: bar.date,
+        timestamp: parseBarTimestamp(bar.date),
+        close: bar.close
+      }))
+      .filter(bar => Number.isFinite(bar.timestamp))
+      .sort((a, b) => a.timestamp - b.timestamp);
+
     priceStateByTicker.set(history.ticker, {
-      bars: history.bars
-        .map(bar => ({
-          date: bar.date,
-          timestamp: parseBarTimestamp(bar.date),
-          close: bar.close
-        }))
-        .filter(bar => Number.isFinite(bar.timestamp))
-        .sort((a, b) => a.timestamp - b.timestamp),
+      bars,
       index: 0,
-      close: null
+      // Seed from the earliest known close so a ticker whose series starts later than
+      // its peers is valued from the first point instead of counting as zero, which
+      // otherwise ramps the total up artificially at the left edge.
+      close: bars.length > 0 ? bars[0].close : null
     });
   });
 

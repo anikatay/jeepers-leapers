@@ -7,6 +7,7 @@ import com.neueda.leap.dto.response.FxRateResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketSectorCatalog;
 import com.neueda.leap.dto.response.MarketQuote;
+import com.neueda.leap.dto.response.NewsResponse;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectInvalidException;
 
@@ -81,6 +82,32 @@ public class MarketDataClient {
 		} catch (RestClientException e) {
 			throw new MarketDataUnavailableException(
 					"Market data service failed for intraday history " + ticker, e);
+		}
+	}
+
+	public NewsResponse fetchNews(Set<String> tickers, int limit) {
+		if (tickers == null || tickers.isEmpty()) {
+			throw new ObjectInvalidException("Tickers cannot be empty");
+		}
+
+		String encodedTickers = tickers.stream().map(String::trim).collect(Collectors.joining(","));
+		try {
+			NewsResponse response = restClient.get()
+					.uri(uri -> uri.path("/news")
+							.queryParam("tickers", encodedTickers)
+							.queryParam("limit", limit)
+							.build())
+					.retrieve()
+					.body(NewsResponse.class);
+
+			if (response == null || response.items() == null) {
+				throw new MarketDataUnavailableException("Market data service returned empty news response");
+			}
+			return response;
+		} catch (HttpClientErrorException.BadRequest e) {
+			throw new ObjectInvalidException("Invalid news request");
+		} catch (RestClientException e) {
+			throw new MarketDataUnavailableException("Market data service failed for news", e);
 		}
 	}
 

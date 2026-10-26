@@ -718,3 +718,68 @@ def history_batch(tickers: str = Query(...), period: str = Query("1y")) -> Dict[
             log.warning("No batch history returned for %s", symbol)
         result[symbol] = {"ticker": symbol, "period": period, "bars": bars}
     return result
+
+
+MAX_NEWS_TICKERS = 8
+MAX_NEWS_ITEMS = 20
+
+
+def _news_item(raw: dict) -> dict | None:
+    """Normalise one Yahoo news entry, or None when it carries no usable headline."""
+    title = (raw.get("title") or "").strip()
+    link = (raw.get("link") or "").strip()
+    if not title or not link.startswith("https://"):
+        return None
+
+    published = raw.get("providerPublishTime")
+    try:
+        published_at = datetime.fromtimestamp(float(published), tz=timezone.utc).isoformat()
+    except (TypeError, ValueError, OSError, OverflowError):
+        published_at = None
+
+    related = [
+        ticker for ticker in (raw.get("relatedTickers") or [])
+        if isinstance(ticker, str) and TICKER_RE.match(ticker)
+    ]
+
+    return {
+        "id": str(raw.get("uuid") or link),
+        "title": title,
+        "publisher": (raw.get("publisher") or "").strip() or None,
+        "link": link,
+        "publishedAt": published_at,
+        "relatedTickers": related[:8],
+    }
+
+
+@app.get("/news")
+def news(tickers: str = Query(...), limit: int = Query(8, ge=1, le=MAX_NEWS_ITEMS)) -> dict:
+    """
+    Headlines related to the given tickers, newest first.
+
+    Uses Search rather than Ticker.news: as of yfinance 1.7.0 the per-ticker news attribute
+    and get_news() both come back empty, while Search still returns the feed. Stories are
+    deduplicated across tickers because the same piece is frequently attached to several.
+    """
+    symbols = validate_tickers(tickers)[:MAX_NEWS_TICKERS]
+
+    collected: Dict[str, dict] = {}
+    for symbol in symbols:
+        try:
+            raw_items = yf.Search(symbol, news_count=limit).news or []
+        except Exception:
+            # One ticker's feed failing must not empty the whole panel.
+            log.warning("News lookup failed for %s", symbol, exc_info=True)
+            continue
+
+        for raw in raw_items:
+            item = _news_item(raw)
+            if item is not None:
+                collected.setdefault(item["id"], item)
+
+    items = sorted(
+        collected.values(),
+        key=lambda item: item["publishedAt"] or "",
+        reverse=True,
+    )
+    return {"items": items[:limit]}

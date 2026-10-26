@@ -15,7 +15,7 @@
     <!-- Total Bought Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
       <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.total_bought' | translate }}</p>
-      <p class="stat-value font-bold text-2xl mt-1 font-mono text-green-600 dark:text-green-400">
+      <p class="stat-value font-bold text-2xl mt-1 font-mono value-buy">
         ${{ (totalBought).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
       </p>
     </div>
@@ -23,14 +23,14 @@
     <!-- Total Sold Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
       <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.total_sold' | translate }}</p>
-      <p class="stat-value font-bold text-2xl mt-1 font-mono text-red-500">
+      <p class="stat-value font-bold text-2xl mt-1 font-mono value-sell">
         ${{ (totalSold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
       </p>
     </div>
 
     <!-- Overall P&L Card -->
     <div class="border rounded-xl p-4" style="background: var(--card); border-color: var(--border);">
-      <p class="text-xs font-medium" style="color: var(--muted-foreground);">Overall P&L</p>
+      <p class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.overall_pnl' | translate }}</p>
       <app-gain-indicator class="mt-1" style="display: block;" [gain]="overallGain()" [gainPct]="overallGainPct()"></app-gain-indicator>
       <app-sparkline class="mt-2" style="display: block;" [values]="portfolioSparkline()" [width]="110" [height]="28"></app-sparkline>
     </div>
@@ -66,7 +66,7 @@
 
       <!-- Type Filter -->
       <select [value]="typeFilter()" (change)="onTypeFilterChange($event)"
-        aria-label="Type"
+        [attr.aria-label]="'trades.type_aria' | translate"
         class="px-3 py-2 rounded-lg border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
         style="background: var(--secondary); border-color: var(--border); color: var(--foreground);">
         <option value="all">{{ 'trades.all_types' | translate }}</option>
@@ -90,18 +90,18 @@
 
       <!-- Sort -->
       <select [value]="sortOrder()" (change)="onSortChange($event)"
-        aria-label="Sort By"
+        [attr.aria-label]="'trades.sort_by' | translate"
         class="px-3 py-2 rounded-lg border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
         style="background: var(--secondary); border-color: var(--border); color: var(--foreground);">
-        <option value="newest">Newest</option>
-        <option value="oldest">Oldest</option>
+        <option value="newest">{{ 'trades.newest' | translate }}</option>
+        <option value="oldest">{{ 'trades.oldest' | translate }}</option>
       </select>
 
       <!-- Clear Filters -->
       <button *ngIf="hasActiveFilters" (click)="clearFilters()" 
         class="px-2 py-2 text-xs font-semibold underline underline-offset-2"
         style="color: var(--primary);">
-        Clear Filters
+        {{ 'trades.clear_filters' | translate }}
       </button>
     </div>
 
@@ -109,44 +109,44 @@
     <div *ngIf="showFilterPanel()" class="trade-filter-panel">
       <div class="trade-filter-grid">
         <label class="trade-filter-field">
-          <span class="trade-filter-label">Currency</span>
+          <span class="trade-filter-label">{{ 'trades.currency' | translate }}</span>
           <select [value]="currencyFilter()" (change)="onCurrencyFilterChange($event)" class="trade-filter-input">
-            <option value="all">All currencies</option>
+            <option value="all">{{ 'trades.all_currencies' | translate }}</option>
             <option *ngFor="let currency of availableCurrencies" [value]="currency">{{ currency }}</option>
           </select>
         </label>
 
         <label class="trade-filter-field">
-          <span class="trade-filter-label">From date</span>
+          <span class="trade-filter-label">{{ 'trades.from_date' | translate }}</span>
           <input type="date" [value]="fromDate()" (change)="onFromDateChange($event)" class="trade-filter-input" />
         </label>
 
         <label class="trade-filter-field">
-          <span class="trade-filter-label">To date</span>
+          <span class="trade-filter-label">{{ 'trades.to_date' | translate }}</span>
           <input type="date" [value]="toDate()" [min]="fromDate() || undefined" (change)="onToDateChange($event)" class="trade-filter-input" />
         </label>
 
         <div class="trade-filter-field">
-          <span class="trade-filter-label">Quantity range</span>
+          <span class="trade-filter-label">{{ 'trades.quantity_range' | translate }}</span>
           <div class="trade-filter-range">
-            <input type="number" min="0" step="any" inputmode="decimal" [value]="minQuantity()" (input)="onMinQuantityChange($event)" placeholder="Min" aria-label="Minimum quantity" class="trade-filter-input" />
-            <input type="number" min="0" step="any" inputmode="decimal" [value]="maxQuantity()" (input)="onMaxQuantityChange($event)" placeholder="Max" aria-label="Maximum quantity" class="trade-filter-input" />
+            <input type="number" min="0" step="any" inputmode="decimal" [value]="minQuantity()" (input)="onMinQuantityChange($event)" [placeholder]="'trades.min' | translate" [attr.aria-label]="'trades.min_quantity_aria' | translate" class="trade-filter-input" />
+            <input type="number" min="0" step="any" inputmode="decimal" [value]="maxQuantity()" (input)="onMaxQuantityChange($event)" [placeholder]="'trades.max' | translate" [attr.aria-label]="'trades.max_quantity_aria' | translate" class="trade-filter-input" />
           </div>
         </div>
 
         <div class="trade-filter-field">
-          <span class="trade-filter-label">Execution price range</span>
+          <span class="trade-filter-label">{{ 'trades.price_range' | translate }}</span>
           <div class="trade-filter-range">
-            <input type="number" min="0" step="any" inputmode="decimal" [value]="minPrice()" (input)="onMinPriceChange($event)" placeholder="Min" aria-label="Minimum execution price" class="trade-filter-input" />
-            <input type="number" min="0" step="any" inputmode="decimal" [value]="maxPrice()" (input)="onMaxPriceChange($event)" placeholder="Max" aria-label="Maximum execution price" class="trade-filter-input" />
+            <input type="number" min="0" step="any" inputmode="decimal" [value]="minPrice()" (input)="onMinPriceChange($event)" [placeholder]="'trades.min' | translate" [attr.aria-label]="'trades.min_price_aria' | translate" class="trade-filter-input" />
+            <input type="number" min="0" step="any" inputmode="decimal" [value]="maxPrice()" (input)="onMaxPriceChange($event)" [placeholder]="'trades.max' | translate" [attr.aria-label]="'trades.max_price_aria' | translate" class="trade-filter-input" />
           </div>
         </div>
 
         <div class="trade-filter-field">
-          <span class="trade-filter-label">Trade value range</span>
+          <span class="trade-filter-label">{{ 'trades.value_range' | translate }}</span>
           <div class="trade-filter-range">
-            <input type="number" min="0" step="any" inputmode="decimal" [value]="minTotal()" (input)="onMinTotalChange($event)" placeholder="Min" aria-label="Minimum trade value" class="trade-filter-input" />
-            <input type="number" min="0" step="any" inputmode="decimal" [value]="maxTotal()" (input)="onMaxTotalChange($event)" placeholder="Max" aria-label="Maximum trade value" class="trade-filter-input" />
+            <input type="number" min="0" step="any" inputmode="decimal" [value]="minTotal()" (input)="onMinTotalChange($event)" [placeholder]="'trades.min' | translate" [attr.aria-label]="'trades.min_value_aria' | translate" class="trade-filter-input" />
+            <input type="number" min="0" step="any" inputmode="decimal" [value]="maxTotal()" (input)="onMaxTotalChange($event)" [placeholder]="'trades.max' | translate" [attr.aria-label]="'trades.max_value_aria' | translate" class="trade-filter-input" />
           </div>
         </div>
       </div>
@@ -154,27 +154,30 @@
 
     <!-- Active Filters Display -->
     <div *ngIf="hasActiveFilters" class="flex flex-wrap items-center gap-1-5 mb-4" aria-live="polite">
-      <span class="text-xs font-medium" style="color: var(--muted-foreground);">Active Filters:</span>
+      <span class="text-xs font-medium" style="color: var(--muted-foreground);">{{ 'trades.active_filters' | translate }}:</span>
       <span *ngIf="search().trim()" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
-        Search: {{ search().trim() }}
+        {{ 'trades.symbol_filter' | translate }}: {{ search().trim() }}
       </span>
       <span *ngIf="typeFilter() !== 'all'" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
-        Type: {{ typeFilter() }}
+        {{ (typeFilter() === 'Buy' ? 'trades.buy' : 'trades.sell') | translate }}
       </span>
       <span *ngIf="fromDate() || toDate()" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
-        Date: {{ fromDate() || 'Any' }} – {{ toDate() || 'Any' }}
+        {{ 'trades.date_range' | translate }}: {{ fromDate() || '…' }} – {{ toDate() || '…' }}
       </span>
       <span *ngIf="currencyFilter() !== 'all'" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
-        Currency: {{ currencyFilter() }}
+        {{ 'trades.currency' | translate }}: {{ currencyFilter() }}
       </span>
       <span *ngIf="minQuantity() || maxQuantity()" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
-        Quantity: {{ minQuantity() || 'Any' }} – {{ maxQuantity() || 'Any' }}
+        {{ 'trades.quantity' | translate }}: {{ minQuantity() || '…' }} – {{ maxQuantity() || '…' }}
       </span>
       <span *ngIf="minPrice() || maxPrice()" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
-        Price: {{ minPrice() || 'Any' }} – {{ maxPrice() || 'Any' }}
+        {{ 'trades.price' | translate }}: {{ minPrice() || '…' }} – {{ maxPrice() || '…' }}
       </span>
       <span *ngIf="minTotal() || maxTotal()" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
-        Value: {{ minTotal() || 'Any' }} – {{ maxTotal() || 'Any' }}
+        {{ 'trades.total' | translate }}: {{ minTotal() || '…' }} – {{ maxTotal() || '…' }}
+      </span>
+      <span *ngIf="sortOrder() === 'oldest'" class="px-2 py-1 rounded-full text-xs" style="background: var(--secondary); color: var(--secondary-foreground);">
+        {{ 'trades.oldest' | translate }}
       </span>
     </div>
 
@@ -183,20 +186,19 @@
       <table class="w-full text-sm min-w-[600px]">
         <thead>
           <tr class="border-b" style="border-color: var(--border);">
-            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Date</th>
-            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Time</th>
-            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Symbol</th>
-            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Type</th>
-            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Quantity</th>
-            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Price</th>
-            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">Total</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">{{ 'trades.date' | translate }}</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">{{ 'trades.time' | translate }}</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">{{ 'trades.symbol' | translate }}</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">{{ 'trades.type' | translate }}</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">{{ 'trades.quantity' | translate }}</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">{{ 'trades.price' | translate }}</th>
+            <th class="pb-2 text-left text-xs font-medium pr-4 whitespace-nowrap" style="color: var(--muted-foreground);">{{ 'trades.total' | translate }}</th>
           </tr>
         </thead>
         <tbody>
           <!-- Trade Rows -->
           <tr *ngFor="let trade of filteredTrades; let i = index" 
-            class="border-b last:border-0 hover:bg-secondary/40 transition-colors"
-            style="border-color: rgba(200,230,210,0.4);">
+            class="border-b last:border-0 transition-colors">
             <td class="py-3 pr-4 text-xs" style="color: var(--muted-foreground);">{{ trade.date }}</td>
             <td class="py-3 pr-4 text-xs" style="color: var(--muted-foreground);">{{ trade.time }}</td>
             <td class="trade-symbol-cell py-3 pr-4">
@@ -217,16 +219,23 @@
               </div>
             </td>
             <td class="py-3 pr-4">
-              <span [ngClass]="{
-                'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': trade.type === 'Buy',
-                'bg-red-100 dark:bg-red-900/30 text-red-600': trade.type === 'Sell'
-              }" class="px-2 py-0-5 rounded-full text-xs font-semibold">
-                {{ trade.type === 'Buy' ? 'Buy' : 'Sell' }}
+              <span [class.pill-buy]="trade.type === 'Buy'" [class.pill-sell]="trade.type === 'Sell'"
+                    class="px-2 py-0-5 rounded-full text-xs font-semibold">
+                {{ (trade.type === 'Buy' ? 'trades.buy' : 'trades.sell') | translate }}
               </span>
             </td>
             <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ trade.qty }}</td>
             <td class="py-3 pr-4 font-mono" style="color: var(--foreground);">{{ formatCurrency(trade.price, trade.currency) }}</td>
-            <td class="py-3 font-mono font-semibold" style="color: var(--foreground);">{{ formatCurrency(trade.total, trade.currency) }}</td>
+            <td class="py-3 pr-4 font-mono font-semibold" style="color: var(--foreground);">{{ formatCurrency(trade.total, trade.currency) }}</td>
+            <td class="py-3">
+              <!-- aria-disabled rather than disabled, so focus can return here when the dialog closes mid-request -->
+              <button #analyzeButton type="button" class="analyze-button"
+                [attr.aria-disabled]="isAnalysing(trade) ? 'true' : null"
+                [attr.aria-label]="analyzeLabel(trade)"
+                (click)="analyze(trade, analyzeButton)">
+                {{ 'trades.analysis.analyze' | translate }}
+              </button>
+            </td>
           </tr>
 
           <!-- Empty State -->
@@ -255,3 +264,7 @@
     </div>
   </div>
 </div>
+
+@if (analysisDialog(); as dialog) {
+  <app-trade-analysis-dialog [trade]="dialog.trade" [state]="dialog.state" (closed)="closeAnalysis()" />
+}

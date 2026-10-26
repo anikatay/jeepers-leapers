@@ -68,3 +68,16 @@ export interface MarketHeatmapResponse {
 	asOf: string;
 	sectors: MarketHeatmapSector[];
 }
+export interface NewsItem {
+	id: string;
+	title: string;
+	publisher: string | null;
+	link: string;
+	/** ISO-8601 instant, or null when the provider gave no usable timestamp. */
+	publishedAt: string | null;
+	relatedTickers: string[];
+}
+
+export interface NewsResponse {
+	items: NewsItem[];
+}

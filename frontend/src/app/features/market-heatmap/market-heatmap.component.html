@@ -1,11 +1,11 @@
 <main class="page" aria-labelledby="heatmap-title">
   <header class="head">
     <div>
-      <h1 id="heatmap-title">Market Heatmap</h1>
+      <h1 id="heatmap-title">{{ 'heatmap.title' | translate }}</h1>
       <p class="muted">
-        US large caps by sector · {{ sizing() === 'rank' ? 'Rank Weighted' : 'Equal Size' }}
+        {{ 'heatmap.subtitle' | translate }} · {{ (sizing() === 'rank' ? 'heatmap.rank_weighted' : 'heatmap.equal_size') | translate }}
         @if (updatedAt(); as updated) {
-          · prices as of {{ time(updated) }}
+          · {{ 'heatmap.prices_as_of' | translate:{ time: time(updated) } }}
         }
       </p>
     </div>
@@ -15,43 +15,44 @@
       }
       <button type="button" class="ghost" [disabled]="loading()" (click)="load()">
         <svg class="icon" [class.spin]="loading()" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5" /></svg>
-        Refresh
+        {{ 'heatmap.refresh' | translate }}
       </button>
     </div>
   </header>
 
-  <section class="toolbar" aria-label="Heatmap controls">
-    <select [ngModel]="sectorId()" (ngModelChange)="sectorId.set($event); close()" aria-label="Sector">
-      <option value="ALL">All Sectors</option>
+  <section class="toolbar" [attr.aria-label]="'heatmap.controls_aria' | translate">
+    <select [ngModel]="sectorId()" (ngModelChange)="sectorId.set($event); close()" [attr.aria-label]="'heatmap.sector_aria' | translate">
+      <option value="ALL">{{ 'heatmap.all_sectors' | translate }}</option>
       @for (sector of sectors(); track sector.id) {
         <option [value]="sector.id">{{ sector.name }}</option>
       }
     </select>
-    <input type="search" [ngModel]="query()" (ngModelChange)="query.set($event)" placeholder="Search ticker" aria-label="Search ticker">
-    <div class="seg" role="group" aria-label="Performance period">
+    <input type="search" [ngModel]="query()" (ngModelChange)="query.set($event)"
+           [placeholder]="'heatmap.search_ticker' | translate" [attr.aria-label]="'heatmap.search_ticker' | translate">
+    <div class="seg" role="group" [attr.aria-label]="'heatmap.period_aria' | translate">
       @for (item of periods; track item) {
         <button type="button" [class.on]="period() === item" [attr.aria-pressed]="period() === item" (click)="period.set(item)">{{ item }}</button>
       }
     </div>
-    <div class="seg" role="group" aria-label="Tile size">
-      <button type="button" [class.on]="sizing() === 'rank'" [attr.aria-pressed]="sizing() === 'rank'" (click)="sizing.set('rank')">Rank Weighted</button>
-      <button type="button" [class.on]="sizing() === 'equal'" [attr.aria-pressed]="sizing() === 'equal'" (click)="sizing.set('equal')">Equal Size</button>
+    <div class="seg" role="group" [attr.aria-label]="'heatmap.tile_size_aria' | translate">
+      <button type="button" [class.on]="sizing() === 'rank'" [attr.aria-pressed]="sizing() === 'rank'" (click)="sizing.set('rank')">{{ 'heatmap.rank_weighted' | translate }}</button>
+      <button type="button" [class.on]="sizing() === 'equal'" [attr.aria-pressed]="sizing() === 'equal'" (click)="sizing.set('equal')">{{ 'heatmap.equal_size' | translate }}</button>
     </div>
     @if (matches(); as found) {
-      <span class="note">{{ found.size }} {{ found.size === 1 ? 'match' : 'matches' }}</span>
+      <span class="note">{{ (found.size === 1 ? 'heatmap.match_one' : 'heatmap.match_other') | translate:{ count: found.size } }}</span>
     }
   </section>
 
-  <div class="frame">
+  <div class="frame" dir="ltr">
     @if (loading() && !heatmap()) {
-      <div class="state skeleton" [style.height.px]="height()" aria-busy="true">Loading market heatmap…</div>
+      <div class="state skeleton" [style.height.px]="height()" aria-busy="true">{{ 'heatmap.loading' | translate }}</div>
     } @else if (error()) {
       <div class="state" role="alert">
         <p>{{ error() }}</p>
-        <button type="button" class="ghost" (click)="load()">Retry</button>
+        <button type="button" class="ghost" (click)="load()">{{ 'heatmap.retry' | translate }}</button>
       </div>
     } @else if (!layout().length) {
-      <div class="state">No market data is available for this selection.</div>
+      <div class="state">{{ 'heatmap.empty' | translate }}</div>
     } @else {
       <div class="canvas" [style.height.px]="height()" (mouseleave)="leave()">
         @for (sector of layout(); track sector.id) {
@@ -89,20 +90,20 @@
   </div>
 
   <footer class="legend">
-    <div class="scale" aria-label="Color scale">
+    <div class="scale" [attr.aria-label]="'heatmap.color_scale_aria' | translate" dir="ltr">
       @for (step of legend(); track step.label) {
         <span [style.background]="step.background" [class.strong]="step.strong">{{ step.label }}</span>
       }
-      <span class="na-swatch">N/A</span>
+      <span class="na-swatch">{{ 'heatmap.na' | translate }}</span>
     </div>
     <p class="muted">
       @if (sizing() === 'rank') {
-        <b>Rank Weighted:</b> tile size reflects each stock's configured rank within its sector, not market capitalization.
+        <b>{{ 'heatmap.rank_weighted' | translate }}:</b> {{ 'heatmap.rank_weighted_hint' | translate }}
       } @else {
-        <b>Equal Size:</b> every stock has the same weight.
+        <b>{{ 'heatmap.equal_size' | translate }}:</b> {{ 'heatmap.equal_size_hint' | translate }}
       }
       @if (coverage().total) {
-        {{ period() }} change calculated for {{ coverage().calculated }} of {{ coverage().total }} stocks from daily closing prices@if (coverage().loaded < coverage().total) { (loading history {{ coverage().loaded }}/{{ coverage().total }}…)}.
+        {{ 'heatmap.coverage' | translate:{ period: period(), calculated: coverage().calculated, total: coverage().total } }}@if (coverage().loaded < coverage().total) { {{ 'heatmap.coverage_loading' | translate:{ loaded: coverage().loaded, total: coverage().total } }}}.
       }
     </p>
   </footer>
@@ -113,7 +114,7 @@
       <div class="panel-head">
         <span>{{ stock.sectorName }}</span>
         @if (pinned()) {
-          <button type="button" class="x" aria-label="Close details" (click)="close()">×</button>
+          <button type="button" class="x" [attr.aria-label]="'heatmap.close_details' | translate" (click)="close()">×</button>
         }
       </div>
 
@@ -122,28 +123,28 @@
           <strong>{{ stock.ticker }}</strong>
           <span class="badge" [class]="'badge ' + stock.status.toLowerCase()">{{ stock.status }}</span>
         </div>
-        <div class="hero-quote">
+        <div class="hero-quote" dir="ltr">
           <span class="num">{{ price(stock.price) }}</span>
           <b class="num" [class.up]="(stock.change ?? 0) > 0" [class.down]="(stock.change ?? 0) < 0">{{ change(stock.change) }}</b>
         </div>
       </div>
 
       <dl class="meta">
-        <div><dt>Rank</dt><dd>#{{ stock.rank }} of {{ stock.sectorSize }}</dd></div>
-        <div><dt>Period</dt><dd>{{ period() }}</dd></div>
-        <div><dt>Updated</dt><dd>{{ time(stock.quoteTime) }}</dd></div>
+        <div><dt>{{ 'heatmap.rank' | translate }}</dt><dd>{{ 'heatmap.rank_of' | translate:{ rank: stock.rank, total: stock.sectorSize } }}</dd></div>
+        <div><dt>{{ 'heatmap.period' | translate }}</dt><dd>{{ period() }}</dd></div>
+        <div><dt>{{ 'heatmap.updated' | translate }}</dt><dd>{{ time(stock.quoteTime) }}</dd></div>
         @if (stock.source) {
-          <div><dt>Source</dt><dd>{{ stock.source }}</dd></div>
+          <div><dt>{{ 'heatmap.source' | translate }}</dt><dd>{{ stock.source }}</dd></div>
         }
       </dl>
       @if (stock.change === null) {
         <p class="hint">
-          {{ stock.historyState === 'pending' ? 'Loading daily closes…' : stock.historyState === 'failed' ? 'Daily history unavailable, so performance cannot be calculated.' : 'No reliable reference close for this period.' }}
+          {{ (stock.historyState === 'pending' ? 'heatmap.history_pending' : stock.historyState === 'failed' ? 'heatmap.history_failed' : 'heatmap.history_none') | translate }}
         </p>
       }
 
       <table class="peers">
-        <caption>Top {{ peers().length }} in sector · sparkline: 1M daily closes</caption>
+        <caption>{{ 'heatmap.peers_caption' | translate:{ count: peers().length } }}</caption>
         <tbody>
           @for (peer of peers(); track peer.ticker) {
             <tr [class.me]="peer.ticker === stock.ticker">
@@ -155,8 +156,8 @@
                   </svg>
                 }
               </td>
-              <td class="num">{{ price(peer.price) }}</td>
-              <td class="num" [class.up]="(peer.change ?? 0) > 0" [class.down]="(peer.change ?? 0) < 0">{{ change(peer.change) }}</td>
+              <td class="num" dir="ltr">{{ price(peer.price) }}</td>
+              <td class="num" dir="ltr" [class.up]="(peer.change ?? 0) > 0" [class.down]="(peer.change ?? 0) < 0">{{ change(peer.change) }}</td>
             </tr>
           }
         </tbody>

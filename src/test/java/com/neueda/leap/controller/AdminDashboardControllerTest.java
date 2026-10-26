@@ -96,13 +96,14 @@ class AdminDashboardControllerTest {
             TradeResponse trade = new TradeResponse(
                 UUID.randomUUID(), accountId, UUID.randomUUID(), "AAPL", "Apple Inc.", "BUY",
                 BigDecimal.ONE, BigDecimal.TEN, BigDecimal.TEN, OffsetDateTime.now());
-            when(adminDashboardService.getTradesPage(accountId, 1, 10))
+            when(adminDashboardService.getTradesPage(accountId, 1, 10, "AAPL"))
                 .thenReturn(new PaginatedTradeResponse(List.of(trade), 1, 10, 11, 2));
 
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .get("/api/admin/accounts/{accountId}/trades", accountId)
                     .param("page", "1")
-                    .param("size", "10"))
+                    .param("size", "10")
+                    .param("search", "AAPL"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].ticker").value("AAPL"))
                 .andExpect(jsonPath("$.page").value(1))

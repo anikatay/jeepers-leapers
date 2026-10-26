@@ -111,6 +111,16 @@
         <h3 id="trades-heading">Trades</h3>
       </div>
 
+      <label class="trade-search" for="trade-search">Search trades by ticker
+        <input
+          id="trade-search"
+          type="search"
+          [(ngModel)]="tradeSearchTerm"
+          (ngModelChange)="onTradeSearchChanged()"
+          placeholder="Search by ticker"
+          autocomplete="off">
+      </label>
+
       <p class="dashboard-message" *ngIf="loadingTrades()">Loading trades...</p>
       <p class="dashboard-message error" *ngIf="tradesError()">{{ tradesError() }}</p>
 

@@ -49,11 +49,16 @@ public class AdminDashboardService {
     }
 
     public PaginatedTradeResponse getTradesPage(UUID accountId, Integer page, Integer size) {
+        return getTradesPage(accountId, page, size, null);
+    }
+
+    public PaginatedTradeResponse getTradesPage(UUID accountId, Integer page, Integer size, String search) {
         int normalizedPage = page == null || page < 0 ? 0 : page;
         int normalizedSize = size == null
                 ? DEFAULT_TRADE_PAGE_SIZE
                 : Math.min(Math.max(size, 1), MAX_TRADE_PAGE_SIZE);
-        TradeFilter filter = new TradeFilter(null, null, null, null, null, null, null, null, null, null, null, "newest");
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        TradeFilter filter = new TradeFilter(normalizedSearch, null, null, null, null, null, null, null, null, null, null, "newest");
         long totalItems = tradeMapper.countTradesForAccountPage(accountId, filter);
         int totalPages = totalItems == 0 ? 0 : (int) ((totalItems + normalizedSize - 1) / normalizedSize);
         if (totalPages > 0 && normalizedPage >= totalPages) {
