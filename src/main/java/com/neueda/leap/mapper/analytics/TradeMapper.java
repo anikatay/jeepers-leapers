@@ -9,8 +9,7 @@ import com.neueda.leap.model.analytics.projection.TradeProjection;
 
 public interface TradeMapper {
 
-    @Select("""
-            <script>
+    String TRADE_QUERY = """
             SELECT t.trade_id,
                    t.account_id,
                    t.instrument_id,
@@ -32,6 +31,9 @@ public interface TradeMapper {
                 <if test="side != null and side != ''">AND t.side = #{side}</if>
             </where>
             ORDER BY t.executed_at DESC, t.trade_id
+            """;
+
+    @Select("<script>" + TRADE_QUERY + """
             <choose>
                 <when test="size != null">LIMIT #{size}</when>
                 <otherwise>LIMIT 50</otherwise>
@@ -43,6 +45,9 @@ public interface TradeMapper {
             </script>
             """)
     List<TradeProjection> findTrades(TradeSearchQuery request);
+
+    @Select("<script>" + TRADE_QUERY + "</script>")
+    List<TradeProjection> findSnapshotTrades(TradeSearchQuery request);
 
     @Select("""
             <script>

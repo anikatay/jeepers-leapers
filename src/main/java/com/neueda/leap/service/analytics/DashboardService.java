@@ -28,8 +28,6 @@ import com.neueda.leap.model.analytics.PriceBar;
 import com.neueda.leap.model.analytics.PriceHistory;
 import com.neueda.leap.model.analytics.PriceHistoryQuery;
 import com.neueda.leap.model.analytics.Trade;
-import com.neueda.leap.model.analytics.TradePage;
-import com.neueda.leap.model.analytics.TradeSearchQuery;
 import com.neueda.leap.model.analytics.projection.DashboardFlowProjection;
 import com.neueda.leap.model.analytics.projection.DashboardOutcomeProjection;
 import com.neueda.leap.model.analytics.projection.DashboardSummaryProjection;
@@ -42,7 +40,6 @@ public class DashboardService {
     private static final BigDecimal FLAT_BAND = new BigDecimal("0.005");
     private static final String DEFAULT_BUCKET = "day";
     private static final Pattern TICKER_PATTERN = Pattern.compile("^[A-Z0-9][A-Z0-9.\\-_=]{0,31}$");
-    private static final int SNAPSHOT_TRADE_PAGE_SIZE = 100;
 
     private final DashboardMapper dashboardMapper;
     private final InstrumentService instrumentService;
@@ -106,17 +103,10 @@ public class DashboardService {
             intraday.put(ticker, List.of());
         }
 
-        TradePage tradePage = tradeService.getTrades(new TradeSearchQuery(
-                validatedQuery.from(),
-                validatedQuery.to(),
-                null,
-                null,
-                null,
-                0,
-                SNAPSHOT_TRADE_PAGE_SIZE));
+        List<Trade> trades = tradeService.getSnapshotTrades(validatedQuery.from(), validatedQuery.to());
         LocalDate asOf = latestDate(history, LocalDate.now(ZoneOffset.UTC));
 
-        return new DashboardSnapshot(asOf, instruments, history, intraday, tradePage.trades());
+        return new DashboardSnapshot(asOf, instruments, history, intraday, trades);
     }
 
     private DashboardFlow toFlow(DashboardFlowProjection projection) {

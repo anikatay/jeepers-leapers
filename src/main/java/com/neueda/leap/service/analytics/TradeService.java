@@ -44,6 +44,16 @@ public class TradeService {
                 validatedQuery.size());
     }
 
+    public List<Trade> getSnapshotTrades(LocalDate from, LocalDate to) {
+        TradeSearchQuery query = validateQuery(
+                new TradeSearchQuery(from, to, null, null, null, DEFAULT_PAGE, DEFAULT_SIZE));
+        List<TradeProjection> projections = tradeMapper.findSnapshotTrades(query);
+        if (projections == null) {
+            throw new ObjectNotProcessedException("Analytics mapper returned no snapshot trade result");
+        }
+        return projections.stream().map(this::toTrade).toList();
+    }
+
     private TradeSearchQuery validateQuery(TradeSearchQuery query) {
         if (query == null) {
             throw new ObjectInvalidException("Trade search query is required");

@@ -87,11 +87,23 @@ background sector stream.
 
 ## Analyst dashboard loading
 
+The demo seed in `src/main/resources/data.sql` contains 30,000 trades from
+January 2 through October 26, 2026, with at least 20 trades per US stock-market
+session. Weekends, market holidays, and future dates are excluded. The latest
+10,000 additions use historical Yahoo Finance daily closes and deliberately
+favor profitable round trips using hindsight; they are demo data, not a
+representative strategy backtest. Seeded cash and holdings are reconciled from
+the trade ledger, and accounts with non-seed trades are protected from reseeding.
+
 The analyst dashboard initially loads its instrument catalog and trade snapshot
 without fetching market history for the full catalog. Chart history is requested
 separately for the two initially selected instruments, then on demand when an
 instrument is selected. Loaded histories are reused until the dashboard reloads;
 chart loading and retry errors are displayed independently of dashboard data.
+The snapshot includes every trade in its requested date range so volume, KPIs,
+and account outcomes are calculated from the full dataset, not the latest page.
+The trade-search endpoint remains paginated, and the dashboard table displays
+at most 100 matching rows without limiting the chart calculations.
 
 ## AI Trade Analysis
 
