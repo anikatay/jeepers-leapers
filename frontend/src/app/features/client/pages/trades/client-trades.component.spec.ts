@@ -47,7 +47,14 @@ describe('ClientTradesComponent trade analysis', () => {
       imports: [ClientTradesComponent],
       providers: [
         { provide: AuthService, useValue: { session: signal({ accountId: 'account-1' }), token: 'test-token' } },
-        { provide: TradesService, useValue: { getTradesByAccount: () => of(TRADES) } },
+        {
+          provide: TradesService,
+          useValue: {
+            getTradesByAccount: () => of(TRADES),
+            // The table shows one page of trades
+            getTradesPage: () => of({ items: TRADES, page: 0, size: 10, totalItems: TRADES.length, totalPages: 1 }),
+          },
+        },
         { provide: PortfolioService, useValue: { getPortfolio: () => of([]) } },
         { provide: InstrumentService, useValue: { getAllInstruments: () => of([]) } },
         { provide: MarketDataService, useValue: { getHistory: () => EMPTY } },

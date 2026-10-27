@@ -17,7 +17,11 @@ describe('MatchCardComponent', () => {
     element = fixture.nativeElement;
   }
 
-  beforeEach(() => TestBed.configureTestingModule({ imports: [MatchCardComponent] }));
+  beforeEach(() => {
+    // These tests check English text, whatever language an earlier spec file left selected
+    localStorage.setItem('app-language', 'en');
+    TestBed.configureTestingModule({ imports: [MatchCardComponent] });
+  });
 
   it('shows the score as text, up to three reasons and labelled estimates (U3)', () => {
     render(match());

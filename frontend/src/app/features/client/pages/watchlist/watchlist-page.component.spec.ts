@@ -11,6 +11,8 @@ describe('WatchlistPageComponent', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
+    // These tests check English text, whatever language an earlier spec file left selected
+    localStorage.setItem('app-language', 'en');
     TestBed.configureTestingModule({
       imports: [WatchlistPageComponent],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]

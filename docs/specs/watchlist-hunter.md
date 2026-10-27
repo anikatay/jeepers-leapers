@@ -456,7 +456,7 @@ Hunter page also has a "View watchlist (n)" link.
 
 ### 8.5 Language
 
-Every label, message and button is translated into the app's 9 languages (Urdu was removed on main) through
+Every label, message and button is translated into every language in `LANGUAGES` (10 at present) through
 `TranslationService`. Model-written text (spec names, statements, reasons, bullets) is in English.
 
 - The strings live in `core/i18n/hunter.translations.ts` and are registered when the lazy Hunter pages

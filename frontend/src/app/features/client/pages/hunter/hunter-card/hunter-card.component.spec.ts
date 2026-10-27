@@ -18,7 +18,11 @@ describe('HunterCardComponent', () => {
 
   const current = () => fixture.componentInstance.spec();
 
-  beforeEach(() => TestBed.configureTestingModule({ imports: [HunterCardComponent] }));
+  beforeEach(() => {
+    // These tests check English text, whatever language an earlier spec file left selected
+    localStorage.setItem('app-language', 'en');
+    TestBed.configureTestingModule({ imports: [HunterCardComponent] });
+  });
 
   it('shows the filters, the checks and what was not used (U1)', () => {
     render(spec());

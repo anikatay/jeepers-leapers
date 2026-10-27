@@ -1011,6 +1011,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'ہوم',
     'nav.portfolio': 'پورٹ فولیو',
     'nav.trades': 'تجارت',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'واچ لسٹ',
     'nav.profile': 'پروفائل',
     'nav.settings': 'ترتیبات',
     'nav.logout': 'لاگ آؤٹ',
