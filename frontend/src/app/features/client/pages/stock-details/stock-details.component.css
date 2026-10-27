@@ -232,65 +232,6 @@
   text-align: end;
 }
 
-/* Market session + exchange */
-.sd-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.875rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-
-.sd-market {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0.4rem 0.9rem;
-  border-radius: 9999px;
-  border: 1.5px solid var(--border);
-  background: var(--card);
-  color: var(--muted-foreground);
-  font-size: 0.9375rem;
-  font-weight: 700;
-}
-
-.sd-market[data-state='open'] {
-  color: var(--gain);
-  background: color-mix(in srgb, var(--gain) 8%, var(--card));
-  border-color: var(--gain);
-}
-
-.sd-market[data-state='closed'] {
-  color: var(--foreground);
-  background: var(--secondary);
-  border-color: var(--muted-foreground);
-}
-
-.sd-market[data-state='closed'] svg { color: var(--muted-foreground); }
-
-.sd-market svg { flex-shrink: 0; width: 1.125em; height: 1.125em; }
-
-.sd-exchange {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--foreground);
-}
-
-.sd-exchange-label {
-  font-weight: 500;
-  color: var(--muted-foreground);
-}
-
-.sd-market-detail {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--muted-foreground);
-}
-
 /* Chart */
 .sd-chart-card {
   display: flex;

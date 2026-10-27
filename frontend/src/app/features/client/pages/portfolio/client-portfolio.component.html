@@ -64,7 +64,7 @@
             class="search-input"
             placeholder="{{ 'portfolio.search_stocks' | translate }}"
             [ngModel]="searchQuery()"
-            (ngModelChange)="searchQuery.set($event)" />
+            (ngModelChange)="onSearchQueryChange($event)" />
         </div>
 
         <!-- Filter Buttons (All / Gain / Loss) -->
@@ -114,8 +114,8 @@
                   </span>
                 </button>
               </th>
-              <th class="col-sortable" (click)="toggleSort('gain')">
-                <button class="sort-header">
+              <th class="col-sortable col-gain-header" (click)="toggleSort('gain')">
+                <button class="sort-header gain-sort-header">
                   {{ 'portfolio.gain_loss' | translate }}
                   <span *ngIf="sortBy() === 'gain'" class="sort-indicator">
                     {{ sortDir() === 'desc' ? '↓' : '↑' }}
@@ -126,7 +126,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let holding of filteredAndSorted()" class="holding-row">
+            <tr *ngFor="let holding of pagedHoldings()" class="holding-row">
               <!-- Symbol with Stock Icon -->
               <td class="col-symbol">
                 <div class="symbol-badge">
@@ -151,13 +151,15 @@
               <!-- Current Value -->
               <td class="col-numeric font-mono-data">{{ formatCurrency(holding.currentValue, holding.currency) }}</td>
 
-              <!-- Gain/Loss: sparkline by default, numbers on hover -->
+              <!-- Gain/Loss: unrealized P/L from the current price and average cost basis -->
               <td class="col-gain">
-                <div class="gain-content gain-hover-wrapper">
-                  <div class="gain-tooltip">
+                <div class="gain-content">
+                  <ng-container *ngIf="holding.avgCostBasis > 0; else unavailableGain">
                     <app-gain-indicator [gain]="holding.gain" [gainPct]="holding.gainPct"></app-gain-indicator>
-                  </div>
-                  <app-sparkline [values]="holdingSparklines()[holding.symbol]" [width]="70" [height]="24"></app-sparkline>
+                  </ng-container>
+                  <ng-template #unavailableGain>
+                    <span class="gain-unavailable">{{ 'common.not_available' | translate }}</span>
+                  </ng-template>
                 </div>
               </td>
 
@@ -177,6 +179,22 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div *ngIf="portfolioTotalPages() > 0" class="portfolio-pagination">
+        <button type="button" (click)="previousPortfolioPage()" [disabled]="currentPortfolioPage() === 0">
+          {{ 'portfolio.previous_page' | translate }}
+        </button>
+        <span>
+          {{ 'portfolio.page_status' | translate:{
+            page: currentPortfolioPage() + 1,
+            totalPages: portfolioTotalPages(),
+            count: filteredAndSorted().length
+          } }}
+        </span>
+        <button type="button" (click)="nextPortfolioPage()"
+                [disabled]="currentPortfolioPage() + 1 >= portfolioTotalPages()">
+          {{ 'portfolio.next_page' | translate }}
+        </button>
       </div>
     </div>
   </div>

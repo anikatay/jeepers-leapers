@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   Input,
   OnDestroy,
@@ -20,10 +21,16 @@ const SECONDS_PER_CHIP = 2.5;
 /** Floor so a short strip does not whip around. */
 const MIN_DURATION_S = 20;
 
+interface SectorMoverView extends SectorMover {
+  changeLabel: string;
+  ariaLabel: string;
+}
+
 @Component({
   selector: 'app-sector-movers-carousel',
   standalone: true,
   imports: [CommonModule, RouterLink, TranslatePipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section
       *ngIf="movers().length > 0"
@@ -41,29 +48,29 @@ const MIN_DURATION_S = 20;
            reachable by tab, or every ticker would be read out twice. -->
       <div class="sm-lane" [style.animation-duration.s]="durationSeconds()">
         <ul class="sm-run" [attr.aria-label]="'movers.list_aria' | translate">
-          <li *ngFor="let mover of movers(); trackBy: trackByKey" class="sm-item">
+          <li *ngFor="let mover of displayMovers(); trackBy: trackByKey" class="sm-item">
             <a
               class="sm-chip"
               [class.laggard]="mover.laggard"
               [routerLink]="[routePrefix, mover.ticker]"
-              [attr.aria-label]="describe(mover)"
+              [attr.aria-label]="mover.ariaLabel"
             >
               <span class="sm-sector">{{ mover.sectorName }}</span>
               <span class="sm-ticker font-mono-data">{{ mover.ticker }}</span>
               <span class="sm-change font-mono-data" [class.up]="mover.change >= 0" [class.down]="mover.change < 0">
-                {{ formatChange(mover.change) }}
+                {{ mover.changeLabel }}
               </span>
             </a>
           </li>
         </ul>
 
         <ul class="sm-run" aria-hidden="true">
-          <li *ngFor="let mover of movers(); trackBy: trackByKey" class="sm-item">
+          <li *ngFor="let mover of displayMovers(); trackBy: trackByKey" class="sm-item">
             <span class="sm-chip" [class.laggard]="mover.laggard" tabindex="-1">
               <span class="sm-sector">{{ mover.sectorName }}</span>
               <span class="sm-ticker font-mono-data">{{ mover.ticker }}</span>
               <span class="sm-change font-mono-data" [class.up]="mover.change >= 0" [class.down]="mover.change < 0">
-                {{ formatChange(mover.change) }}
+                {{ mover.changeLabel }}
               </span>
             </span>
           </li>
@@ -77,25 +84,26 @@ const MIN_DURATION_S = 20;
       margin: 0 auto;
       padding: 0 0.75rem 0.5rem 0.75rem;
       overflow: hidden;
-      /* Fade the ends so chips enter and leave instead of being chopped off. */
-      mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
-      -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+      contain: layout paint;
     }
 
     .sm-lane {
       display: flex;
       width: max-content;
+      contain: layout paint;
       animation-name: sm-marquee;
       animation-timing-function: linear;
       animation-iteration-count: infinite;
+      transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
     }
 
     /* Hovering or tabbing in holds the strip still, so a chip can actually be clicked. */
     .sm-strip.paused .sm-lane { animation-play-state: paused; }
 
     @keyframes sm-marquee {
-      from { transform: translateX(0); }
-      to   { transform: translateX(-50%); }
+      from { transform: translate3d(0, 0, 0); }
+      to   { transform: translate3d(-50%, 0, 0); }
     }
 
     /* The lane runs the other way under RTL, so the loop still moves with the reading order. */
@@ -153,7 +161,7 @@ const MIN_DURATION_S = 20;
 
     /* Motion is the whole point here, so when it is unwelcome the strip stops entirely and
        becomes an ordinary scrollable row rather than animating more slowly. */
-    @media (prefers-reduced-motion: reduce) {
+    @media (prefers-reduced-motion: reduce), (update: slow) {
       .sm-strip {
         overflow-x: auto;
         scrollbar-width: none;
@@ -184,6 +192,13 @@ export class SectorMoversCarouselComponent implements OnInit, OnDestroy {
   readonly movers = this.service.movers;
 
   readonly paused = signal(false);
+  readonly displayMovers = computed<SectorMoverView[]>(() =>
+    this.movers().map(mover => ({
+      ...mover,
+      changeLabel: this.formatChange(mover.change),
+      ariaLabel: this.describe(mover)
+    }))
+  );
 
   /**
    * One full loop is the width of a single copy of the lane, so the duration is derived from
@@ -191,7 +206,7 @@ export class SectorMoversCarouselComponent implements OnInit, OnDestroy {
    * faster scroll.
    */
   readonly durationSeconds = computed(() =>
-    Math.max(MIN_DURATION_S, this.movers().length * SECONDS_PER_CHIP)
+    Math.max(MIN_DURATION_S, this.displayMovers().length * SECONDS_PER_CHIP)
   );
 
   ngOnInit(): void {
@@ -210,7 +225,7 @@ export class SectorMoversCarouselComponent implements OnInit, OnDestroy {
     this.paused.set(false);
   }
 
-  trackByKey(_index: number, mover: SectorMover): string {
+  trackByKey(_index: number, mover: SectorMoverView): string {
     return `${mover.sectorId}:${mover.ticker}:${mover.laggard}`;
   }
 

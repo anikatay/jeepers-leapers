@@ -62,7 +62,7 @@ describe('percentChange', () => {
   });
 
   it('returns null when history does not reach back to the target date', () => {
-    expect(percentChange(quote, bars.slice(2), '1M')).toBeNull();
+    expect(percentChange(quote, bars.slice(4), '1M')).toBeNull();
   });
 
   it('returns null when the nearest reference close is too far from the target', () => {
@@ -70,9 +70,27 @@ describe('percentChange', () => {
     expect(percentChange(quote, sparse, '1M')).toBeNull();
   });
 
-  it('returns null for a quote older than the latest daily bar', () => {
-    const stale: QuoteInput = { ...quote, quoteTime: '2026-03-27T15:00:00Z' };
+  it('uses the quote session when live history contains a later daily bar', () => {
+    const live: QuoteInput = { ...quote, quoteTime: '2026-03-27T15:00:00Z' };
+    expect(percentChange(live, bars, '1D')).toBeCloseTo((150 / 125 - 1) * 100);
+  });
+
+  it('does not use a stale quote against later history', () => {
+    const stale: QuoteInput = {
+      ...quote,
+      quoteTime: '2026-03-27T15:00:00Z',
+      status: 'STALE'
+    };
     expect(percentChange(stale, bars, '1D')).toBeNull();
+  });
+
+  it('accepts a nearby first trading day when the target is before the history window', () => {
+    const shortHistory = [bar('2026-03-29', 100), bar('2026-04-01', 110)];
+    const monthEndQuote: QuoteInput = {
+      ...quote,
+      quoteTime: '2026-04-27T15:00:00Z'
+    };
+    expect(percentChange(monthEndQuote, shortHistory, '1M')).toBeCloseTo(50);
   });
 
   it('returns null for unavailable or missing prices', () => {

@@ -496,10 +496,14 @@ export class ClientHomeComponent implements OnInit {
 
     this.subscribedTickers.forEach(ticker => {
       if (!tickers.has(ticker)) {
-        this.marketQuoteService.unsubscribe(ticker);
+        this.marketQuoteService.unsubscribe(ticker, this);
       }
     });
-    tickers.forEach(ticker => this.marketQuoteService.subscribe(ticker));
+    tickers.forEach(ticker => {
+      if (!this.subscribedTickers.has(ticker)) {
+        this.marketQuoteService.subscribe(ticker, this);
+      }
+    });
     this.subscribedTickers = tickers;
 
     if (!this.quoteSubscription) {
@@ -507,6 +511,7 @@ export class ClientHomeComponent implements OnInit {
       this.quoteSubscription = this.marketQuoteService.quotes$
         .pipe(throttleTime(2000, undefined, { leading: true, trailing: true }))
         .subscribe(quote => {
+          if (!this.subscribedTickers.has(quote.ticker)) return;
           const updated = this.holdings().map(h =>
             h.symbol === quote.ticker
               ? { ...h, price: quote.price, value: (h.value / h.price) * quote.price }
@@ -606,7 +611,7 @@ export class ClientHomeComponent implements OnInit {
   ngOnDestroy(): void {
     this.quoteSubscription?.unsubscribe();
     this.liveChartSubscription?.unsubscribe();
-    this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker));
+    this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker, this));
   }
 
 

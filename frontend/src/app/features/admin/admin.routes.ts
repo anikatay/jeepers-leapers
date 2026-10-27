@@ -1,7 +1,5 @@
 import { Routes } from '@angular/router';
-import { AnalystDashboardComponent } from '../analyst/pages/dashboard/analyst-dashboard.component';
 import { AdminLayoutComponent } from './admin-layout.component';
-import { AdminHomeComponent } from './pages/home/admin-home.component';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -10,11 +8,11 @@ export const ADMIN_ROUTES: Routes = [
     children: [
       {
         path: '',
-        component: AdminHomeComponent
+        loadComponent: () => import('./pages/home/admin-home.component').then(m => m.AdminHomeComponent)
       },
       {
         path: 'analytics',
-        component: AnalystDashboardComponent
+        loadComponent: () => import('../analyst/pages/dashboard/analyst-dashboard.component').then(m => m.AnalystDashboardComponent)
       }
     ]
   }

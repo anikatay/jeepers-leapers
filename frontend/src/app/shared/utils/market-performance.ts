@@ -45,15 +45,26 @@ export function percentChange(quote: QuoteInput, bars: PriceBar[] | null | undef
   if (!Number.isFinite(quote.price) || quote.price <= 0) return null;
 
   const session = marketDate(quote.quoteTime);
-  // A quote older than the newest daily bar is not the current price.
-  if (session < bars[bars.length - 1].date) return null;
+  const orderedBars = bars
+    .filter(bar => Number.isFinite(bar.close) && bar.close > 0 && Boolean(bar.date))
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (orderedBars.length === 0) return null;
+
+  // A stale cached quote must not be presented as a current performance value.
+  if (quote.status === 'STALE' && session < orderedBars[orderedBars.length - 1].date) return null;
 
   const target = period === '1D' ? session : shiftDate(session, period === '1W' ? { days: -7 } : { months: -1 });
-  if (period !== '1D' && bars[0].date > target) return null;
 
-  const reference = [...bars].reverse().find(bar => (period === '1D' ? bar.date < target : bar.date <= target));
-  if (!reference || !Number.isFinite(reference.close) || reference.close <= 0) return null;
-  if (daysBetween(reference.date, target) > MAX_SESSION_GAP_DAYS) return null;
+  let reference = [...orderedBars].reverse().find(bar =>
+    period === '1D' ? bar.date < target : bar.date <= target
+  );
+  if (!reference && period !== '1D') {
+    // A one-week or one-month target can land before the first trading day in
+    // the requested history window (for example, on a weekend).
+    reference = orderedBars.find(bar => bar.date >= target);
+  }
+  if (!reference || Math.abs(daysBetween(reference.date, target)) > MAX_SESSION_GAP_DAYS) return null;
 
   return (quote.price / reference.close - 1) * 100;
 }

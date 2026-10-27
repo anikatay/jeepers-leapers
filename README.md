@@ -92,9 +92,10 @@ curl -sS http://localhost:8093/sectors/energy | jq
 curl -sS http://localhost:8093/health | jq
 ```
 
-`SECTOR_STREAM_ENABLED=true` keeps the sector tickers persistently subscribed
-to the sidecar stream. Set it to `false` when running the sidecar without the
-background sector stream.
+The sidecar does not persistently subscribe to the sector catalog. The heatmap
+page owns its ticker subscriptions while it is open and releases them when the
+page is destroyed, so the background scrolling strip does not consume yfinance
+stream slots.
 
 ## Analyst dashboard loading
 

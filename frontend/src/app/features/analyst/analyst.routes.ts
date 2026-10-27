@@ -1,8 +1,6 @@
 import { Routes } from '@angular/router';
 import { analystGuard } from '../../core/guards/analyst.guard';
 import { AnalystLayoutComponent } from './analyst-layout.component';
-import { AnalystDashboardComponent } from './pages/dashboard/analyst-dashboard.component';
-import { MarketHeatmapComponent } from '../market-heatmap/market-heatmap.component';
 
 export const ANALYST_ROUTES: Routes = [
   {
@@ -11,8 +9,14 @@ export const ANALYST_ROUTES: Routes = [
     canActivate: [analystGuard],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'dashboard', component: AnalystDashboardComponent },
-      { path: 'heatmap', component: MarketHeatmapComponent }
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./pages/dashboard/analyst-dashboard.component').then(m => m.AnalystDashboardComponent)
+      },
+      {
+        path: 'heatmap',
+        loadComponent: () => import('../market-heatmap/market-heatmap.component').then(m => m.MarketHeatmapComponent)
+      }
     ]
   }
 ];

@@ -90,6 +90,9 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'portfolio.change': 'Change',
     'portfolio.success': 'Success',
     'portfolio.no_holdings': 'No holdings found',
+    'portfolio.previous_page': 'Previous',
+    'portfolio.next_page': 'Next',
+    'portfolio.page_status': 'Page {{page}} of {{totalPages}} ({{count}} holdings)',
 
     // Trades Page
     'trades.title': 'Trades',    'trades.total_trades': 'Total Trades',
