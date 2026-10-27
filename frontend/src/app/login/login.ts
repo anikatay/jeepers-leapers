@@ -3,23 +3,29 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../core/services/auth.service';
 import { Router, RouterLink } from '@angular/router';
+import { TranslatePipe } from '../core/pipes/translate.pipe';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TranslatePipe],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
 export class Login {
   email = '';
   password = '';
-  message = signal('');
+  messageKey = signal('');
   isError = signal(false);
+  showPassword = signal(false);
+
+  togglePassword(): void {
+    this.showPassword.update((visible) => !visible);
+  }
 
   constructor(private authService: AuthService, private router: Router) {}
 
   confirmLogIn() {
-    this.message.set('');
+    this.messageKey.set('');
 
     this.authService.login({ email: this.email, password: this.password }).subscribe({
       next: (response) => {
@@ -34,11 +40,11 @@ export class Login {
       error: (err: HttpErrorResponse) => {
         this.isError.set(true);
         if (err.status === 401 || err.status === 404) {
-          this.message.set('Invalid email or password');
+          this.messageKey.set('auth.invalid_credentials');
         } else if (err.status === 0) {
-          this.message.set('Cannot reach the server');
+          this.messageKey.set('auth.server_unreachable');
         } else {
-          this.message.set('Something went wrong, please try again');
+          this.messageKey.set('auth.generic_error');
         }
       },
     });

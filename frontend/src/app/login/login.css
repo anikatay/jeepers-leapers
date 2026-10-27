@@ -1,64 +1,74 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
 * {
   box-sizing: border-box;
 }
 
-.login-page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 2rem 1rem;
-  background: var(--bg-wave, linear-gradient(135deg, #f0faf4, #e8f8f0));
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
   color: var(--foreground, #1a2e1f);
 }
 
-.login-panel {
-  width: min(100%, 420px);
-  padding: 2.5rem;
-  border: 1px solid var(--border, #c8e6d2);
-  border-radius: var(--radius, 0.75rem);
-  background: var(--card, #ffffff);
-  box-shadow: 0 18px 50px rgba(26, 107, 60, 0.1);
-}
-
-.login-logo {
-  display: block;
-  width: 76px;
-  height: 76px;
-  margin: 0 auto 1.5rem;
-  object-fit: contain;
+:host-context([dir='rtl']) .login-panel {
+  direction: rtl;
+  text-align: start;
 }
 
 .login-heading {
-  text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 
-.eyebrow {
-  margin: 0 0 0.5rem;
+.back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.7rem;
+  color: var(--muted-foreground, #4a7c5a);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.back-home:hover {
   color: var(--primary, #1a6b3c);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-decoration: underline;
+}
+
+.back-home-arrow {
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+:host-context([dir='rtl']) .back-home-arrow {
+  transform: scaleX(-1);
 }
 
 .login-heading h1 {
   margin: 0;
   color: var(--card-foreground, #1a2e1f);
   font-family: 'DM Sans', sans-serif;
-  font-size: 2rem;
+  font-size: clamp(1.85rem, 2.4vw, 2.15rem);
+  font-weight: 700;
   line-height: 1.15;
 }
 
 .subtitle {
-  margin: 0.75rem 0 0;
+  margin: 0.65rem 0 0;
   color: var(--muted-foreground, #4a7c5a);
 }
 
 form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.15rem;
 }
 
 .field {
@@ -73,13 +83,49 @@ form {
   color: var(--card-foreground, #1a2e1f);
 }
 
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap input {
+  padding-inline-end: 2.7rem;
+}
+
+.password-toggle {
+  position: absolute;
+  inset-inline-end: 0.45rem;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--muted-foreground, #4a7c5a);
+  transform: translateY(-50%);
+  box-shadow: none;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: color-mix(in srgb, var(--secondary, #e6f5ec) 80%, #ffffff);
+  transform: translateY(-50%);
+}
+
+.password-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
 .field input {
   width: 100%;
   padding: 0.8rem 0.9rem;
   border: 1px solid #d1d5db;
-  border-radius: calc(var(--radius, 0.75rem) - 0.2rem);
-
-  background: #f3f4f6;
+  border-radius: calc(var(--radius, 0.75rem) - 0.1rem);
+  background: color-mix(in srgb, #f3f4f6 70%, #ffffff);
   color: var(--foreground, #1a2e1f);
   transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
@@ -91,28 +137,29 @@ form {
 .field input:focus {
   outline: none;
   border-color: var(--primary, #1a6b3c);
-  background: var(--card, #ffffff);
+  background: #ffffff;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
 }
 
-button {
+button[type='submit'] {
   margin-top: 0.25rem;
   padding: 0.85rem 1rem;
   border: 0;
-  border-radius: calc(var(--radius, 0.75rem) - 0.2rem);
+  border-radius: 999px;
   background: var(--primary, #1a6b3c);
   color: var(--primary-foreground, #ffffff);
+  font-family: 'DM Sans', sans-serif;
   font-size: 1rem;
   font-weight: 700;
   transition: background-color 0.2s, transform 0.2s;
 }
 
-button:hover {
+button[type='submit']:hover {
   background: var(--accent, #22c55e);
   transform: translateY(-1px);
 }
 
-button:active {
+button[type='submit']:active {
   transform: translateY(0);
 }
 
@@ -146,19 +193,15 @@ button:active {
   text-decoration: underline;
 }
 
-.login-footer {
-  margin: 2rem 0 0;
-  color: var(--muted-foreground, #4a7c5a);
-  font-size: 0.75rem;
-  text-align: center;
+@media (max-width: 840px) {
+  .login-panel {
+    height: auto;
+  }
 }
 
-@media (max-width: 480px) {
-  .login-page {
-    padding: 1rem;
-  }
-
-  .login-panel {
-    padding: 2rem 1.25rem;
+@media (prefers-reduced-motion: reduce) {
+  .field input,
+  button[type='submit'] {
+    transition: none;
   }
 }

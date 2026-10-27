@@ -1,161 +1,206 @@
-<main class="register-page">
-  <section class="register-panel" aria-labelledby="register-title">
-    <img class="register-logo" src="/symbol.PNG" alt="LEAP logo" />
+<section class="register-panel" aria-labelledby="register-title">
+  <div class="register-heading">
+    <a class="back-home" routerLink="/">
+      <span class="back-home-arrow" aria-hidden="true">←</span>
+      {{ 'auth.back_home' | translate }}
+    </a>
+    <h1 id="register-title">{{ 'auth.register_title' | translate }}</h1>
+    <p class="subtitle">{{ 'auth.register_subtitle' | translate }}</p>
+  </div>
 
-    <div class="register-heading">
-      <h1 id="register-title">Create your account</h1>
-      <p class="subtitle">Register for access to your trading workspace.</p>
-    </div>
-
-    <form #registerForm="ngForm" (ngSubmit)="register(registerForm)" novalidate>
-      <div class="field-row">
-        <div class="field">
-          <label for="firstName">First name</label>
-          <input
-            type="text"
-            id="firstName"
-            name="firstName"
-            required
-            pattern="[A-Za-z\s\-]+"
-            autocomplete="given-name"
-            [(ngModel)]="formData.firstName"
-            #firstNameModel="ngModel"
-          />
-          @if (firstNameModel.invalid && (firstNameModel.touched || registerForm.submitted)) {
-            <small class="field-error" role="alert">Use letters, spaces, or hyphens only.</small>
-          }
-        </div>
-
-        <div class="field">
-          <label for="lastName">Last name</label>
-          <input
-            type="text"
-            id="lastName"
-            name="lastName"
-            required
-            pattern="[A-Za-z\s\-]+"
-            autocomplete="family-name"
-            [(ngModel)]="formData.lastName"
-            #lastNameModel="ngModel"
-          />
-          @if (lastNameModel.invalid && (lastNameModel.touched || registerForm.submitted)) {
-            <small class="field-error" role="alert">Use letters, spaces, or hyphens only.</small>
-          }
-        </div>
-      </div>
-
+  <form #registerForm="ngForm" (ngSubmit)="register(registerForm)" novalidate>
+    <div class="field-row">
       <div class="field">
-        <label for="dateOfBirth">Date of birth</label>
+        <label for="register-firstName">{{ 'auth.first_name' | translate }}</label>
         <input
-          type="date"
-          id="dateOfBirth"
-          name="dateOfBirth"
+          type="text"
+          id="register-firstName"
+          name="firstName"
           required
-          autocomplete="bday"
-          [(ngModel)]="formData.dateOfBirth"
-          #dateOfBirthModel="ngModel"
+          pattern="[A-Za-z\s\-]+"
+          autocomplete="given-name"
+          dir="auto"
+          [(ngModel)]="formData.firstName"
+          #firstNameModel="ngModel"
         />
-        @if (dateOfBirthModel.invalid && (dateOfBirthModel.touched || registerForm.submitted)) {
-          <small class="field-error" role="alert">Use YYYY-MM-DD, for example 1990-05-21.</small>
+        @if (firstNameModel.invalid && (firstNameModel.touched || registerForm.submitted)) {
+          <small class="field-error" role="alert">{{ 'auth.name_invalid' | translate }}</small>
         }
       </div>
 
       <div class="field">
-        <label for="ssn">Social Security number</label>
+        <label for="register-lastName">{{ 'auth.last_name' | translate }}</label>
+        <input
+          type="text"
+          id="register-lastName"
+          name="lastName"
+          required
+          pattern="[A-Za-z\s\-]+"
+          autocomplete="family-name"
+          dir="auto"
+          [(ngModel)]="formData.lastName"
+          #lastNameModel="ngModel"
+        />
+        @if (lastNameModel.invalid && (lastNameModel.touched || registerForm.submitted)) {
+          <small class="field-error" role="alert">{{ 'auth.name_invalid' | translate }}</small>
+        }
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="register-dateOfBirth">{{ 'auth.date_of_birth' | translate }}</label>
+        <div class="dob-wrap">
+          <input
+            type="date"
+            id="register-dateOfBirth"
+            name="dateOfBirth"
+            required
+            adultDateOfBirth
+            autocomplete="bday"
+            [attr.max]="maxDateOfBirth"
+            [(ngModel)]="formData.dateOfBirth"
+            #dateOfBirthModel="ngModel"
+            #dateOfBirthInput
+          />
+          <button
+            type="button"
+            class="dob-calendar-button"
+            tabindex="-1"
+            aria-hidden="true"
+            (click)="openDatePicker(dateOfBirthInput, $event)"
+          ></button>
+        </div>
+        @if (dateOfBirthHasEntryError(dateOfBirthModel) && (dateOfBirthModel.touched || registerForm.submitted)) {
+          <small class="field-error" role="alert">{{ 'auth.dob_invalid' | translate }}</small>
+        }
+      </div>
+
+      <div class="field">
+        <label for="register-ssn">{{ 'auth.ssn' | translate }}</label>
         <input
           type="password"
-          id="ssn"
+          id="register-ssn"
           name="ssn"
           required
           pattern="[0-9]{3}-[0-9]{2}-[0-9]{4}"
           autocomplete="off"
+          dir="ltr"
           [(ngModel)]="formData.ssn"
           #ssnModel="ngModel"
         />
         @if (ssnModel.invalid && (ssnModel.touched || registerForm.submitted)) {
-          <small class="field-error" role="alert">Use XXX-XX-XXXX.</small>
+          <small class="field-error" role="alert">{{ 'auth.ssn_invalid' | translate }}</small>
         }
       </div>
+    </div>
 
-      <div class="field">
-        <label for="address">Address</label>
-        <textarea
-          id="address"
-          name="address"
-          required
-          rows="3"
-          autocomplete="street-address"
-          [(ngModel)]="formData.address"
-          #addressModel="ngModel"
-        ></textarea>
-        @if (addressModel.invalid && (addressModel.touched || registerForm.submitted)) {
-          <small class="field-error" role="alert">Enter your street address.</small>
-        }
-      </div>
+    <div class="field">
+      <label for="register-address">{{ 'auth.address' | translate }}</label>
+      <textarea
+        id="register-address"
+        name="address"
+        required
+        rows="2"
+        autocomplete="street-address"
+        dir="auto"
+        [(ngModel)]="formData.address"
+        #addressModel="ngModel"
+      ></textarea>
+      @if (addressModel.invalid && (addressModel.touched || registerForm.submitted)) {
+        <small class="field-error" role="alert">{{ 'auth.address_required' | translate }}</small>
+      }
+    </div>
 
+    <div class="field-row">
       <div class="field">
-        <label for="phoneNumber">Phone number</label>
+        <label for="register-phoneNumber">{{ 'auth.phone' | translate }}</label>
         <input
           type="tel"
-          id="phoneNumber"
+          id="register-phoneNumber"
           name="phoneNumber"
           required
           pattern="(\\([0-9]{3}\\)\\s?[0-9]{3}-[0-9]{4}|[0-9]{10})"
           autocomplete="tel"
+          dir="ltr"
           [(ngModel)]="formData.phoneNumber"
           #phoneNumberModel="ngModel"
         />
         @if (phoneNumberModel.invalid && (phoneNumberModel.touched || registerForm.submitted)) {
-          <small class="field-error" role="alert">Use (123) 456-7890 or 1234567890.</small>
+          <small class="field-error" role="alert">{{ 'auth.phone_invalid' | translate }}</small>
         }
       </div>
 
       <div class="field">
-        <label for="email">Email</label>
+        <label for="register-email">{{ 'auth.email' | translate }}</label>
         <input
           type="email"
-          id="email"
+          id="register-email"
           name="email"
           required
           pattern="[A-Za-z0-9_\-\.]+@([A-Za-z0-9_\-]+\.)+[A-Za-z0-9_\-]{2,4}"
           autocomplete="email"
+          dir="ltr"
           [(ngModel)]="formData.email"
           #emailModel="ngModel"
         />
         @if (emailModel.invalid && (emailModel.touched || registerForm.submitted)) {
-          <small class="field-error" role="alert">Use a valid email address, such as name@example.com.</small>
+          <small class="field-error" role="alert">{{ 'auth.email_invalid' | translate }}</small>
         }
       </div>
+    </div>
 
-      <div class="field">
-        <label for="password">Password</label>
+    <div class="field">
+      <label for="register-password">{{ 'auth.password' | translate }}</label>
+      <div class="password-wrap">
         <input
-          type="password"
-          id="password"
+          [type]="showPassword() ? 'text' : 'password'"
+          id="register-password"
           name="password"
           required
           minlength="8"
           pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{8,}"
           autocomplete="new-password"
+          dir="auto"
           [(ngModel)]="formData.password"
           #passwordModel="ngModel"
         />
-        @if (passwordModel.invalid && (passwordModel.touched || registerForm.submitted)) {
-          <small class="field-error" role="alert">Use 8 or more characters with at least one letter and one number.</small>
-        }
+        <button
+          type="button"
+          class="password-toggle"
+          (click)="togglePassword()"
+          [attr.aria-label]="(showPassword() ? 'auth.hide_password' : 'auth.show_password') | translate"
+          [attr.aria-pressed]="showPassword()"
+        >
+          @if (showPassword()) {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" stroke-linecap="round" />
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke-linecap="round" />
+              <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" stroke-linecap="round" />
+              <line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round" />
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          }
+        </button>
       </div>
-
-      @if (message()) {
-        <p class="message" [class.error]="isError()" aria-live="polite">{{ message() }}</p>
+      @if (passwordModel.invalid && (passwordModel.touched || registerForm.submitted)) {
+        <small class="field-error" role="alert">{{ 'auth.password_invalid' | translate }}</small>
       }
+    </div>
 
-      <button type="submit">Create account</button>
-    </form>
+    @if (messageKey()) {
+      <p class="message" [class.error]="isError()" aria-live="polite">{{ messageKey() | translate }}</p>
+    }
 
-    <p class="register-prompt">
-      <a routerLink="/auth/login">Already have an account? Log in</a>
-    </p>
-
-    <p class="register-footer">Secure access to your trading workspace</p>
-  </section>
-</main>
+    <div class="register-actions">
+      <button type="submit">{{ 'auth.create_account_submit' | translate }}</button>
+      <p class="register-prompt">
+        <a routerLink="/auth/login">{{ 'auth.have_account' | translate }}</a>
+      </p>
+    </div>
+  </form>
+</section>

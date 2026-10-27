@@ -1,4 +1,9 @@
 import { Routes } from '@angular/router';
+import { Landing } from './landing/landing';
+import { AuthShell, AuthSlot } from './auth-shell/auth-shell';
+import { CLIENT_ROUTES } from './features/client/client.routes';
+import { ADMIN_ROUTES } from './features/admin/admin.routes';
+import { ANALYST_ROUTES } from './features/analyst/analyst.routes';
 import { Login } from './login/login';
 import { Register } from './register/register';
 import { adminGuard } from './core/guards/admin.guard';
@@ -7,16 +12,27 @@ import { analystGuard } from './core/guards/analyst.guard';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'auth/login',
+    component: Landing,
     pathMatch: 'full'
   },
   {
-    path: 'auth/login',
-    component: Login
-  },
-  {
-    path: 'auth/register',
-    component: Register
+    path: 'auth',
+    component: AuthShell,
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'login'
+      },
+      {
+        path: 'login',
+        component: AuthSlot
+      },
+      {
+        path: 'register',
+        component: AuthSlot
+      }
+    ]
   },
   {
     path: 'client',

@@ -1,0 +1,396 @@
+:host {
+  display: block;
+  direction: ltr;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.auth-page {
+  direction: ltr;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  overflow-x: clip;
+  overflow-y: auto;
+  color: var(--foreground, #1a2e1f);
+  font-family: 'Inter', sans-serif;
+  background:
+    radial-gradient(ellipse at 12% 10%, color-mix(in srgb, #b7e3c8 55%, #fff8ee) 0%, transparent 46%),
+    radial-gradient(ellipse at 88% 18%, color-mix(in srgb, #d4f0de 70%, transparent) 0%, transparent 44%),
+    linear-gradient(128deg, #e7f6ee 0%, #f4fff8 42%, #fff8ee 72%, #eef8f2 100%);
+}
+
+:host-context([dir='rtl']) .overlay-panel h2,
+:host-context([dir='rtl']) .overlay-copy,
+:host-context([dir='rtl']) .ghost-btn {
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
+.auth-toolbar {
+  direction: ltr;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(1080px, 100%);
+  flex-shrink: 0;
+  z-index: 120;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.brand:hover {
+  text-decoration: none;
+}
+
+.brand-logo {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--primary, #1a6b3c) 22%, transparent);
+}
+
+.brand-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--primary, #1a6b3c);
+}
+
+.auth-card {
+  direction: ltr;
+  position: relative;
+  overflow: hidden;
+  width: min(1080px, 100%);
+  min-height: 680px;
+  border-radius: 1.75rem;
+  background: #F0F8F1;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 70%, transparent) inset,
+    0 24px 60px color-mix(in srgb, #0f5132 16%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 55%, var(--border, #c8e6d2));
+}
+
+.form-container {
+  direction: ltr;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+  padding: 2.25rem 2.5rem;
+  background: #F0F8F1;
+  transition: transform 600ms ease-in-out, opacity 600ms ease-in-out, visibility 600ms;
+}
+
+.sign-in-container {
+  z-index: 2;
+  opacity: 1;
+  visibility: visible;
+}
+
+.sign-up-container {
+  z-index: 1;
+  opacity: 0;
+  visibility: hidden;
+  padding: 1.35rem 2rem 1.15rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.auth-card.is-register .sign-in-container {
+  transform: translateX(100%);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.auth-card.is-register .sign-up-container {
+  transform: translateX(100%);
+  opacity: 1;
+  visibility: visible;
+  z-index: 5;
+}
+
+.overlay-container {
+  direction: ltr;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 100;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+  transition: transform 600ms ease-in-out;
+}
+
+.auth-card.is-register .overlay-container {
+  transform: translateX(-100%);
+}
+
+.overlay {
+  direction: ltr;
+  position: relative;
+  left: -100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 200%;
+  height: 100%;
+  color: #f4fff8;
+  background:
+    radial-gradient(ellipse at 18% 18%, color-mix(in srgb, #34d399 28%, transparent) 0%, transparent 46%),
+    radial-gradient(ellipse at 82% 88%, color-mix(in srgb, #022c22 45%, transparent) 0%, transparent 42%),
+    linear-gradient(160deg, #0b3d2e 0%, #14532d 48%, #0f5132 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 16%, transparent);
+  transform: translateX(0);
+  transition: transform 600ms ease-in-out;
+}
+
+.auth-card.is-register .overlay {
+  transform: translateX(50%);
+}
+
+.overlay-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  height: 100%;
+  min-height: 100%;
+  padding: 2.5rem 2.75rem;
+  text-align: center;
+  transition: transform 600ms ease-in-out;
+}
+
+.overlay-left {
+  transform: translateX(-18%);
+}
+
+.auth-card.is-register .overlay-left {
+  transform: translateX(0);
+}
+
+.overlay-right {
+  transform: translateX(0);
+}
+
+.auth-card.is-register .overlay-right {
+  transform: translateX(18%);
+}
+
+.overlay-logo {
+  width: 8.55rem;
+  height: 8.55rem;
+  border-radius: 50%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.22));
+}
+
+.overlay-panel h2 {
+  margin: 0.15rem 0 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(1.7rem, 2.4vw, 2.15rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: #f7fff9;
+}
+
+.overlay-copy {
+  margin: 0 0 0.55rem;
+  max-width: 18rem;
+  color: color-mix(in srgb, #d1fae5 88%, #ffffff);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 11.5rem;
+  padding: 0.78rem 1.6rem;
+  border: 1.5px solid color-mix(in srgb, #ffffff 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #ffffff 8%, transparent);
+  color: #ffffff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+  transition: background-color 200ms, transform 200ms, border-color 200ms;
+}
+
+.ghost-btn:hover {
+  background: color-mix(in srgb, #ffffff 16%, transparent);
+  border-color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.ghost-btn:active {
+  transform: translateY(0);
+}
+
+.route-slot {
+  display: none;
+}
+
+@media (max-height: 860px) {
+  .auth-page {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 840px) {
+  .auth-page {
+    padding: 1rem;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .auth-toolbar {
+    width: 100%;
+    margin-bottom: 0.25rem;
+  }
+
+  .auth-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .overlay-container,
+  .auth-card.is-register .overlay-container,
+  .overlay,
+  .auth-card.is-register .overlay,
+  .overlay-panel,
+  .overlay-left,
+  .overlay-right,
+  .auth-card.is-register .overlay-left,
+  .auth-card.is-register .overlay-right,
+  .form-container,
+  .auth-card.is-register .sign-in-container,
+  .auth-card.is-register .sign-up-container {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    height: auto;
+    transform: none;
+  }
+
+  .overlay-container {
+    order: -1;
+    overflow: hidden;
+    border-radius: 1.75rem 1.75rem 0 0;
+  }
+
+  .overlay {
+    display: block;
+    width: 100%;
+    background:
+      radial-gradient(ellipse at 18% 18%, color-mix(in srgb, #34d399 28%, transparent) 0%, transparent 46%),
+      linear-gradient(160deg, #0b3d2e 0%, #14532d 48%, #0f5132 100%);
+  }
+
+  .overlay-panel {
+    display: none;
+    gap: 0.45rem;
+    min-height: 0;
+    padding: 1.25rem 1.35rem 1.4rem;
+  }
+
+  .overlay-right {
+    display: flex;
+  }
+
+  .auth-card.is-register .overlay-right {
+    display: none;
+  }
+
+  .auth-card.is-register .overlay-left {
+    display: flex;
+  }
+
+  .overlay-logo {
+    width: 5.55rem;
+    height: 5.55rem;
+  }
+
+  .overlay-panel h2 {
+    font-size: 1.45rem;
+  }
+
+  .overlay-copy {
+    margin-bottom: 0.2rem;
+    font-size: 0.92rem;
+  }
+
+  .ghost-btn {
+    min-width: 9.5rem;
+    padding: 0.62rem 1.25rem;
+  }
+
+  .form-container {
+    padding: 1.5rem 1.25rem 1.75rem;
+    overflow: visible;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 320ms ease;
+  }
+
+  .sign-in-container {
+    display: block;
+    animation: auth-fade 320ms ease;
+  }
+
+  .sign-up-container,
+  .auth-card.is-register .sign-in-container {
+    display: none;
+    opacity: 0;
+  }
+
+  .auth-card.is-register .sign-up-container {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    z-index: 5;
+    animation: auth-fade 320ms ease;
+  }
+}
+
+@keyframes auth-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-container,
+  .overlay-container,
+  .overlay,
+  .overlay-panel,
+  .ghost-btn {
+    transition: none;
+  }
+
+  .sign-in-container,
+  .auth-card.is-register .sign-up-container {
+    animation: none;
+  }
+}

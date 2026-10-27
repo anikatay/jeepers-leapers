@@ -1,51 +1,73 @@
-<main class="login-page">
-  <section class="login-panel" aria-labelledby="login-title">
-    <img class="login-logo" src="/symbol.PNG" alt="LEAP logo" />
+<section class="login-panel" aria-labelledby="login-title">
+  <div class="login-heading">
+    <a class="back-home" routerLink="/">
+      <span class="back-home-arrow" aria-hidden="true">←</span>
+      {{ 'auth.back_home' | translate }}
+    </a>
+    <h1 id="login-title">{{ 'auth.login_title' | translate }}</h1>
+    <p class="subtitle">{{ 'auth.login_subtitle' | translate }}</p>
+  </div>
 
-    <div class="login-heading">
-      <h1 id="login-title">Welcome</h1>
-      <p class="subtitle">Sign in to manage your portfolio.</p>
+  <form (ngSubmit)="confirmLogIn()">
+    <div class="field">
+      <label for="login-email">{{ 'auth.email' | translate }}</label>
+      <input
+        type="email"
+        id="login-email"
+        name="email"
+        required
+        dir="auto"
+        [placeholder]="'auth.email_placeholder' | translate"
+        autocomplete="email"
+        [(ngModel)]="email"
+      />
     </div>
 
-    <form (ngSubmit)="confirmLogIn()">
-      <div class="field">
-        <label for="email">Email</label>
+    <div class="field">
+      <label for="login-password">{{ 'auth.password' | translate }}</label>
+      <div class="password-wrap">
         <input
-          type="email"
-          id="email"
-          name="email"
-          required
-          placeholder="Enter your email"
-          autocomplete="email"
-          [(ngModel)]="email"
-        />
-      </div>
-
-      <div class="field">
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
+          [type]="showPassword() ? 'text' : 'password'"
+          id="login-password"
           name="password"
           required
-          placeholder="Enter your password"
+          dir="auto"
+          [placeholder]="'auth.password_placeholder' | translate"
           autocomplete="current-password"
           [(ngModel)]="password"
         />
+        <button
+          type="button"
+          class="password-toggle"
+          (click)="togglePassword()"
+          [attr.aria-label]="(showPassword() ? 'auth.hide_password' : 'auth.show_password') | translate"
+          [attr.aria-pressed]="showPassword()"
+        >
+          @if (showPassword()) {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" stroke-linecap="round" />
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke-linecap="round" />
+              <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" stroke-linecap="round" />
+              <line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round" />
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          }
+        </button>
       </div>
+    </div>
 
-      @if (message()) {
-        <p class="message" [class.error]="isError()" aria-live="polite">{{ message() }}</p>
-      }
+    @if (messageKey()) {
+      <p class="message" [class.error]="isError()" aria-live="polite">{{ messageKey() | translate }}</p>
+    }
 
-      <button type="submit">Log In</button>
-    </form>
+    <button type="submit">{{ 'auth.log_in' | translate }}</button>
+  </form>
 
-    <p class="register-prompt">
-      <a routerLink="/auth/register">New user? Register here</a>
-    </p>
-
-    <p class="login-footer">Secure access to your trading workspace</p>
-  </section>
-</main>
-
+  <p class="register-prompt">
+    <a routerLink="/auth/register">{{ 'auth.new_user' | translate }}</a>
+  </p>
+</section>
