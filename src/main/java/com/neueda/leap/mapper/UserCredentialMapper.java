@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Delete;
 import java.util.UUID;
 
 @Mapper
-public interface UserCredentialMapper {
+public interface UserCredentialMapper extends OltpMapper {
 
     @Select("SELECT password_hash FROM user_credentials WHERE user_id = #{userId}")
     String getPasswordHashByUserId(UUID userId);

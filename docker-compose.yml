@@ -58,13 +58,16 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
   etl:
-    # Refreshes analytics P&L (paysprint_analytics) on a fixed interval
+    # Refreshes analytics P&L (paysprint_analytics) on a fixed interval and exposes
+    # the internal POST /refresh endpoint used by the Spring app.
     build: ./analytics
     init: true
     restart: unless-stopped
     depends_on:
       - db
       - app
+    expose:
+      - "8094"
     environment:
       PAYSPRINT_SOURCE_DB_URL: postgresql://paysprint:${DB_PASSWORD}@db:5432/paysprint
       PAYSPRINT_ANALYTICS_DB_URL: postgresql://paysprint:${DB_PASSWORD}@db:5432/paysprint_analytics

@@ -27,6 +27,28 @@
       </div>
     </div>
 
+    <section class="performance-section">
+      <h2 class="section-title font-display">{{ 'home.portfolio_performance' | translate }}</h2>
+      <div class="period-buttons">
+        <button *ngFor="let period of periodOptions"
+                class="period-btn"
+                [class.active]="selectedPeriod() === period"
+                (click)="setPeriod(period)">
+          {{ period }}
+        </button>
+      </div>
+      <div class="chart-container" dir="ltr">
+        <app-portfolio-chart
+          *ngIf="chartPoints().length > 0"
+          [points]="chartPoints()"
+          [currency]="accountCurrency()"
+          #portfolioChart
+        ></app-portfolio-chart>
+        <p *ngIf="chartLoading()" class="chart-empty-state">{{ 'home.chart_loading' | translate }}</p>
+        <p *ngIf="!chartLoading() && chartPoints().length === 0" class="chart-empty-state">{{ 'home.chart_empty' | translate }}</p>
+      </div>
+    </section>
+
     <!-- Holdings Card with Search, Filter, and Table -->
     <div class="holdings-card">
       <!-- Search and Filter Bar -->

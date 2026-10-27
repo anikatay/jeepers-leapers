@@ -50,6 +50,14 @@
       </div>
 
       <div class="toolbar">
+        @if (historyLoading().length) {
+          <span role="status">Loading chart history: {{ historyLoading().join(', ') }}</span>
+        }
+        @if (historyErrors().length) {
+          <span role="alert">Chart history unavailable: {{ historyErrors().join(', ') }}.
+            <button type="button" (click)="loadSelectedHistory()">Retry charts</button>
+          </span>
+        }
         @if (mode() === 'line') {
           @for (s of series(); track s.ticker) {
             <span class="chip">

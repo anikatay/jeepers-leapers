@@ -87,6 +87,51 @@ button {
   color: var(--loss);
 }
 
+.performance-section {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--card);
+}
+
+.section-title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+}
+
+.period-buttons {
+  display: flex;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.period-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  color: var(--muted-foreground);
+  background: var(--secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.period-btn:hover {
+  color: var(--foreground);
+}
+
+.period-btn.active {
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+}
+
 /* Holdings Card */
 .holdings-card {
   border: 1px solid var(--border);

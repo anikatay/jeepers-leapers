@@ -55,6 +55,7 @@ public class MarketDataController {
 		return marketDataService.getHistory(ticker, period);
 	}
 
+
 	@GetMapping("/{ticker}/intraday-history")
 	public IntradayHistoryResponse intradayHistory(@PathVariable String ticker) {
 		return marketDataService.getIntradayHistory(ticker);
@@ -63,6 +64,7 @@ public class MarketDataController {
 	@GetMapping("/{ticker}/quote")
 	public MarketQuote quote(@PathVariable String ticker) {
 		return marketDataService.getQuoteOrFetch(ticker);
+
 	}
 
 	@GetMapping("/sectors")

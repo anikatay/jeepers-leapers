@@ -111,6 +111,16 @@
         <h3 id="trades-heading">Trades</h3>
       </div>
 
+      <label class="trade-search" for="trade-search">Search trades by ticker
+        <input
+          id="trade-search"
+          type="search"
+          [(ngModel)]="tradeSearchTerm"
+          (ngModelChange)="onTradeSearchChanged()"
+          placeholder="Search by ticker"
+          autocomplete="off">
+      </label>
+
       <p class="dashboard-message" *ngIf="loadingTrades()">Loading trades...</p>
       <p class="dashboard-message error" *ngIf="tradesError()">{{ tradesError() }}</p>
 
@@ -142,6 +152,12 @@
       <p *ngIf="!loadingTrades() && !tradesError() && selectedUserTrades().length === 0" class="no-trades">
         No trades found for this account.
       </p>
+
+      <div class="pagination" *ngIf="tradeTotalPages() > 0">
+        <button type="button" (click)="previousTradesPage()" [disabled]="tradePage() === 0">Previous</button>
+        <span>Trades {{ tradePage() + 1 }} of {{ tradeTotalPages() }} ({{ tradeTotalItems() }})</span>
+        <button type="button" (click)="nextTradesPage()" [disabled]="tradePage() + 1 >= tradeTotalPages()">Next</button>
+      </div>
     </section>
 
     <aside class="account-control-panel" aria-labelledby="account-controls-heading">

@@ -7,6 +7,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY api.py .
 COPY etl/ etl/
 COPY schema/ schema/
 
@@ -18,5 +19,6 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     ETL_INTERVAL_SECONDS=600
 
-# Each run prints its JSON result on stdout; a failed or busy run is retried next interval.
-CMD ["sh", "-c", "while true; do python etl/run_pipeline.py --json; sleep \"$ETL_INTERVAL_SECONDS\"; done"]
+EXPOSE 8094
+
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8094"]

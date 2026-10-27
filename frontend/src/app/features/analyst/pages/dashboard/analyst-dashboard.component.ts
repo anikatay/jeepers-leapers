@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, WritableSignal, computed, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, WritableSignal, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import {
   AnalystDataSource,
-  AnalystMockDataSource,
+  AnalystApiDataSource,
   AnalystSnapshot,
   AnalystTrade,
   PriceBar
@@ -63,7 +64,7 @@ const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFra
   selector: 'app-analyst-dashboard',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  providers: [{ provide: AnalystDataSource, useClass: AnalystMockDataSource }],
+  providers: [{ provide: AnalystDataSource, useClass: AnalystApiDataSource }],
   templateUrl: './analyst-dashboard.component.html',
   styleUrl: './analyst-dashboard.component.css'
 })
@@ -80,6 +81,10 @@ export class AnalystDashboardComponent {
 
   readonly snapshot = signal<AnalystSnapshot | null>(null);
   readonly error = signal(false);
+  readonly historyLoading = signal<string[]>([]);
+  readonly historyErrors = signal<string[]>([]);
+  private readonly destroyRef = inject(DestroyRef);
+  private loadVersion = 0;
   readonly menu = signal<Menu | null>(null);
   readonly period = signal<Period>('3M');
   readonly mode = signal<ChartMode>('line');
@@ -108,7 +113,11 @@ export class AnalystDashboardComponent {
 
   private readonly sessions = computed(() => {
     const snapshot = this.snapshot();
-    return snapshot ? (snapshot.history[snapshot.instruments[0]?.ticker] ?? []).map(bar => bar.date) : [];
+    if (!snapshot) return [];
+    return [...new Set([
+      ...snapshot.trades.map(trade => trade.executedAt.slice(0, 10)),
+      ...Object.values(snapshot.history).flatMap(bars => bars.map(bar => bar.date))
+    ])].sort();
   });
 
   readonly periodTrades = computed(() => this.tradesIn(this.period()));
@@ -283,14 +292,46 @@ export class AnalystDashboardComponent {
   }
 
   load(): void {
+    const version = ++this.loadVersion;
     this.error.set(false);
-    this.dataSource.load().subscribe({
+    this.historyLoading.set([]);
+    this.historyErrors.set([]);
+    this.dataSource.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: snapshot => {
+        if (version !== this.loadVersion) return;
         this.snapshot.set(snapshot);
         this.selected.set(snapshot.instruments.slice(0, 2).map(item => item.ticker));
+        this.loadSelectedHistory();
       },
-      error: () => this.error.set(true)
+      error: () => {
+        if (version === this.loadVersion) this.error.set(true);
+      }
     });
+  }
+
+  loadSelectedHistory(): void {
+    const snapshot = this.snapshot();
+    if (!snapshot) return;
+    const version = this.loadVersion;
+    for (const ticker of this.selected()) {
+      if (snapshot.history[ticker] || this.historyLoading().includes(ticker)) continue;
+      this.historyLoading.update(items => [...items, ticker]);
+      this.historyErrors.update(items => items.filter(item => item !== ticker));
+      this.dataSource.loadHistory(ticker).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: bars => {
+          if (version !== this.loadVersion) return;
+          this.snapshot.update(current => current
+            ? { ...current, history: { ...current.history, [ticker]: bars } }
+            : current);
+          this.historyLoading.update(items => items.filter(item => item !== ticker));
+        },
+        error: () => {
+          if (version !== this.loadVersion) return;
+          this.historyLoading.update(items => items.filter(item => item !== ticker));
+          this.historyErrors.update(items => [...items, ticker]);
+        }
+      });
+    }
   }
 
   toggleMenu(menu: Menu, event: Event): void {
@@ -309,6 +350,7 @@ export class AnalystDashboardComponent {
     } else if (selected.length < MAX_SERIES) {
       this.selected.set([...selected, ticker]);
     }
+    this.loadSelectedHistory();
   }
 
   clearFilters(): void {

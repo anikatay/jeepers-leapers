@@ -8,6 +8,9 @@ import com.neueda.leap.dto.response.InstrumentResponse;
 import com.neueda.leap.dto.response.MarketInstrumentMetadata;
 import com.neueda.leap.dto.response.MarketQuote;
 import com.neueda.leap.dto.response.QuoteStatus;
+
+import com.neueda.leap.dto.response.PriceBar;
+
 import com.neueda.leap.exception.ObjectAlreadyExistsException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
@@ -192,11 +195,13 @@ public class InstrumentService implements IService {
         Instrument instrument = getInstrumentById(instrumentId);
 
         Optional<MarketQuote> latestQuote = marketDataService.getLatestQuote(instrument.getTicker());
+
         boolean cachedQuoteIsStale = latestQuote.isPresent()
                 && !QuoteStatus.LIVE.equals(latestQuote.get().status());
         if (latestQuote.isPresent()
                 && QuoteStatus.LIVE.equals(latestQuote.get().status())
                 && isFresh(latestQuote.get().quoteTime())
+
                 && isNewerThanInstrument(latestQuote.get(), instrument)) {
             MarketQuote quote = latestQuote.get();
             instrument.setCurrentPrice(quote.price());
@@ -233,9 +238,11 @@ public class InstrumentService implements IService {
                         "Unable to make trade at the moment; live quote unavailable");
             }
 
+
             instrument.setCurrentPrice(liveQuote.price());
             instrument.setUpdatedAt(
                     liveQuote.quoteTime().atOffset(ZoneOffset.UTC));
+
 
             int updated = instrumentMapper.updatePrice(instrument);
             if (updated < 1) {

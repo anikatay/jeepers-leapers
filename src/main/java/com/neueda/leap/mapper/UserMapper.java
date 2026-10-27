@@ -15,7 +15,7 @@ import java.util.List;
 import java.time.OffsetDateTime;
 
 @Mapper
-public interface UserMapper {
+public interface UserMapper extends OltpMapper {
 
     @Select("SELECT * FROM users WHERE user_id = #{userId}")
     User getUserById(UUID userId);
