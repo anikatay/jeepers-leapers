@@ -28,7 +28,18 @@ cd jeepers-leapers
    docker ps
    ```
 
-3. If all containers are running, the front end is accessible from:
+3. Populate analytics after starting the containers (including after pulling updates):
+
+   ```bash
+   bash analytics/run_etl.sh
+   ```
+
+   This installs the ETL requirements inside its Docker image and runs the full
+   OLTP-to-OLAP pipeline. No host Python or pip setup is required. Jenkins runs
+   this script after starting the stack and before tests. See the
+   [analytics guide](analytics/README.md) for details.
+
+4. If all containers are running, the front end is accessible from:
 
    ```text
    "your-ip":8090
