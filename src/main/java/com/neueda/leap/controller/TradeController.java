@@ -47,6 +47,11 @@ public class TradeController {
         this.tradeAnalysisService = tradeAnalysisService;
         this.analysisRateLimiter = analysisRateLimiter;
     }
+    
+    private UUID userIdOf(Jwt jwt) {
+        return authorizationService.getAuthenticatedUserId(jwt);
+    }
+
 
     
 
@@ -150,8 +155,10 @@ public class TradeController {
     @GetMapping("/{tradeId}/analysis/context")
     public ResponseEntity<TradeAnalysisContext> getTradeAnalysisContext(@PathVariable(name = "tradeId") UUID tradeId,
             @AuthenticationPrincipal Jwt jwt) {
+
         return ResponseEntity.ok(tradeAnalysisService.buildContext(tradeId,
                 authorizationService.getAuthenticatedUserId(jwt)));
+
     }
 
 }

@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 
 @Mapper
-public interface AdminDashboardMapper {
+public interface AdminDashboardMapper extends OltpMapper {
 
     @Select("""
             SELECT u.user_id,

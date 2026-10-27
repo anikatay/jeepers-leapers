@@ -13,7 +13,7 @@ import org.apache.ibatis.annotations.Update;
 import com.neueda.leap.model.Instrument;
 
 @Mapper
-public interface InstrumentMapper {
+public interface InstrumentMapper extends OltpMapper {
     // Add new Instrument 
     @Insert ("INSERT INTO instruments (instrument_id, ticker, name, exchange_id, currency, price_scale, current_price, updated_at) " +
         "VALUES (#{instrumentId}, #{ticker}, #{name}, #{exchangeId}, #{currency}, #{priceScale}, #{currentPrice}, #{updatedAt})")

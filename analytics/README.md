@@ -58,9 +58,20 @@ The intended flow is: trigger the pipeline, wait for it to return, then read the
 from etl.run_pipeline import run_pipeline   # with analytics/ on sys.path
 
 result = run_pipeline()
-# {'status': 'success', 'phases': [...], 'summary': {'trades_loaded': 668, ...},
+# {'status': 'success', 'run_id': 'pipeline-run-20261023-120000',
+#  'phases': [...], 'summary': {'trades_loaded': 668, ...},
 #  'error': None, 'duration_seconds': 0.9}
 ```
+
+The analytics container also exposes the same operation for the Spring app:
+
+```text
+POST http://etl:8094/refresh
+```
+
+The endpoint runs synchronously and returns the pipeline JSON. The `status` can be
+`success`, `busy`, or `failed`; the Spring app maps those states to the admin refresh API.
+The endpoint is available only on the Docker network and is not published to the host.
 
 From anything else, run the script and read the JSON it prints on stdout (logs go to stderr):
 

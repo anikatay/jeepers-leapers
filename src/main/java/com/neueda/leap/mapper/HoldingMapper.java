@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 import com.neueda.leap.model.Holding;
 
 @Mapper
-public interface HoldingMapper {
+public interface HoldingMapper extends OltpMapper {
     
     @Select("SELECT * FROM holdings")
     List<Holding> getAllHoldings();

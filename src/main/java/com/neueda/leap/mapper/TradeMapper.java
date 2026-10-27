@@ -14,7 +14,7 @@ import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.model.Trade;
 
 @Mapper
-public interface TradeMapper {
+public interface TradeMapper extends OltpMapper {
     // insert new Trade
     @Insert("INSERT INTO trades (trade_id, account_id, instrument_id, side, quantity, execution_price, " +
             "settlement_value, settlement_currency, fx_rate, executed_at) " +

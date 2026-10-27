@@ -5,9 +5,14 @@ import { AuthService } from '../services/auth.service';
 export const analystGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
-  const role = authService.role;
 
-  return role === 'ROLE_ANALYST' || role === 'ANALYST'
-    ? true
-    : router.createUrlTree(['/auth/login']);
+  if (!authService.isLoggedIn()) {
+    return router.createUrlTree(['/auth/login']);
+  }
+
+  if (authService.role === 'ROLE_ANALYST') {
+    return true;
+  }
+
+  return router.createUrlTree([authService.role === 'ROLE_ADMIN' ? '/admin' : '/client']);
 };

@@ -17,7 +17,7 @@ import org.apache.ibatis.annotations.Update;
 import com.neueda.leap.model.Account;
 
 @Mapper 
-public interface  AccountMapper {
+public interface AccountMapper extends OltpMapper {
     // insert new account
     @Insert("INSERT INTO accounts (account_id, user_id, balance,status,created_at) " + 
             "VALUES (#{accountId}, #{userId}, #{balance}, #{status}, #{createdAt})")
