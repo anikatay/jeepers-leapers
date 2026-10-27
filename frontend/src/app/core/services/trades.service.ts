@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { TradeRequest, TradeResponse } from '../models/trade.model';
+import { TradePageFilters, TradeRequest, TradeResponse } from '../models/trade.model';
+import { PaginatedTradeResponse } from '../models/admin-dashboard.model';
 import { HoldingService } from '../services/holding.service';
 import { InstrumentService } from '../services/instrument.service';
 import { calculateCurrentPortfolioValue, calculateAccountProfit } from '../../shared/utils/portfolio-calculation';
@@ -38,6 +39,40 @@ export class TradesService {
    */
   getTradesByAccount(accountId: string): Observable<TradeResponse[]> {
     return this.http.get<TradeResponse[]>(`/api/trades/account/${accountId}`);
+  }
+
+  getTradesPage(
+    accountId: string,
+    page = 0,
+    size = 10,
+    filters: TradePageFilters = {}
+  ): Observable<PaginatedTradeResponse> {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+
+    const filterValues: Record<string, string | number | undefined> = {
+      search: filters.search?.trim() || undefined,
+      side: filters.side,
+      currency: filters.currency,
+      fromDate: filters.fromDate,
+      toDate: filters.toDate,
+      minQuantity: filters.minQuantity,
+      maxQuantity: filters.maxQuantity,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      minTotal: filters.minTotal,
+      maxTotal: filters.maxTotal,
+      sortOrder: filters.sortOrder
+    };
+
+    Object.entries(filterValues).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        params = params.set(key, value);
+      }
+    });
+
+    return this.http.get<PaginatedTradeResponse>(`/api/trades/account/${accountId}/page`, { params });
   }
 
   /**

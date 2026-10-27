@@ -1,5 +1,6 @@
 package com.neueda.leap.service;
 
+import com.neueda.leap.dto.response.PaginatedTradeResponse;
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.exception.ApplicationException;
 import com.neueda.leap.exception.ObjectInvalidException;
@@ -106,6 +107,25 @@ class TradeServiceTest {
         account.setStatus("ACTIVE");
         account.setBalance(BigDecimal.valueOf(1_000_000));
         return account;
+    }
+
+    @Test
+    void getTradesPageUsesDefaultSizeAndCalculatesOffset() {
+        UUID accountId = UUID.randomUUID();
+        TradeResponse trade = new TradeResponse(
+                UUID.randomUUID(), accountId, UUID.randomUUID(), "AAPL", "Apple Inc.", "BUY",
+                BigDecimal.ONE, BigDecimal.TEN, BigDecimal.TEN, OffsetDateTime.now());
+        when(tradeMapper.countTradesForAccountPage(accountId, null)).thenReturn(21L);
+        when(tradeMapper.findTradesForAccountPage(accountId, null, 10, 10)).thenReturn(List.of(trade));
+
+        PaginatedTradeResponse response = tradeService.getTradesPage(accountId, 1, null, null);
+
+        assertEquals(List.of(trade), response.items());
+        assertEquals(1, response.page());
+        assertEquals(10, response.size());
+        assertEquals(21L, response.totalItems());
+        assertEquals(3, response.totalPages());
+        verify(tradeMapper).findTradesForAccountPage(accountId, null, 10, 10);
     }
 
     // Verifies createTrade rejects a null trade.

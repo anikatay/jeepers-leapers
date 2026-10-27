@@ -26,4 +26,12 @@ export interface AdminDashboardResponse {
   totalPages: number;
 }
 
-export type AdminAccountTrades = TradeResponse[];
+export interface PaginatedTradeResponse {
+  items: TradeResponse[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export type AdminAccountTrades = PaginatedTradeResponse;

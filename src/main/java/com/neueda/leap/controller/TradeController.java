@@ -4,7 +4,9 @@ import com.neueda.leap.analysis.AnalysisRateLimiter;
 import com.neueda.leap.analysis.TradeAnalysisContext;
 import com.neueda.leap.analysis.TradeAnalysisResult;
 import com.neueda.leap.analysis.TradeAnalysisService;
+import com.neueda.leap.dto.request.TradeFilter;
 import com.neueda.leap.dto.request.TradeRequest;
+import com.neueda.leap.dto.response.PaginatedTradeResponse;
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.model.Trade;
 import com.neueda.leap.service.AuthorizationService;
@@ -26,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @RestController 
 @RequestMapping("/api/trades")
@@ -81,6 +85,41 @@ public class TradeController {
         }
         
         return ResponseEntity.ok(trades);
+    }
+
+    @GetMapping("/account/{accountId}/page")
+    public ResponseEntity<PaginatedTradeResponse> getTradesPageByAccount(
+            @PathVariable(name = "accountId") UUID accountId,
+            @RequestParam(name = "page", required = false) Integer page,
+            @RequestParam(name = "size", required = false) Integer size,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "side", required = false) String side,
+            @RequestParam(name = "currency", required = false) String currency,
+            @RequestParam(name = "fromDate", required = false) LocalDate fromDate,
+            @RequestParam(name = "toDate", required = false) LocalDate toDate,
+            @RequestParam(name = "minQuantity", required = false) BigDecimal minQuantity,
+            @RequestParam(name = "maxQuantity", required = false) BigDecimal maxQuantity,
+            @RequestParam(name = "minPrice", required = false) BigDecimal minPrice,
+            @RequestParam(name = "maxPrice", required = false) BigDecimal maxPrice,
+            @RequestParam(name = "minTotal", required = false) BigDecimal minTotal,
+            @RequestParam(name = "maxTotal", required = false) BigDecimal maxTotal,
+            @RequestParam(name = "sortOrder", required = false) String sortOrder,
+            @AuthenticationPrincipal Jwt jwt) {
+        authorizationService.requireAccountOwnerOrAdmin(accountId, jwt);
+        TradeFilter filter = new TradeFilter(
+                search,
+                side,
+                currency,
+                fromDate,
+                toDate,
+                minQuantity,
+                maxQuantity,
+                minPrice,
+                maxPrice,
+                minTotal,
+                maxTotal,
+                sortOrder);
+        return ResponseEntity.ok(tradeService.getTradesPage(accountId, page, size, filter));
     }
 
     @GetMapping("/account/{accountId}/instrument/{instrumentId}")

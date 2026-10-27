@@ -2,6 +2,8 @@ package com.neueda.leap.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.model.Account;
+import com.neueda.leap.dto.response.PaginatedTradeResponse;
+import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.service.AccountService;
 import com.neueda.leap.service.AdminDashboardService;
 import com.neueda.leap.service.AuthorizationService;
@@ -14,6 +16,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
+import java.util.List;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -84,4 +89,26 @@ class AdminDashboardControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
+
+            @Test
+            void testGetAccountTradesReturnsPaginatedResponse() throws Exception {
+            UUID accountId = UUID.randomUUID();
+            TradeResponse trade = new TradeResponse(
+                UUID.randomUUID(), accountId, UUID.randomUUID(), "AAPL", "Apple Inc.", "BUY",
+                BigDecimal.ONE, BigDecimal.TEN, BigDecimal.TEN, OffsetDateTime.now());
+            when(adminDashboardService.getTradesPage(accountId, 1, 10, "AAPL"))
+                .thenReturn(new PaginatedTradeResponse(List.of(trade), 1, 10, 11, 2));
+
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .get("/api/admin/accounts/{accountId}/trades", accountId)
+                    .param("page", "1")
+                    .param("size", "10")
+                    .param("search", "AAPL"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].ticker").value("AAPL"))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalItems").value(11))
+                .andExpect(jsonPath("$.totalPages").value(2));
+            }
 }

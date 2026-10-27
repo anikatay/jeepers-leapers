@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.leap.analysis.AnalysisRateLimiter;
 import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.dto.request.TradeRequest;
+import com.neueda.leap.dto.response.PaginatedTradeResponse;
 import com.neueda.leap.dto.response.TradeResponse;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
@@ -237,6 +238,29 @@ class TradeControllerTest {
         mockMvc.perform(get("/api/trades/account/{accountId}", "not-a-uuid"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+    }
+
+    @Test
+    void testGetTradesPageReturnsMetadataAndForwardsFilters() throws Exception {
+        UUID accountId = UUID.randomUUID();
+        TradeResponse trade = new TradeResponse(
+                UUID.randomUUID(), accountId, UUID.randomUUID(), "AAPL", "Apple Inc.", "BUY",
+                BigDecimal.ONE, BigDecimal.TEN, BigDecimal.TEN, OffsetDateTime.now());
+        when(tradeService.getTradesPage(eq(accountId), eq(1), eq(10), any()))
+                .thenReturn(new PaginatedTradeResponse(List.of(trade), 1, 10, 11, 2));
+
+        mockMvc.perform(get("/api/trades/account/{accountId}/page", accountId)
+                        .param("page", "1")
+                        .param("size", "10")
+                        .param("search", "AAPL")
+                        .param("side", "BUY")
+                        .param("sortOrder", "oldest"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].ticker").value("AAPL"))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalItems").value(11))
+                .andExpect(jsonPath("$.totalPages").value(2));
     }
 
     // Verifies getting trades by account and instrument returns 200 with results.
