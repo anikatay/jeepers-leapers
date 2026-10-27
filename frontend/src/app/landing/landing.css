@@ -18,6 +18,7 @@
   position: relative;
   isolation: isolate;
   min-height: 100vh;
+  overflow-x: clip;
   color: var(--foreground);
   font-family: 'Inter', sans-serif;
   background:
@@ -101,6 +102,7 @@
   gap: clamp(1.5rem, 2.6vw, 2.6rem);
   align-items: center;
   max-width: 1480px;
+  width: 100%;
   margin: 0 auto;
   padding: 0.7rem clamp(1.75rem, 4.5vw, 3rem) 0.5rem;
 }
@@ -108,6 +110,7 @@
 .hero-copy {
   position: relative;
   z-index: 2;
+  min-width: 0;
   max-width: 36rem;
   margin-inline-start: clamp(0.75rem, 2.4vw, 2.25rem);
   justify-self: start;
@@ -116,7 +119,7 @@
 
 .hero-copy h1 {
   margin: 0;
-  font-size: clamp(2.5rem, 4.5vw, 3.7rem);
+  font-size: clamp(1.85rem, 4.5vw, 3.7rem);
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.03em;
@@ -142,7 +145,9 @@
 .cta {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.45rem;
+  max-width: 100%;
   padding: 0.95rem 1.55rem;
   border-radius: 999px;
   background: var(--primary);
@@ -177,16 +182,21 @@
   z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  width: min(100%, 1040px, 90vh);
+  justify-items: stretch;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin-inline: auto;
-  padding: 0;
+  padding-inline: clamp(0.7rem, 4.2%, 1.5rem);
+  padding-bottom: clamp(0.35rem, 2.4%, 0.9rem);
   pointer-events: none;
   user-select: none;
 }
 
 .laptop {
   grid-area: 1 / 1;
-  width: 96%;
+  width: 90%;
+  max-width: 100%;
   justify-self: start;
   align-self: start;
 }
@@ -231,8 +241,8 @@
 
 .laptop-base {
   position: relative;
-  height: 1.05rem;
-  margin: 0 -1.35rem 0;
+  height: clamp(0.55rem, 1.2vw, 1.05rem);
+  margin-inline: -4%;
   background: linear-gradient(180deg, #c5d4c9 0%, #9aaf9f 100%);
   border-radius: 0 0 0.85rem 0.85rem;
   box-shadow: 0 10px 18px rgba(16, 32, 22, 0.12);
@@ -244,7 +254,7 @@
   left: 10%;
   right: 10%;
   bottom: -0.28rem;
-  height: 0.28rem;
+  height: clamp(0.16rem, 0.4vw, 0.28rem);
   background: #7e9384;
   border-radius: 0 0 0.45rem 0.45rem;
 }
@@ -253,8 +263,8 @@
   position: absolute;
   left: 50%;
   top: -0.18rem;
-  width: 7.5rem;
-  height: 0.32rem;
+  width: 18%;
+  height: clamp(0.2rem, 0.45vw, 0.32rem);
   transform: translateX(-50%);
   border-radius: 0 0 0.4rem 0.4rem;
   background: #7e9384;
@@ -653,16 +663,20 @@
 .phone {
   grid-area: 1 / 1;
   position: relative;
-  width: min(24%, 188px);
-  max-width: 188px;
+  width: clamp(5.75rem, 23%, 23%);
   justify-self: end;
   align-self: end;
   z-index: 4;
+  aspect-ratio: 9 / 18.2;
   filter: drop-shadow(0 18px 22px rgba(12, 28, 18, 0.26));
 }
 
 .phone-frame {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   padding: 0.5rem 0.32rem 0.4rem;
   background: linear-gradient(180deg, #2a332e 0%, #141a16 100%);
   border: 1px solid #3d4a43;
@@ -681,6 +695,9 @@
 }
 
 .phone-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   overflow: hidden;
   min-height: 0;
   padding: 0.55rem 0.38rem 0.4rem;
@@ -760,7 +777,10 @@
 .phone-chart {
   display: block;
   width: 100%;
-  height: 2.2rem;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 1.6rem;
+  max-height: 2.6rem;
   margin-bottom: 0.4rem;
 }
 
@@ -813,6 +833,7 @@
 }
 
 .feature-card {
+  min-width: 0;
   padding: 1.05rem 1.15rem 1.1rem;
   border-radius: 1.15rem;
   background: color-mix(in srgb, var(--cream) 58%, transparent);
@@ -853,7 +874,7 @@
   color: var(--muted-foreground);
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1023px) {
   .hero {
     grid-template-columns: 1fr;
     gap: 2.75rem;
@@ -864,6 +885,10 @@
     max-width: 40rem;
     text-align: center;
     margin-inline: auto;
+  }
+
+  .device-stage {
+    width: min(100%, 40rem);
   }
 
   .features {
@@ -882,7 +907,17 @@
   }
 
   .device-stage {
-    padding: 0 0.5rem 0 0;
+    width: 100%;
+    padding-inline: clamp(0.45rem, 3.5%, 0.9rem);
+    padding-bottom: clamp(0.45rem, 3%, 0.85rem);
+  }
+
+  .laptop {
+    width: 88%;
+  }
+
+  .phone {
+    width: clamp(5.25rem, 28%, 28%);
   }
 
   .dash-links,
@@ -901,19 +936,9 @@
     display: flex;
   }
 
-  .phone {
-    width: min(36%, 148px);
-    max-width: 148px;
-  }
-
   .phone-screen {
     min-height: 0;
-    padding: 0.75rem 0.42rem 0.45rem;
-  }
-
-  .phone-chart {
-    height: 2.1rem;
-    margin-bottom: 0.4rem;
+    padding: 0.55rem 0.38rem 0.4rem;
   }
 
   .phone-price {
@@ -933,14 +958,22 @@
   .features {
     grid-template-columns: 1fr;
   }
+
+  .hero-copy h1 {
+    font-size: clamp(1.7rem, 8.4vw, 2.2rem);
+  }
+
+  .cta {
+    width: auto;
+    min-width: min(100%, 12.5rem);
+  }
 }
 
-@media (min-width: 1081px) {
+@media (min-width: 1024px) {
   .landing {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    overflow-x: clip;
   }
 
   .landing-header {
@@ -960,16 +993,7 @@
   }
 
   .device-stage {
-    width: min(100%, 1040px, 90vh);
-  }
-
-  .phone {
-    width: min(24%, 188px);
-  }
-
-  .phone-chart {
-    height: 2.15rem;
-    margin-bottom: 0.35rem;
+    width: 100%;
   }
 
   .features {

@@ -1,5 +1,9 @@
 <section class="login-panel" aria-labelledby="login-title">
   <div class="login-heading">
+    <a class="back-home" routerLink="/">
+      <span class="back-home-arrow" aria-hidden="true">←</span>
+      {{ 'auth.back_home' | translate }}
+    </a>
     <h1 id="login-title">{{ 'auth.login_title' | translate }}</h1>
     <p class="subtitle">{{ 'auth.login_subtitle' | translate }}</p>
   </div>

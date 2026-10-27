@@ -24,6 +24,33 @@
   margin-bottom: 1.75rem;
 }
 
+.back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.7rem;
+  color: var(--muted-foreground, #4a7c5a);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.back-home:hover {
+  color: var(--primary, #1a6b3c);
+  text-decoration: underline;
+}
+
+.back-home-arrow {
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+:host-context([dir='rtl']) .back-home-arrow {
+  transform: scaleX(-1);
+}
+
 .login-heading h1 {
   margin: 0;
   color: var(--card-foreground, #1a2e1f);

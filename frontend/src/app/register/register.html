@@ -1,5 +1,9 @@
 <section class="register-panel" aria-labelledby="register-title">
   <div class="register-heading">
+    <a class="back-home" routerLink="/">
+      <span class="back-home-arrow" aria-hidden="true">←</span>
+      {{ 'auth.back_home' | translate }}
+    </a>
     <h1 id="register-title">{{ 'auth.register_title' | translate }}</h1>
     <p class="subtitle">{{ 'auth.register_subtitle' | translate }}</p>
   </div>
