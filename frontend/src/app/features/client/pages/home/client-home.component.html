@@ -1,22 +1,18 @@
 <!-- Figma-compliant Home page with profile, stats, charts, and trading history -->
 <div class="home-shell">
   <main class="home-content">
-    <!-- Row 1: Profile + Stats Cards | Portfolio Allocation (Pie Chart) -->
-    <div class="grid-row-1">
-      <!-- Left column: Profile + 2×2 Stats -->
-      <div class="profile-stats-section">
-        <!-- Profile Card -->
-        <button class="profile-card" (click)="goToProfile()">
-          <div class="profile-avatar">{{ user.userInitial }}</div>
-          <div class="profile-info">
-            <p class="profile-label">{{ 'home.your_profile' | translate }}</p>
-            <p class="profile-name font-display">{{ user.userName }}</p>
-          </div>
-          <svg class="profile-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
-        </button>
+    <!-- Personalized greeting spans the dashboard columns. -->
+    <div class="home-greeting">
+      <h1 class="greeting-title font-display">
+        {{ greetingKey() | translate: { name: firstName } }}
+      </h1>
+      <p class="greeting-subtitle">{{ 'home.overview_subtitle' | translate }}</p>
+    </div>
 
+    <!-- Row 1: Stats Cards + Market News | Portfolio Allocation + Insights -->
+    <div class="grid-row-1">
+      <!-- Left column: 2×2 Stats + Market News -->
+      <div class="profile-stats-section">
         <!-- 2×2 Stats Grid -->
         <div class="stats-grid">
           <!-- Portfolio Value -->
@@ -143,22 +139,60 @@
             </div>
           </div>
 
-          <!-- Holdings legend -->
-          <div class="holdings-list">
+          <!-- Allocation bars -->
+          <div class="holdings-list" aria-label="Portfolio allocations">
             <div class="holding-item" *ngFor="let holding of holdings()">
-              <div class="holding-left">
+              <div class="holding-heading">
+                <div class="holding-left">
                 <div class="stock-icon" [style.background]="getStockIcon(holding.symbol).background"
                      [style.color]="getStockIcon(holding.symbol).color">
                   {{ getStockIcon(holding.symbol).label }}
                 </div>
                 <span class="stock-symbol font-mono-data">{{ holding.symbol }}</span>
+                </div>
+                <div class="holding-right">
+                  <span class="holding-pct">{{ holding.pct }}%</span>
+                  <span class="holding-value font-mono-data">{{ formatCurrency(holding.value, holding.currency) }}</span>
+                </div>
               </div>
-              <div class="holding-right">
-                <span class="holding-pct">{{ holding.pct }}%</span>
-                <span class="holding-value font-mono-data">{{ formatCurrency(holding.value, holding.currency) }}</span>
+              <div class="allocation-bar" role="progressbar" [attr.aria-valuenow]="holding.pct" aria-valuemin="0" aria-valuemax="100">
+                <span class="allocation-bar-fill" [style.width.%]="holding.pct"
+                      [style.background]="pieSlices()[holdings().indexOf(holding)]?.color"></span>
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="insights-heading">
+          <h3 class="insights-title">{{ 'home.portfolio_insights' | translate }}</h3>
+          <div class="insights-controls" *ngIf="holdings().length > 1">
+            <button type="button" class="insights-arrow" [attr.aria-label]="'home.previous_portfolio_insights' | translate"
+                    (click)="scrollInsights('previous', insightsScroller)">
+              <span aria-hidden="true">&#8249;</span>
+            </button>
+                <button type="button" class="insights-arrow" [attr.aria-label]="'home.next_portfolio_insights' | translate"
+                    (click)="scrollInsights('next', insightsScroller)">
+              <span aria-hidden="true">&#8250;</span>
+            </button>
+          </div>
+        </div>
+        <div #insightsScroller class="insights-scroller">
+          <article class="insight-card" *ngFor="let holding of holdings()">
+            <div class="insight-card-top">
+              <div class="stock-icon" [style.background]="getStockIcon(holding.symbol).background"
+                   [style.color]="getStockIcon(holding.symbol).color">
+                {{ getStockIcon(holding.symbol).label }}
+              </div>
+              <span class="insight-symbol font-mono-data">{{ holding.symbol }}</span>
+              <span class="insight-change" *ngIf="insightFor(holding.symbol) as insight; else changeUnavailable"
+                    [class.positive]="insight.changePct !== null && insight.changePct >= 0"
+                    [class.negative]="insight.changePct !== null && insight.changePct < 0">
+                {{ insight.changePct === null ? ('common.not_available' | translate) : (insight.changePct >= 0 ? '+' : '') + insight.changePct.toFixed(2) + '%' }}
+              </span>
+              <ng-template #changeUnavailable><span class="insight-change unavailable">{{ 'common.not_available' | translate }}</span></ng-template>
+            </div>
+            <app-sparkline *ngIf="insightFor(holding.symbol) as insight" [values]="insight.history"></app-sparkline>
+          </article>
         </div>
       </div>
     </div>
