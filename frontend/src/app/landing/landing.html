@@ -1,0 +1,279 @@
+<main class="landing">
+  <div class="landing-art" aria-hidden="true">
+    <svg class="art-svg" viewBox="0 0 1440 1100" preserveAspectRatio="xMidYMid slice" focusable="false">
+      <defs>
+        <linearGradient id="landingHillBack" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--hill-1)" />
+          <stop offset="100%" stop-color="var(--hill-2)" />
+        </linearGradient>
+        <linearGradient id="landingHillMid" x1="0.1" y1="0" x2="0.9" y2="1">
+          <stop offset="0%" stop-color="var(--hill-2)" />
+          <stop offset="100%" stop-color="var(--hill-3)" />
+        </linearGradient>
+        <linearGradient id="landingHillFront" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--hill-3)" />
+          <stop offset="100%" stop-color="var(--hill-4)" />
+        </linearGradient>
+        <linearGradient id="landingCream" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--cream)" stop-opacity="0.72" />
+          <stop offset="45%" stop-color="var(--cream)" stop-opacity="0.18" />
+          <stop offset="100%" stop-color="var(--cream)" stop-opacity="0" />
+        </linearGradient>
+        <linearGradient id="landingChartFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--glow)" stop-opacity="0.22" />
+          <stop offset="100%" stop-color="var(--glow)" stop-opacity="0" />
+        </linearGradient>
+        <filter id="landingGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <rect width="1440" height="1100" fill="url(#landingCream)" />
+
+      <path fill="url(#landingHillBack)" d="M-80 210 C 160 130, 340 320, 580 200 C 820 80, 1000 280, 1240 150 C 1380 80, 1500 160, 1580 110 L 1580 1100 L -80 1100 Z" />
+      <path fill="url(#landingHillMid)" d="M-80 390 C 200 300, 400 490, 660 370 C 900 270, 1080 470, 1320 350 C 1460 280, 1540 370, 1580 340 L 1580 1100 L -80 1100 Z" />
+      <path fill="url(#landingHillFront)" d="M-80 640 C 220 560, 460 740, 760 620 C 1020 520, 1220 720, 1580 600 L 1580 1100 L -80 1100 Z" />
+
+      <g fill="none" stroke="var(--glow)" stroke-linecap="round" filter="url(#landingGlow)">
+        <path d="M 40 210 C 260 90, 470 330, 760 170 S 1200 70, 1420 230" stroke-width="1.6" opacity="0.45" />
+        <path d="M 90 300 C 340 160, 560 390, 880 230" stroke-width="1.2" opacity="0.28" />
+        <path d="M 980 640 C 1120 560, 1260 700, 1460 610" stroke-width="1.3" opacity="0.22" />
+      </g>
+
+      <g class="art-chart" fill="none" stroke="var(--chart)" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 980 250 L 1040 228 1095 238 1155 186 1215 198 1280 150 1340 168 1408 122 L 1408 268 L 980 268 Z" fill="url(#landingChartFill)" stroke="none" />
+        <path d="M 980 250 L 1040 228 1095 238 1155 186 1215 198 1280 150 1340 168 1408 122" stroke-width="1.4" />
+        <path d="M 90 640 L 130 610 170 622 210 580 250 592 290 548 330 560 370 520" stroke-width="1.15" stroke-dasharray="3 7" />
+      </g>
+    </svg>
+  </div>
+
+  <header class="landing-header">
+    <div class="brand">
+      <img class="brand-logo" src="/symbol.PNG" alt="" />
+      <span class="brand-name font-display">Bull Exchange</span>
+    </div>
+  </header>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <h1 id="hero-title" class="font-display">A Smarter Way to <span class="headline-accent">Invest</span></h1>
+      <p class="hero-subtitle">
+        Explore the markets, track your portfolio, and trade with confidence. Everything you need, all in one place.
+      </p>
+      <a class="cta" routerLink="/auth/login">Get Started →</a>
+    </div>
+
+    <div class="device-stage" aria-hidden="true">
+      <div class="laptop">
+        <div class="laptop-lid">
+          <div class="laptop-bezel">
+            <span class="laptop-camera"></span>
+            <div class="laptop-screen">
+              <div class="dash">
+                <div class="dash-nav">
+                  <div class="dash-brand">
+                    <img src="/symbol.PNG" alt="" />
+                    <span class="font-display">Bull Exchange</span>
+                  </div>
+                  <div class="dash-links">
+                    <span class="is-active">Home</span>
+                    <span>Portfolio</span>
+                    <span>Trades</span>
+                    <span>Heatmap</span>
+                  </div>
+                  <div class="dash-avatar">J</div>
+                </div>
+
+                <div class="dash-body">
+                  <div class="dash-left">
+                    <div class="dash-profile">
+                      <div class="dash-avatar lg">J</div>
+                      <div>
+                        <p class="muted">Your profile</p>
+                        <p class="font-display dash-name">Jamie Cole</p>
+                      </div>
+                    </div>
+                    <div class="dash-stats">
+                      <div class="dash-stat">
+                        <p class="muted">Portfolio value</p>
+                        <p class="font-mono-data">$128,450.00</p>
+                      </div>
+                      <div class="dash-stat">
+                        <p class="muted">Today's gain</p>
+                        <p class="font-mono-data gain">+$1,284.50</p>
+                      </div>
+                      <div class="dash-stat">
+                        <p class="muted">Overall gain</p>
+                        <p class="font-mono-data gain">+$12,840.00</p>
+                      </div>
+                      <div class="dash-stat">
+                        <p class="muted">Cash remaining</p>
+                        <p class="font-mono-data">$18,220.00</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="dash-alloc">
+                    <p class="font-display dash-section">Portfolio allocation</p>
+                    <div class="dash-alloc-row">
+                      <div class="dash-donut">
+                        <svg viewBox="0 0 200 200">
+                          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--donut-1)" stroke-width="36"
+                                  stroke-dasharray="153.9 285.9" transform="rotate(-90 100 100)" />
+                          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--donut-2)" stroke-width="36"
+                                  stroke-dasharray="123.1 316.7" stroke-dashoffset="-153.9" transform="rotate(-90 100 100)" />
+                          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--donut-3)" stroke-width="36"
+                                  stroke-dasharray="96.8 343.0" stroke-dashoffset="-277.0" transform="rotate(-90 100 100)" />
+                          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--donut-4)" stroke-width="36"
+                                  stroke-dasharray="66.0 373.8" stroke-dashoffset="-373.8" transform="rotate(-90 100 100)" />
+                          <circle cx="100" cy="100" r="50" fill="var(--card)" />
+                        </svg>
+                        <div class="dash-donut-label">
+                          <p class="font-mono-data">$128,450</p>
+                          <p class="muted">Total value</p>
+                        </div>
+                      </div>
+                      <ul class="dash-holdings">
+                        <li>
+                          <span class="ticker-icon aapl">A</span>
+                          <span class="font-mono-data">AAPL</span>
+                          <span>35%</span>
+                        </li>
+                        <li>
+                          <span class="ticker-icon msft">M</span>
+                          <span class="font-mono-data">MSFT</span>
+                          <span>28%</span>
+                        </li>
+                        <li>
+                          <span class="ticker-icon nvda">N</span>
+                          <span class="font-mono-data">NVDA</span>
+                          <span>22%</span>
+                        </li>
+                        <li>
+                          <span class="ticker-icon amzn">a</span>
+                          <span class="font-mono-data">AMZN</span>
+                          <span>15%</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div class="dash-chart-card">
+                    <p class="font-display dash-section">Portfolio performance</p>
+                    <svg class="dash-chart" viewBox="0 0 320 88" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="landingDashFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="var(--gain)" stop-opacity="0.28" />
+                          <stop offset="100%" stop-color="var(--gain)" stop-opacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M0 70 C28 66 46 58 72 54 C102 48 118 60 148 42 C176 28 198 34 228 22 C258 12 286 18 320 10 L320 88 L0 88 Z" fill="url(#landingDashFill)" />
+                      <path d="M0 70 C28 66 46 58 72 54 C102 48 118 60 148 42 C176 28 198 34 228 22 C258 12 286 18 320 10" fill="none" stroke="var(--gain)" stroke-width="2.2" />
+                    </svg>
+                  </div>
+
+                  <div class="dash-trades">
+                    <p class="font-display dash-section">Trading history</p>
+                    <div class="dash-trade"><span class="buy">Buy</span><span class="font-mono-data">AAPL</span><span class="font-mono-data">$189.42</span></div>
+                    <div class="dash-trade"><span class="sell">Sell</span><span class="font-mono-data">MSFT</span><span class="font-mono-data">$412.18</span></div>
+                    <div class="dash-trade"><span class="buy">Buy</span><span class="font-mono-data">NVDA</span><span class="font-mono-data">$118.60</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="laptop-base">
+          <span class="laptop-hinge"></span>
+        </div>
+      </div>
+
+      <div class="phone">
+        <div class="phone-frame">
+          <span class="phone-notch"></span>
+          <div class="phone-screen">
+            <p class="phone-back">‹ Back</p>
+            <div class="phone-identity">
+              <span class="ticker-icon aapl lg">A</span>
+              <div>
+                <p class="font-display phone-name">Apple Inc.</p>
+                <p class="muted"><span class="font-mono-data phone-ticker">AAPL</span> · USD</p>
+              </div>
+            </div>
+            <p class="phone-open">Market open</p>
+            <p class="font-mono-data phone-price">$189.42</p>
+            <p class="font-mono-data gain phone-change">▲ +$2.18 (+1.16%) today</p>
+            <p class="font-display phone-chart-title">Price history</p>
+            <svg class="phone-chart" viewBox="0 0 200 72" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="landingPhoneFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--gain)" stop-opacity="0.32" />
+                  <stop offset="100%" stop-color="var(--gain)" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path d="M0 52 L18 48 L36 50 L54 38 L72 40 L90 28 L108 30 L126 18 L144 22 L162 14 L180 16 L200 10 L200 72 L0 72 Z" fill="url(#landingPhoneFill)" />
+              <path d="M0 52 L18 48 L36 50 L54 38 L72 40 L90 28 L108 30 L126 18 L144 22 L162 14 L180 16 L200 10" fill="none" stroke="var(--gain)" stroke-width="2.4" />
+            </svg>
+            <div class="phone-actions">
+              <span class="phone-btn buy">Buy</span>
+              <span class="phone-btn sell">Sell</span>
+            </div>
+          </div>
+          <span class="phone-home"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" aria-label="Product features">
+    <article class="feature-card">
+      <span class="feature-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </span>
+      <h2 class="font-display">Real-Time Market Data</h2>
+      <p>Live quotes and market movement, updated as the session unfolds.</p>
+    </article>
+
+    <article class="feature-card">
+      <span class="feature-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 12L12 4A8 8 0 0 1 19.5 8.5Z" fill="currentColor" stroke="none" opacity="0.35" />
+        </svg>
+      </span>
+      <h2 class="font-display">Track Your Portfolio</h2>
+      <p>See allocation, performance, and cash at a glance in one dashboard.</p>
+    </article>
+
+    <article class="feature-card">
+      <span class="feature-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 7h10v10" />
+          <path d="M7 17L17 7" />
+        </svg>
+      </span>
+      <h2 class="font-display">Seamless Trading</h2>
+      <p>Place buy and sell orders with a clear, confident workflow.</p>
+    </article>
+
+    <article class="feature-card">
+      <span class="feature-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M4 19V10" />
+          <path d="M10 19V5" />
+          <path d="M16 19V8" />
+          <path d="M22 19V13" />
+        </svg>
+      </span>
+      <h2 class="font-display">Powerful Analytics</h2>
+      <p>Charts, heatmaps, and insights to support every decision.</p>
+    </article>
+  </section>
+</main>

@@ -1,0 +1,51 @@
+<main class="auth-page">
+  <div class="auth-card" [class.is-register]="isRegister()">
+    <section
+      class="form-container sign-in-container"
+      [attr.inert]="isRegister() ? '' : null"
+      [attr.aria-hidden]="isRegister()"
+    >
+      <app-login />
+    </section>
+
+    <section
+      class="form-container sign-up-container"
+      [attr.inert]="isRegister() ? null : ''"
+      [attr.aria-hidden]="!isRegister()"
+    >
+      <app-register />
+    </section>
+
+    <div class="overlay-container">
+      <div class="overlay">
+        <div
+          class="overlay-panel overlay-left"
+          [attr.inert]="isRegister() ? null : ''"
+          [attr.aria-hidden]="!isRegister()"
+        >
+          <img class="overlay-logo" src="/symbol.PNG" alt="" />
+          <p class="overlay-brand">Bull Exchange</p>
+          <h2>Welcome to Bull Exchange!</h2>
+          <p class="overlay-copy">Start your investing journey with us.</p>
+          <a class="ghost-btn" routerLink="/auth/login" (click)="isRegister.set(false)">Sign In</a>
+        </div>
+
+        <div
+          class="overlay-panel overlay-right"
+          [attr.inert]="isRegister() ? '' : null"
+          [attr.aria-hidden]="isRegister()"
+        >
+          <img class="overlay-logo" src="/symbol.PNG" alt="" />
+          <p class="overlay-brand">Bull Exchange</p>
+          <h2>Welcome Back!</h2>
+          <p class="overlay-copy">Your market, your portfolio, your next move.</p>
+          <a class="ghost-btn" routerLink="/auth/register" (click)="isRegister.set(true)">Create Account</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="route-slot" aria-hidden="true">
+    <router-outlet />
+  </div>
+</main>

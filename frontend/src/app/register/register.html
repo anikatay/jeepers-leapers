@@ -1,54 +1,52 @@
-<main class="register-page">
-  <section class="register-panel" aria-labelledby="register-title">
-    <img class="register-logo" src="/symbol.PNG" alt="LEAP logo" />
+<section class="register-panel" aria-labelledby="register-title">
+  <div class="register-heading">
+    <h1 id="register-title">Create your account</h1>
+    <p class="subtitle">Register for access to your trading workspace.</p>
+  </div>
 
-    <div class="register-heading">
-      <h1 id="register-title">Create your account</h1>
-      <p class="subtitle">Register for access to your trading workspace.</p>
-    </div>
-
-    <form #registerForm="ngForm" (ngSubmit)="register(registerForm)" novalidate>
-      <div class="field-row">
-        <div class="field">
-          <label for="firstName">First name</label>
-          <input
-            type="text"
-            id="firstName"
-            name="firstName"
-            required
-            pattern="[A-Za-z\s\-]+"
-            autocomplete="given-name"
-            [(ngModel)]="formData.firstName"
-            #firstNameModel="ngModel"
-          />
-          @if (firstNameModel.invalid && (firstNameModel.touched || registerForm.submitted)) {
-            <small class="field-error" role="alert">Use letters, spaces, or hyphens only.</small>
-          }
-        </div>
-
-        <div class="field">
-          <label for="lastName">Last name</label>
-          <input
-            type="text"
-            id="lastName"
-            name="lastName"
-            required
-            pattern="[A-Za-z\s\-]+"
-            autocomplete="family-name"
-            [(ngModel)]="formData.lastName"
-            #lastNameModel="ngModel"
-          />
-          @if (lastNameModel.invalid && (lastNameModel.touched || registerForm.submitted)) {
-            <small class="field-error" role="alert">Use letters, spaces, or hyphens only.</small>
-          }
-        </div>
+  <form #registerForm="ngForm" (ngSubmit)="register(registerForm)" novalidate>
+    <div class="field-row">
+      <div class="field">
+        <label for="register-firstName">First name</label>
+        <input
+          type="text"
+          id="register-firstName"
+          name="firstName"
+          required
+          pattern="[A-Za-z\s\-]+"
+          autocomplete="given-name"
+          [(ngModel)]="formData.firstName"
+          #firstNameModel="ngModel"
+        />
+        @if (firstNameModel.invalid && (firstNameModel.touched || registerForm.submitted)) {
+          <small class="field-error" role="alert">Use letters, spaces, or hyphens only.</small>
+        }
       </div>
 
       <div class="field">
-        <label for="dateOfBirth">Date of birth</label>
+        <label for="register-lastName">Last name</label>
+        <input
+          type="text"
+          id="register-lastName"
+          name="lastName"
+          required
+          pattern="[A-Za-z\s\-]+"
+          autocomplete="family-name"
+          [(ngModel)]="formData.lastName"
+          #lastNameModel="ngModel"
+        />
+        @if (lastNameModel.invalid && (lastNameModel.touched || registerForm.submitted)) {
+          <small class="field-error" role="alert">Use letters, spaces, or hyphens only.</small>
+        }
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="register-dateOfBirth">Date of birth</label>
         <input
           type="date"
-          id="dateOfBirth"
+          id="register-dateOfBirth"
           name="dateOfBirth"
           required
           autocomplete="bday"
@@ -61,10 +59,10 @@
       </div>
 
       <div class="field">
-        <label for="ssn">Social Security number</label>
+        <label for="register-ssn">Social Security number</label>
         <input
           type="password"
-          id="ssn"
+          id="register-ssn"
           name="ssn"
           required
           pattern="[0-9]{3}-[0-9]{2}-[0-9]{4}"
@@ -76,28 +74,30 @@
           <small class="field-error" role="alert">Use XXX-XX-XXXX.</small>
         }
       </div>
+    </div>
 
-      <div class="field">
-        <label for="address">Address</label>
-        <textarea
-          id="address"
-          name="address"
-          required
-          rows="3"
-          autocomplete="street-address"
-          [(ngModel)]="formData.address"
-          #addressModel="ngModel"
-        ></textarea>
-        @if (addressModel.invalid && (addressModel.touched || registerForm.submitted)) {
-          <small class="field-error" role="alert">Enter your street address.</small>
-        }
-      </div>
+    <div class="field">
+      <label for="register-address">Address</label>
+      <textarea
+        id="register-address"
+        name="address"
+        required
+        rows="3"
+        autocomplete="street-address"
+        [(ngModel)]="formData.address"
+        #addressModel="ngModel"
+      ></textarea>
+      @if (addressModel.invalid && (addressModel.touched || registerForm.submitted)) {
+        <small class="field-error" role="alert">Enter your street address.</small>
+      }
+    </div>
 
+    <div class="field-row">
       <div class="field">
-        <label for="phoneNumber">Phone number</label>
+        <label for="register-phoneNumber">Phone number</label>
         <input
           type="tel"
-          id="phoneNumber"
+          id="register-phoneNumber"
           name="phoneNumber"
           required
           pattern="(\\([0-9]{3}\\)\\s?[0-9]{3}-[0-9]{4}|[0-9]{10})"
@@ -111,10 +111,10 @@
       </div>
 
       <div class="field">
-        <label for="email">Email</label>
+        <label for="register-email">Email</label>
         <input
           type="email"
-          id="email"
+          id="register-email"
           name="email"
           required
           pattern="[A-Za-z0-9_\-\.]+@([A-Za-z0-9_\-]+\.)+[A-Za-z0-9_\-]{2,4}"
@@ -126,36 +126,34 @@
           <small class="field-error" role="alert">Use a valid email address, such as name@example.com.</small>
         }
       </div>
+    </div>
 
-      <div class="field">
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          required
-          minlength="8"
-          pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{8,}"
-          autocomplete="new-password"
-          [(ngModel)]="formData.password"
-          #passwordModel="ngModel"
-        />
-        @if (passwordModel.invalid && (passwordModel.touched || registerForm.submitted)) {
-          <small class="field-error" role="alert">Use 8 or more characters with at least one letter and one number.</small>
-        }
-      </div>
-
-      @if (message()) {
-        <p class="message" [class.error]="isError()" aria-live="polite">{{ message() }}</p>
+    <div class="field">
+      <label for="register-password">Password</label>
+      <input
+        type="password"
+        id="register-password"
+        name="password"
+        required
+        minlength="8"
+        pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{8,}"
+        autocomplete="new-password"
+        [(ngModel)]="formData.password"
+        #passwordModel="ngModel"
+      />
+      @if (passwordModel.invalid && (passwordModel.touched || registerForm.submitted)) {
+        <small class="field-error" role="alert">Use 8 or more characters with at least one letter and one number.</small>
       }
+    </div>
 
-      <button type="submit">Create account</button>
-    </form>
+    @if (message()) {
+      <p class="message" [class.error]="isError()" aria-live="polite">{{ message() }}</p>
+    }
 
-    <p class="register-prompt">
-      <a routerLink="/auth/login">Already have an account? Log in</a>
-    </p>
+    <button type="submit">Create account</button>
+  </form>
 
-    <p class="register-footer">Secure access to your trading workspace</p>
-  </section>
-</main>
+  <p class="register-prompt">
+    <a routerLink="/auth/login">Already have an account? Log in</a>
+  </p>
+</section>
