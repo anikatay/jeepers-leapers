@@ -32,6 +32,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.portfolio': 'Portfolio',
     'nav.trades': 'Trades',
     'nav.heatmap': 'Market Heatmap',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'Watchlist',
     'nav.profile': 'Profile',
     'nav.settings': 'Settings',
     'nav.logout': 'Logout',
@@ -152,6 +154,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'Inicio',
     'nav.portfolio': 'Cartera',
     'nav.trades': 'Operaciones',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'Lista de seguimiento',
     'nav.profile': 'Perfil',
     'nav.settings': 'Configuración',
     'nav.logout': 'Cerrar sesión',
@@ -263,6 +267,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'হোম',
     'nav.portfolio': 'পোর্টফোলিও',
     'nav.trades': 'ট্রেড',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'ওয়াচলিস্ট',
     'nav.profile': 'প্রোফাইল',
     'nav.settings': 'সেটিংস',
     'nav.logout': 'লগ আউট',
@@ -369,6 +375,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'होम',
     'nav.portfolio': 'पोर्टफोलियो',
     'nav.trades': 'ट्रेड',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'वॉचलिस्ट',
     'nav.profile': 'प्रोफाइल',
     'nav.settings': 'सेटिंग्स',
     'nav.logout': 'लॉग आउट',
@@ -475,6 +483,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'ਘਰ',
     'nav.portfolio': 'ਪੋਰਟਫੋਲੀਓ',
     'nav.trades': 'ਵਪਾਰ',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'ਵਾਚਲਿਸਟ',
     'nav.profile': 'ਪ੍ਰੋਫਾਈਲ',
     'nav.settings': 'ਸਟਿੰਗਜ਼',
     'nav.logout': 'ਲਾਗ ਆਉਟ',
@@ -579,6 +589,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'హోమ్',
     'nav.portfolio': 'పోర్ట్‌ఫోలియో',
     'nav.trades': 'ట్రేడ్‌లు',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'వాచ్‌లిస్ట్',
     'nav.profile': 'ప్రొఫైల్',
     'nav.settings': 'సెట్టింగ్‌లు',
     'nav.logout': 'లాగ్ అవుట్',
@@ -683,6 +695,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'முகப்பு',
     'nav.portfolio': 'போர்ட்ஃபோலியோ',
     'nav.trades': 'வர்த்தகங்கள்',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'கண்காணிப்புப் பட்டியல்',
     'nav.profile': 'சுயவிவரம்',
     'nav.settings': 'அமைப்புகள்',
     'nav.logout': 'வெளியே வாருங்கள்',
@@ -787,6 +801,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'ગૃહ',
     'nav.portfolio': 'પોર્ટફોલિયો',
     'nav.trades': 'વર્તણૂક',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'વૉચલિસ્ટ',
     'nav.profile': 'પ્રોફાઇલ',
     'nav.settings': 'સેટિંગ્સ',
     'nav.logout': 'લૉગ આઉટ',
@@ -893,6 +909,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'Baile',
     'nav.portfolio': 'Seilbhir',
     'nav.trades': 'Trádáil',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'Liosta faire',
     'nav.profile': 'Próifíl',
     'nav.settings': 'Socruithe',
     'nav.logout': 'Logáil Amach',
@@ -996,6 +1014,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'nav.home': 'ہوم',
     'nav.portfolio': 'پورٹ فولیو',
     'nav.trades': 'تجارت',
+    'nav.hunter': 'Hunter',
+    'nav.watchlist': 'واچ لسٹ',
     'nav.profile': 'پروفائل',
     'nav.settings': 'ترتیبات',
     'nav.logout': 'لاگ آؤٹ',
@@ -1029,6 +1049,18 @@ function applyParams(text: string, params?: Record<string, string | number>): st
 }
 
 for (const extra of [CLIENT_UI_TRANSLATIONS, CLIENT_UI_TRANSLATIONS_MORE]) {
+  for (const [lang, entries] of Object.entries(extra)) {
+    if (translations[lang as Language]) {
+      Object.assign(translations[lang as Language], entries);
+    }
+  }
+}
+
+/**
+ * Adds a feature's strings. Lazy-loaded features, such as Watchlist Hunter, call this when they load,
+ * so their strings stay out of the initial bundle; adding the same strings again changes nothing.
+ */
+export function registerTranslations(extra: Partial<Record<Language, Record<TranslationKey, string>>>): void {
   for (const [lang, entries] of Object.entries(extra)) {
     if (translations[lang as Language]) {
       Object.assign(translations[lang as Language], entries);

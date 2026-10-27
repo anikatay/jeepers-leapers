@@ -1,0 +1,56 @@
+<article class="match" [attr.aria-labelledby]="'match-' + match().ticker">
+  <header class="match-head">
+    <div>
+      <h4 class="ticker" [id]="'match-' + match().ticker">{{ match().ticker }}</h4>
+      <p class="company">{{ match().companyName }} · {{ match().gicsSector }}</p>
+    </div>
+    <span class="score" [attr.data-level]="scoreLevel()">{{ scoreText() }}</span>
+  </header>
+
+  @if (match().whyItMatched.length) {
+    <h5 class="section-title">{{ 'hunter.why' | translate }}</h5>
+    <ul class="why">
+      @for (reason of match().whyItMatched; track $index) {
+        <li>{{ reason }}</li>
+      }
+    </ul>
+  }
+
+  @if (match().estimates.length) {
+    <ul class="estimates">
+      @for (estimate of match().estimates; track estimate.ruleId) {
+        <li class="estimate">
+          <span>{{ estimateText(estimate) }}</span>
+          @if (estimate.period) {
+            <span class="period">· {{ estimate.period }}</span>
+          }
+          <span class="period">· {{ 'hunter.ai_estimate' | translate }}</span>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (match().criteria.length) {
+    <details class="breakdown">
+      <summary>{{ 'hunter.breakdown' | translate }}</summary>
+      <ul>
+        @for (result of match().criteria; track result.criterionId) {
+          <li>
+            <span class="verdict" [attr.data-verdict]="result.verdict">{{ ('hunter.verdict_' + result.verdict) | translate }}</span>
+            <span class="statement">{{ statement(result.criterionId) }}</span>
+            @if (result.reason) {
+              <span class="reason">{{ result.reason }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </details>
+  }
+
+  <footer class="match-foot">
+    <button type="button" class="watch-button" [class.on]="onWatchlist()" [attr.aria-pressed]="onWatchlist()"
+      [attr.aria-label]="watchlistLabel()" [disabled]="busy()" (click)="toggleWatchlist.emit()">
+      {{ (onWatchlist() ? 'hunter.on_watchlist' : 'hunter.add_watchlist') | translate }}
+    </button>
+  </footer>
+</article>

@@ -1,24 +1,16 @@
 package com.neueda.leap.analysis;
 
 import com.fasterxml.jackson.core.StreamWriteFeature;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.neueda.leap.ai.ModelCallException;
+import com.neueda.leap.ai.OpenAiJsonClient;
 
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
 
 import java.io.IOException;
-import java.net.http.HttpClient;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -26,13 +18,10 @@ import java.util.Map;
 /** Sends one trade and its context to OpenAI and returns a structured verdict. */
 public class OpenAiTradeAnalyzer {
 
-    public static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
+    public static final String DEFAULT_BASE_URL = OpenAiJsonClient.DEFAULT_BASE_URL;
 
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-    private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
     // Reasoning models spend part of this budget on hidden reasoning tokens.
     private static final int MAX_OUTPUT_TOKENS = 2000;
-    private static final int MAX_ERROR_BODY_CHARS = 500;
 
     private static final ObjectMapper JSON = JsonMapper.builder()
             .addModule(new JavaTimeModule())
@@ -117,17 +106,16 @@ public class OpenAiTradeAnalyzer {
             int completionTokens,
             long latencyMs) {}
 
-    private final RestClient restClient;
-    private final String apiKey;
+    private final OpenAiJsonClient client;
     private final String model;
 
     public OpenAiTradeAnalyzer(String apiKey, String model, String baseUrl) {
-        this(RestClient.builder().requestFactory(timeoutFactory()), apiKey, model, baseUrl);
+        this.client = new OpenAiJsonClient(apiKey, baseUrl, OpenAiJsonClient.DEFAULT_READ_TIMEOUT);
+        this.model = model;
     }
 
     OpenAiTradeAnalyzer(RestClient.Builder builder, String apiKey, String model, String baseUrl) {
-        this.restClient = builder.baseUrl(baseUrl).build();
-        this.apiKey = apiKey;
+        this.client = new OpenAiJsonClient(builder, apiKey, baseUrl);
         this.model = model;
     }
 
@@ -136,96 +124,26 @@ public class OpenAiTradeAnalyzer {
     }
 
     public Analysis analyzeWithUsage(TradeAnalysisContext context) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new TradeAnalysisException("OpenAI API key is not configured");
-        }
-        if (model == null || model.isBlank()) {
-            throw new TradeAnalysisException("OpenAI model is not configured");
-        }
-
-        long startedAt = System.nanoTime();
-        byte[] responseBody;
+        OpenAiJsonClient.Completion completion;
         try {
-            responseBody = restClient.post()
-                    .uri("/chat/completions")
-                    .headers(headers -> headers.setBearerAuth(apiKey))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(requestBody(context))
-                    .retrieve()
-                    .onStatus(HttpStatusCode::isError, (request, response) -> {
-                        throw new TradeAnalysisException(
-                                "OpenAI returned HTTP " + response.getStatusCode().value() + ": " + errorBody(response));
-                    })
-                    .body(byte[].class);
-        } catch (RestClientException e) {
-            throw new TradeAnalysisException("Could not reach OpenAI: " + e.getMessage(), e);
-        }
-        return parse(responseBody, (System.nanoTime() - startedAt) / 1_000_000);
-    }
-
-    private byte[] requestBody(TradeAnalysisContext context) {
-        try {
-            Map<String, Object> body = Map.of(
-                    "model", model,
-                    "max_completion_tokens", MAX_OUTPUT_TOKENS,
-                    "messages", List.of(
-                            Map.of("role", "system", "content", SYSTEM_PROMPT),
-                            Map.of("role", "user", "content", JSON.writeValueAsString(context))),
-                    "response_format", Map.of(
-                            "type", "json_schema",
-                            "json_schema", Map.of(
-                                    "name", "trade_analysis",
-                                    "strict", true,
-                                    "schema", RESULT_SCHEMA)));
-            return JSON.writeValueAsBytes(body);
+            completion = client.complete(new OpenAiJsonClient.Request(model, SYSTEM_PROMPT,
+                    JSON.writeValueAsString(context), "trade_analysis", RESULT_SCHEMA, MAX_OUTPUT_TOKENS, null));
         } catch (IOException e) {
             throw new TradeAnalysisException("Could not serialize the trade context", e);
+        } catch (ModelCallException e) {
+            throw new TradeAnalysisException(e.getMessage(), e);
         }
-    }
 
-    private Analysis parse(byte[] responseBody, long latencyMs) {
-        if (responseBody == null || responseBody.length == 0) {
-            throw new TradeAnalysisException("OpenAI returned an empty response");
-        }
+        TradeAnalysisResult result;
         try {
-            JsonNode root = JSON.readTree(responseBody);
-            JsonNode choice = root.path("choices").path(0);
-            JsonNode message = choice.path("message");
-
-            if (message.hasNonNull("refusal")) {
-                throw new TradeAnalysisException(
-                        "OpenAI declined to analyse the trade: " + message.get("refusal").asText());
-            }
-            if ("length".equals(choice.path("finish_reason").asText())) {
-                throw new TradeAnalysisException("OpenAI's reply was cut off at the output token limit");
-            }
-
-            String content = message.path("content").asText("");
-            if (content.isBlank()) {
-                throw new TradeAnalysisException("OpenAI returned no analysis");
-            }
-
-            TradeAnalysisResult result = JSON.readValue(content, TradeAnalysisResult.class);
-            if (result.verdict() == null || result.summary() == null || result.summary().isBlank()) {
-                throw new TradeAnalysisException("OpenAI's analysis is missing a verdict or summary");
-            }
-            JsonNode usage = root.path("usage");
-            return new Analysis(result, root.path("model").asText(model),
-                    usage.path("prompt_tokens").asInt(0), usage.path("completion_tokens").asInt(0), latencyMs);
+            result = JSON.readValue(completion.content(), TradeAnalysisResult.class);
         } catch (IOException e) {
             throw new TradeAnalysisException("OpenAI's reply was not valid analysis JSON", e);
         }
-    }
-
-    private static String errorBody(ClientHttpResponse response) throws IOException {
-        String body = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8).strip();
-        return body.length() <= MAX_ERROR_BODY_CHARS ? body : body.substring(0, MAX_ERROR_BODY_CHARS) + "...";
-    }
-
-    private static ClientHttpRequestFactory timeoutFactory() {
-        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
-                HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build());
-        factory.setReadTimeout(READ_TIMEOUT);
-        return factory;
+        if (result.verdict() == null || result.summary() == null || result.summary().isBlank()) {
+            throw new TradeAnalysisException("OpenAI's analysis is missing a verdict or summary");
+        }
+        return new Analysis(result, completion.model(), completion.promptTokens(), completion.completionTokens(),
+                completion.latencyMs());
     }
 }

@@ -3,5 +3,5 @@ target/
 *class
 *.log
 .env
-analytics/__pycache__/
+analytics/etl/__pycache__/
 */__pycache__/

@@ -32,7 +32,7 @@ public class AnalysisRateLimiter {
         this(globalPerMinute, perClientPerMinute, Clock.systemUTC());
     }
 
-    AnalysisRateLimiter(int globalPerMinute, int perClientPerMinute, Clock clock) {
+    public AnalysisRateLimiter(int globalPerMinute, int perClientPerMinute, Clock clock) {
         this.globalPerMinute = globalPerMinute;
         this.perClientPerMinute = perClientPerMinute;
         this.clock = clock;

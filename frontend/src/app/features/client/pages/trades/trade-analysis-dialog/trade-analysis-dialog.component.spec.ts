@@ -25,6 +25,9 @@ function analysis(verdict: Verdict = 'GOOD', pnl: PnlStatus = { kind: 'calculate
 }
 
 describe('TradeAnalysisDialogComponent', () => {
+  // Some tests switch language; put English back so later spec files start from the default
+  afterEach(() => localStorage.setItem('app-language', 'en'));
+
   let fixture: ComponentFixture<TradeAnalysisDialogComponent>;
   let element: HTMLElement;
   let closed: number;

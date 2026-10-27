@@ -171,6 +171,51 @@ docker-compose up -d --build
 python3 analytics/etl/run_pipeline.py --seed --trades 200 --start-date 2026-08-01
 ```
 
+## Watchlist Hunter
+
+Turns an investment idea in plain English into a card of rules, finds S&P 500 companies that match it,
+and lets a client save matches to a watchlist. The pages are **Hunter** and **Watchlist** in the
+client navbar.
+
+All company information comes from the AI model's general knowledge, which ends in May 2026. Nothing
+is fetched from market data, filings or news, and results say so. The spec, with the API contract,
+the checks the app makes on the model's answers, limits and acceptance criteria, is in
+[docs/specs/watchlist-hunter.md](docs/specs/watchlist-hunter.md).
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8091/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"bob@example.com","password":"123"}' | jq -r .token)
+# Turn an idea into an unsaved spec (about 8 seconds)
+curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"prompt":"High-margin AI infrastructure companies"}' http://localhost:8091/api/hunter/specs/draft
+# Save it with POST /api/hunter/specs, then run it (about 20 seconds; unchanged specs reuse their last run)
+curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8091/api/hunter/specs/<specId>/runs
+```
+
+### Configuration
+
+| Variable or property | Default | Purpose |
+| -------------------- | ------- | ------- |
+| `OPENAI_API_KEY` | none | Shared with trade analysis; without it Hunter's model calls return 502 |
+| `HUNTER_OPENAI_MODEL` | `gpt-6-luna` | Model for drafts and runs |
+| `hunter.knowledge-cutoff` | `2026-05-18` | Where the model's knowledge ends; change it with the model |
+
+The S&P 500 list is `src/main/resources/hunter/sp500.csv`, updated by hand.
+
+### Usage log
+
+```bash
+docker-compose logs app | grep "hunter "
+```
+
+### Testing
+
+```bash
+mvn test                                                                                   # offline, no key needed
+env $(grep -E '^(OPENAI_API_KEY|HUNTER_)' .env | xargs) mvn test -Dtest=HunterLiveTest           # 2 real calls
+env $(grep -E '^(OPENAI_API_KEY|HUNTER_)' .env | xargs) mvn test -Dtest='SpecTranslatorEvalTest,CandidateFinderEvalTest'  # about 100 real calls
+```
+
 ## Running the Frontend
 
 1. Go into the frontend directory:
