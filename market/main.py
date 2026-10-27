@@ -315,7 +315,7 @@ class YahooStream:
         async with self.lock:
             self.desired.add(ticker)
             websocket = self.websocket
-            if websocket is None:
+            if websocket is None or ticker in self.active:
                 return
             try:
                 await websocket.subscribe(ticker)
@@ -436,6 +436,12 @@ async def health():
 @app.post("/stream/subscribe/{ticker}")
 async def subscribe_stream(ticker: str):
     normalized = validate_ticker(ticker)
+    if SECTOR_STREAM_ENABLED and normalized in SECTOR_TICKER_SET:
+        return {
+            "ticker": normalized,
+            "subscribed": True,
+            "persistent": True,
+        }
     await stream.add(normalized)
     return {"ticker": normalized, "subscribed": True}
 
@@ -486,6 +492,53 @@ def get_sector(sector_id: str):
 @app.get("/lookup/{ticker}")
 def lookup_ticker(ticker: str):
     return market_instrument_metadata(validate_ticker(ticker))
+
+
+@app.get("/quote")
+def quote(ticker: str = Query(...)):
+    ticker = validate_ticker(ticker)
+    try:
+        frame = yf.Ticker(ticker).history(
+            period="1d",
+            interval="1m",
+            auto_adjust=False,
+            timeout=10,
+        )
+    except Exception as exc:
+        log.warning("Market quote lookup failed for %s", ticker, exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Market data provider unavailable",
+        ) from exc
+
+    if frame.empty or "Close" not in frame:
+        raise HTTPException(status_code=404, detail=f"No current quote for {ticker}")
+
+    closes = frame["Close"].dropna()
+    if closes.empty:
+        raise HTTPException(status_code=404, detail=f"No current quote for {ticker}")
+
+    price = scale_price(closes.iloc[-1], ticker)
+    if not math.isfinite(price) or price <= 0:
+        raise HTTPException(status_code=502, detail=f"Invalid current quote for {ticker}")
+
+    quote_time = closes.index[-1]
+    if hasattr(quote_time, "to_pydatetime"):
+        quote_time = quote_time.to_pydatetime()
+    if quote_time.tzinfo is None:
+        quote_time = quote_time.replace(tzinfo=timezone.utc)
+    else:
+        quote_time = quote_time.astimezone(timezone.utc)
+
+    return {
+        "type": "QUOTE",
+        "ticker": ticker,
+        "price": price,
+        "quoteTime": quote_time.isoformat(),
+        "receivedTime": datetime.now(timezone.utc).isoformat(),
+        "source": "yfinance-rest",
+        "status": "LIVE",
+    }
 
 
 def validate_currency(raw: str) -> str:
@@ -560,26 +613,69 @@ def history(ticker: str = Query(...), period: str = Query("1y")):
     ticker = validate_ticker(ticker)
     if period not in ALLOWED_PERIODS:
         raise HTTPException(status_code=400, detail="Invalid period")
+    return _fetch_history(ticker, period, "1d")
+
+
+@app.get("/history/intraday")
+def intraday_history(ticker: str = Query(...)):
+    ticker = validate_ticker(ticker)
+    return _fetch_history(ticker, "1d", "1m")
+
+
+def _fetch_history(ticker: str, period: str, interval: str) -> dict:
     try:
-        df = yf.Ticker(ticker).history(period=period, interval="1d", timeout=10)
+        request_period = "5d" if interval == "1m" else period
+        df = yf.Ticker(ticker).history(period=request_period, interval=interval, timeout=10)
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Market data upstream failure") from exc
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+    # Yahoo returns the current session as a placeholder row with NaN prices, which
+    # is not JSON-serialisable. Drop those before anything reads the frame.
+    df = df.dropna(subset=["Open", "High", "Low", "Close"])
+    if df.empty:
+        raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+    frame = df
+    opening_bar = None
+    if interval == "1m":
+        session_date = max(index.date() for index in df.index)
+        frame = df[df.index.date == session_date]
+        previous_frame = df[df.index.date < session_date]
+        previous_closes = previous_frame["Close"].dropna()
+        if not previous_closes.empty:
+            previous_close = round(
+                scale_price(previous_closes.iloc[-1], ticker),
+                4,
+            )
+            opening_bar = {
+                "date": f"{session_date.isoformat()}T00:00:00Z",
+                "open": previous_close,
+                "high": previous_close,
+                "low": previous_close,
+                "close": previous_close,
+                "volume": 0,
+            }
+
+    bars = [
+        {
+            "date": idx.isoformat() if interval != "1d" else idx.strftime("%Y-%m-%d"),
+            "open": round(scale_price(row["Open"], ticker), 4),
+            "high": round(scale_price(row["High"], ticker), 4),
+            "low": round(scale_price(row["Low"], ticker), 4),
+            "close": round(scale_price(row["Close"], ticker), 4),
+            "volume": int(row["Volume"]),
+        }
+        for idx, row in frame.iterrows()
+    ]
+    if opening_bar is not None:
+        bars.insert(0, opening_bar)
+
     return {
         "ticker": ticker,
         "period": period,
-        "bars": [
-            {
-                "date": idx.strftime("%Y-%m-%d"),
-                "open": round(scale_price(row["Open"], ticker), 4),
-                "high": round(scale_price(row["High"], ticker), 4),
-                "low": round(scale_price(row["Low"], ticker), 4),
-                "close": round(scale_price(row["Close"], ticker), 4),
-                "volume": int(row["Volume"]),
-            }
-            for idx, row in df.iterrows()
-        ],
+        "bars": bars,
     }
 
 
@@ -622,3 +718,68 @@ def history_batch(tickers: str = Query(...), period: str = Query("1y")) -> Dict[
             log.warning("No batch history returned for %s", symbol)
         result[symbol] = {"ticker": symbol, "period": period, "bars": bars}
     return result
+
+
+MAX_NEWS_TICKERS = 8
+MAX_NEWS_ITEMS = 20
+
+
+def _news_item(raw: dict) -> dict | None:
+    """Normalise one Yahoo news entry, or None when it carries no usable headline."""
+    title = (raw.get("title") or "").strip()
+    link = (raw.get("link") or "").strip()
+    if not title or not link.startswith("https://"):
+        return None
+
+    published = raw.get("providerPublishTime")
+    try:
+        published_at = datetime.fromtimestamp(float(published), tz=timezone.utc).isoformat()
+    except (TypeError, ValueError, OSError, OverflowError):
+        published_at = None
+
+    related = [
+        ticker for ticker in (raw.get("relatedTickers") or [])
+        if isinstance(ticker, str) and TICKER_RE.match(ticker)
+    ]
+
+    return {
+        "id": str(raw.get("uuid") or link),
+        "title": title,
+        "publisher": (raw.get("publisher") or "").strip() or None,
+        "link": link,
+        "publishedAt": published_at,
+        "relatedTickers": related[:8],
+    }
+
+
+@app.get("/news")
+def news(tickers: str = Query(...), limit: int = Query(8, ge=1, le=MAX_NEWS_ITEMS)) -> dict:
+    """
+    Headlines related to the given tickers, newest first.
+
+    Uses Search rather than Ticker.news: as of yfinance 1.7.0 the per-ticker news attribute
+    and get_news() both come back empty, while Search still returns the feed. Stories are
+    deduplicated across tickers because the same piece is frequently attached to several.
+    """
+    symbols = validate_tickers(tickers)[:MAX_NEWS_TICKERS]
+
+    collected: Dict[str, dict] = {}
+    for symbol in symbols:
+        try:
+            raw_items = yf.Search(symbol, news_count=limit).news or []
+        except Exception:
+            # One ticker's feed failing must not empty the whole panel.
+            log.warning("News lookup failed for %s", symbol, exc_info=True)
+            continue
+
+        for raw in raw_items:
+            item = _news_item(raw)
+            if item is not None:
+                collected.setdefault(item["id"], item)
+
+    items = sorted(
+        collected.values(),
+        key=lambda item: item["publishedAt"] or "",
+        reverse=True,
+    )
+    return {"items": items[:limit]}

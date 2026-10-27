@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Status | Backend implemented (`analytics/wrapper`); UI not started |
-| Last updated | 2026-10-19 |
+| Status | Backend merged (#74); UI built on `analytics/ai_wrapper_UI`, not yet merged |
+| Last updated | 2026-10-20 |
 
 ## 1. Goal
 
@@ -164,9 +164,102 @@ Results vary from run to run, so compare models over several runs.
 
 ## 9. UI
 
-To be specified before UI work starts, on the `frontend/trade-analysis` branch. It must cover:
-- **States:** loading, success, P&L not yet calculated, 404, 429, 502 and network error.
-- **Content:** the "not financial advice" disclaimer and "P&L as of {outcome.asOf}".
-- **i18n:** translations for all 10 UI languages.
-- **Accessibility.**
-- **Acceptance criteria:** U1 onwards, each mapped to a test.
+### 9.1 User story
+
+As a client on the Trades page, I press **Analyze** on one of my trades and, a few seconds later, see
+an automated review of whether it was a good decision and why.
+
+### 9.2 Flow
+
+1. Each row of the trades table has an Analyze button.
+2. Pressing it opens a dialog in its loading state and sends two requests in parallel, both with
+   `Authorization: Bearer <token>` (the token `AuthService` stored at login):
+   - `POST /api/trades/{tradeId}/analysis` for the review;
+   - `GET /api/trades/{tradeId}/analysis/context`, read only for `outcome.asOf`, the time the P&L
+     was calculated.
+3. When the review arrives, the dialog shows it. If the context request failed, the review is still
+   shown, without the P&L line.
+4. Each trade's result is kept while the page is open. Reopening a reviewed trade shows the stored
+   result without a new request, so repeat looks cost no OpenAI call and no rate-limit allowance.
+   Leaving or reloading the page clears the stored results, and errors are never stored.
+
+The token is attached to these two requests only, not to every API call. Tokens expire after an
+hour, and the backend rejects any request carrying an expired token, even on endpoints that need no
+login, so sending it everywhere would break other pages.
+
+### 9.3 States
+
+| State | Dialog shows |
+|---|---|
+| Loading | A spinner and "Analyzing your trade…"; the row's Analyze button is disabled (`aria-disabled`, so it stays focusable and focus can return to it) |
+| Success | Verdict badge, summary, strengths, concerns and suggestions (an empty list is hidden), the P&L line, the disclaimer |
+| 401 | "Your session has expired. Please log in again." |
+| 404 | "This trade could not be found." |
+| 429 | "Too many analyses. Try again in 41 seconds.", with the wait from the `Retry-After` header, or 60 seconds if it is missing. The duration is worded by `Intl.NumberFormat` for the selected language, so the plural is right ("1 second", "41 segundos") |
+| 502 | "Analysis is unavailable right now. Please try again later." |
+| Network error or any other status | "Something went wrong. Please try again." |
+
+### 9.4 Content
+
+- **Title:** "Trade analysis", with a subtitle naming the trade: ticker, side, quantity and date,
+  e.g. "NVDA · Sell · 8 · Oct 19, 2026".
+- **Verdict badge:**
+
+  | Verdict | Label | Colour |
+  |---|---|---|
+  | `GOOD` | Good decision | Green |
+  | `MIXED` | Mixed | Amber |
+  | `POOR` | Poor decision | Red |
+  | `TOO_EARLY` | Too early to tell | Grey |
+
+- **Lists:** headed "Strengths", "Concerns" and "Suggestions", in that order.
+- **P&L line:** "P&L as of {date and time}" when the context has an `outcome`, otherwise "P&L not
+  calculated yet. This review does not include profit or loss."
+- **Disclaimer**, shown with every result: "Automated review, not financial advice."
+
+### 9.5 Language
+
+Every label, message and button text is translated into the app's 10 languages through
+`TranslationService`. The review itself (summary and lists) is written by the model in English;
+replies in the UI language are already listed as out of scope.
+
+### 9.6 Accessibility
+
+- The dialog has `role="dialog"`, `aria-modal="true"` and `aria-labelledby` pointing at its title.
+- On open, focus moves to the dialog's close button.
+- Esc, the close button or a click on the backdrop closes it, and focus returns to the Analyze button
+  that opened it.
+- The loading and result area is an `aria-live="polite"` region, so screen readers announce the
+  result.
+- Each Analyze button's accessible name names its trade, e.g. "Analyze NVDA sell from Oct 19, 2026".
+
+### 9.7 Out of scope
+
+- An app-wide auth interceptor and token refresh. Today an expired token only affects this feature,
+  through the 401 message.
+- The unused `ApiInterceptor`, which is never applied because `provideHttpClient()` is called
+  without `withInterceptorsFromDi()`.
+- Analysis anywhere other than the Trades page, such as the Portfolio page or the trade confirmation.
+- Showing the full context to the user.
+
+### 9.8 Acceptance criteria (UI)
+
+Manual checks were run on 2026-10-20 in headless Chromium against the full docker-compose stack,
+logged in as `bob@example.com`, with live OpenAI calls.
+
+| # | Given / When / Then | Covered by |
+|---|---|---|
+| U1 | Given a logged-in client on the Trades page, when the trades load, then each row has an Analyze button whose accessible name names the trade | `client-trades.component.spec.ts`; manual: 8 rows, e.g. "Analyze MSFT Buy from Oct 20, 2026" |
+| U2 | Given a row, when its Analyze button is pressed, then the dialog opens in the loading state and that button is disabled until the request finishes | `client-trades.component.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual |
+| U3 | Given an analysis request, when it is sent, then both the review and the context requests carry `Authorization: Bearer <stored token>` | `trade-analysis.service.spec.ts`; manual: the review request carried the token |
+| U4 | Given the review succeeds, when the dialog shows it, then it has the verdict badge with its translated label and colour, the summary, the non-empty lists, and the disclaimer | `trade-analysis-dialog.component.spec.ts`; manual |
+| U5 | Given the context has an `outcome`, when the review is shown, then the dialog says "P&L as of" with that time | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual: "P&L as of Oct 20, 2026, 7:44 PM" |
+| U6 | Given the context's `outcome` is null, or the context request fails, when the review is shown, then the dialog says P&L is not calculated yet, or shows no P&L line if the context failed | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual: a buy placed seconds before showed "P&L not calculated yet" |
+| U7 | Given a trade was reviewed earlier on this page, when its Analyze button is pressed again, then the stored result is shown and no request is sent | `client-trades.component.spec.ts`; manual: no new POST on reopening |
+| U8 | Given the review returns 401, when the dialog updates, then it shows the session-expired message | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual: token removed from Local Storage |
+| U9 | Given the review returns 429, when the dialog updates, then it shows the rate-limit message with the wait from `Retry-After`, or 60 seconds without the header | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`; manual: sixth review in a minute showed "Try again in 46 seconds." |
+| U10 | Given the review returns 404, 502, or fails without a response, when the dialog updates, then it shows the matching message from section 9.3, and pressing Analyze again sends a new request | `trade-analysis.service.spec.ts`, `trade-analysis-dialog.component.spec.ts`, `client-trades.component.spec.ts` |
+| U11 | Given the dialog is open, when Esc, the close button or the backdrop is used, then it closes and focus returns to the Analyze button that opened it; on open, focus is on the close button | `trade-analysis-dialog.component.spec.ts`, `client-trades.component.spec.ts`; manual |
+| U12 | Given any of the 10 languages is selected, when the dialog is shown, then its labels and messages are in that language | `trade-analysis-dialog.component.spec.ts` (every key in all 10 languages, with matching placeholders); manual: Spanish |
+
+The translations other than English were machine-written and need a check by native speakers.

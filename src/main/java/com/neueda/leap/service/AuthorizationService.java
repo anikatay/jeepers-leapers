@@ -41,10 +41,41 @@ public class AuthorizationService {
         }
     }
 
+    public void requireAccountOwnerOrAdmin(UUID accountId, Jwt jwt) {
+        requireAuthenticatedRole(jwt);
+        if (isAdmin(jwt)) {
+            return;
+        }
+        requireAccountOwner(accountId, getAuthenticatedUserId(jwt));
+    }
+
     public void requireUser(UUID requestedUserId, UUID authenticatedUserId) {
         if (requestedUserId == null || authenticatedUserId == null
                 || !authenticatedUserId.equals(requestedUserId)) {
             throw new AccessDeniedException("You cannot access this user");
+        }
+    }
+
+    public void requireAdmin(Jwt jwt) {
+        if (!isAdmin(jwt)) {
+            throw new AccessDeniedException("Administrator access is required");
+        }
+    }
+
+    public void requireAdminOrUser(UUID requestedUserId, Jwt jwt) {
+        requireAuthenticatedRole(jwt);
+        if (!isAdmin(jwt)) {
+            requireUser(requestedUserId, getAuthenticatedUserId(jwt));
+        }
+    }
+
+    private boolean isAdmin(Jwt jwt) {
+        return jwt != null && "ROLE_ADMIN".equals(jwt.getClaimAsString("role"));
+    }
+
+    private void requireAuthenticatedRole(Jwt jwt) {
+        if (jwt == null) {
+            throw new AccessDeniedException("Authenticated user is required");
         }
     }
 }

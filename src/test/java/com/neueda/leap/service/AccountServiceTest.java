@@ -36,6 +36,54 @@ class AccountServiceTest {
     @InjectMocks
     private AccountService accountService;
 
+    @Test
+    void testFreezeAccountPersistsTrimmedReason() {
+        UUID accountId = UUID.randomUUID();
+        Account account = new Account();
+        account.setAccountId(accountId);
+        account.setStatus("ACTIVE");
+        when(accountMapper.findByAccountId(accountId)).thenReturn(account);
+        when(accountMapper.freezeAccount(eq(accountId), eq("Policy breach"), any(OffsetDateTime.class)))
+                .thenAnswer(invocation -> {
+                    account.setStatus("FROZEN");
+                    account.setFreezeReason("Policy breach");
+                    return 1;
+                });
+
+        Account result = accountService.freezeAccount(accountId, "  Policy breach  ");
+
+        assertEquals("FROZEN", result.getStatus());
+        assertEquals("Policy breach", result.getFreezeReason());
+    }
+
+    @Test
+    void testUnfreezeAccountClearsReason() {
+        UUID accountId = UUID.randomUUID();
+        Account account = new Account();
+        account.setAccountId(accountId);
+        account.setStatus("FROZEN");
+        account.setFreezeReason("Policy breach");
+        when(accountMapper.findByAccountId(accountId)).thenReturn(account);
+        when(accountMapper.unfreezeAccount(eq(accountId), any(OffsetDateTime.class)))
+                .thenAnswer(invocation -> {
+                    account.setStatus("ACTIVE");
+                    account.setFreezeReason(null);
+                    return 1;
+                });
+
+        Account result = accountService.unfreezeAccount(accountId);
+
+        assertEquals("ACTIVE", result.getStatus());
+        assertNull(result.getFreezeReason());
+    }
+
+    @Test
+    void testFreezeAccountRejectsBlankReason() {
+        assertThrows(ObjectInvalidException.class,
+                () -> accountService.freezeAccount(UUID.randomUUID(), "  "));
+        verify(accountMapper, never()).freezeAccount(any(UUID.class), anyString(), any(OffsetDateTime.class));
+    }
+
     // Test createAccount method
 
     // Verifies that createAccount successfully creates a new account and generates accountId and timestamp

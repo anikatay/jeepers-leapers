@@ -4,6 +4,8 @@ import { ClientLayoutComponent } from './client-layout.component';
 import { ClientHomeComponent } from './pages/home/client-home.component';
 import { ClientPortfolioComponent } from './pages/portfolio/client-portfolio.component';
 import { ClientTradesComponent } from './pages/trades/client-trades.component';
+import { StockDetailsComponent } from './pages/stock-details/stock-details.component';
+import { MarketHeatmapComponent } from '../market-heatmap/market-heatmap.component';
 
 export const CLIENT_ROUTES: Routes = [
   {
@@ -22,6 +24,8 @@ export const CLIENT_ROUTES: Routes = [
         path: 'watchlist',
         loadComponent: () => import('./pages/watchlist/watchlist-page.component').then(m => m.WatchlistPageComponent)
       },
+      { path: 'stock/:ticker', component: StockDetailsComponent },
+      { path: 'heatmap', component: MarketHeatmapComponent },
     ]
   }
 ];

@@ -7,7 +7,8 @@ import {
 	MarketHeatmapResponse,
 	MarketQuote,
 	MarketSector,
-	MarketSectorCatalog
+	MarketSectorCatalog,
+	NewsResponse
 } from "../models/market.model";
 
 export interface FxRateResponse {
@@ -30,6 +31,31 @@ export class MarketDataService{
 		return this.http.get<HistoryResponse>(`${this.apiUrl}/${ticker}/history`, {
 			params: {period}
 		});
+	}
+
+	getHistoryBatch(tickers: string[], period: string = '1y'): Observable<Record<string, HistoryResponse>> {
+		const params = new HttpParams()
+			.set('tickers', tickers.join(','))
+			.set('period', period);
+		return this.http.get<Record<string, HistoryResponse>>(`${this.apiUrl}/history/batch`, { params });
+	}
+	getIntradayHistory(ticker: string): Observable<HistoryResponse>{
+		return this.http.get<HistoryResponse>(`${this.apiUrl}/${ticker}/intraday-history`);
+	}
+
+	getNews(tickers: string[], limit = 6): Observable<NewsResponse> {
+		const params = new HttpParams()
+			.set('tickers', tickers.join(','))
+			.set('limit', limit);
+		return this.http.get<NewsResponse>(`${this.apiUrl}/news`, { params });
+	}
+
+	getIntradayHistoryBatch(tickers: string[]): Observable<Record<string, HistoryResponse>> {
+		const params = new HttpParams().set('tickers', tickers.join(','));
+		return this.http.get<Record<string, HistoryResponse>>(
+			`${this.apiUrl}/history/intraday/batch`,
+			{ params }
+		);
 	}
 
 	getQuote(ticker: string): Observable<MarketQuote> {

@@ -11,12 +11,18 @@ CREATE TABLE IF NOT EXISTS accounts (
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     currency VARCHAR(8) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'INR', 'GBP')),
     balance NUMERIC(18, 4) NOT NULL DEFAULT 0.00 CHECK (balance >= 0),
-    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'FROZEN', 'CLOSED')),
+    freeze_reason VARCHAR(500),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 -- CREATE TABLE IF NOT EXISTS never adds columns; databases created before updated_at need it
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS freeze_reason VARCHAR(500);
+ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_status_check;
+ALTER TABLE accounts
+    ADD CONSTRAINT accounts_status_check
+    CHECK (status IN ('ACTIVE', 'INACTIVE', 'FROZEN', 'CLOSED'));
 
 -- PII
 CREATE TABLE IF NOT EXISTS user_pii (

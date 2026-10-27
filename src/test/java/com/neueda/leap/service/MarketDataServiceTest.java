@@ -31,7 +31,9 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -161,6 +163,81 @@ class MarketDataServiceTest {
     }
 
     @Test
+    void testGetQuoteOrFetchServesCachedQuoteWithoutFetching() throws Exception {
+        MarketQuote cached = new MarketQuote(
+                "QUOTE",
+                "AAPL",
+                BigDecimal.valueOf(180),
+                Instant.parse("2026-10-20T19:00:00Z"),
+                Instant.parse("2026-10-20T19:00:01Z"),
+                "test");
+        when(valueOperations.get("quote:latest:AAPL")).thenReturn("{\"quote\":true}");
+        when(objectMapper.readValue("{\"quote\":true}", MarketQuote.class)).thenReturn(cached);
+        when(instrumentMapper.findByTicker("AAPL")).thenReturn(null);
+
+        MarketQuote result = marketDataService.getQuoteOrFetch("aapl");
+
+        assertEquals(BigDecimal.valueOf(180), result.price());
+        assertEquals(QuoteStatus.LIVE, result.status());
+        // A cached ticker must never reach the market service, or the heatmap's sibling path
+        // would turn into one upstream call per tile.
+        verify(marketDataClient, never()).fetchLatestQuote(any());
+    }
+
+    @Test
+    void testGetQuoteOrFetchFetchesAndCachesWhenNothingIsCached() throws Exception {
+        MarketQuote fetched = new MarketQuote(
+                "QUOTE",
+                "BTC-USD",
+                BigDecimal.valueOf(79535),
+                Instant.parse("2026-10-26T01:43:00Z"),
+                Instant.parse("2026-10-26T01:43:01Z"),
+                "yfinance-rest");
+        when(valueOperations.get("quote:latest:BTC-USD")).thenReturn(null);
+        when(valueOperations.get("quote:last-known:BTC-USD")).thenReturn(null);
+        when(marketDataClient.fetchLatestQuote("BTC-USD")).thenReturn(fetched);
+        when(objectMapper.writeValueAsString(any(MarketQuote.class))).thenReturn("{\"quote\":true}");
+        when(instrumentMapper.findByTicker("BTC-USD")).thenReturn(null);
+
+        MarketQuote result = marketDataService.getQuoteOrFetch("btc-usd");
+
+        assertEquals(BigDecimal.valueOf(79535), result.price());
+        assertEquals(QuoteStatus.LIVE, result.status());
+        verify(marketDataClient).fetchLatestQuote("BTC-USD");
+        // The fetch seeds the cache, so repeat views are served from Redis rather than refetched.
+        verify(valueOperations).set(
+                "quote:last-known:BTC-USD",
+                "{\"quote\":true}",
+                Duration.ofSeconds(604800));
+    }
+
+    @Test
+    void testGetQuoteOrFetchReportsClosedSessionForFetchedQuote() throws Exception {
+        MarketQuote fetched = new MarketQuote(
+                "QUOTE",
+                "MMM",
+                BigDecimal.valueOf(173),
+                Instant.parse("2026-10-23T19:59:00Z"),
+                Instant.parse("2026-10-23T19:59:01Z"),
+                "yfinance-rest");
+        Instrument instrument = new Instrument();
+        instrument.setTicker("MMM");
+        when(valueOperations.get("quote:latest:MMM")).thenReturn(null);
+        when(valueOperations.get("quote:last-known:MMM")).thenReturn(null);
+        when(marketDataClient.fetchLatestQuote("MMM")).thenReturn(fetched);
+        when(objectMapper.writeValueAsString(any(MarketQuote.class))).thenReturn("{\"quote\":true}");
+        when(instrumentMapper.findByTicker("MMM")).thenReturn(instrument);
+        doThrow(new MarketClosedException("market closed"))
+                .when(marketSessionService).assertMarketOpen(instrument);
+
+        MarketQuote result = marketDataService.getQuoteOrFetch("MMM");
+
+        // Fetching must not smuggle a LIVE status past a closed session.
+        assertEquals(QuoteStatus.CLOSED, result.status());
+        assertEquals(BigDecimal.valueOf(173), result.price());
+    }
+
+    @Test
     void testGetSectorCatalogDelegatesToMarketClient() {
         MarketSectorCatalog expected = sectorCatalog();
         when(marketDataClient.fetchSectorCatalog()).thenReturn(expected);
@@ -224,6 +301,24 @@ class MarketDataServiceTest {
         assertEquals("AAPL", result.ticker());
         verify(valueOperations).get("history:AAPL");
         verify(marketDataClient).fetchHistory("AAPL", "5y");
+    }
+
+    @Test
+    void testGetHistoryBatchFetchesMissingTickersTogetherAndSlicesResults() throws Exception {
+        HistoryResponse aapl = history("AAPL", barsForSlicing());
+        HistoryResponse msft = history("MSFT", barsForSlicing());
+        LinkedHashSet<String> tickers = new LinkedHashSet<>(List.of("AAPL", "MSFT"));
+        when(marketDataClient.fetchHistoryBatch(tickers, "1mo"))
+                .thenReturn(Map.of("AAPL", aapl, "MSFT", msft));
+        when(objectMapper.writeValueAsString(any(HistoryResponse.class))).thenReturn("{\"fresh\":true}");
+
+        Map<String, HistoryResponse> result = marketDataService.getHistoryBatch("aapl, MSFT", "1m");
+
+        assertEquals(2, result.size());
+        assertEquals(2, result.get("AAPL").bars().size());
+        assertEquals(2, result.get("MSFT").bars().size());
+        assertEquals("1m", result.get("AAPL").period());
+        verify(marketDataClient).fetchHistoryBatch(tickers, "1mo");
     }
 
     // Verifies supported period 1m returns only bars within the latest-one-month window.

@@ -5,6 +5,7 @@ import com.neueda.leap.event.TradeExecutedEvent;
 import com.neueda.leap.exception.ObjectInvalidException;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.exception.ObjectNotProcessedException;
+import com.neueda.leap.exception.ApplicationException;
 import com.neueda.leap.mapper.TradeMapper;
 import com.neueda.leap.model.Account;
 import com.neueda.leap.model.Holding;
@@ -77,7 +78,17 @@ public class TradeService implements IService {
         }
 
         authorizationService.requireAccountOwner(trade.getAccountId(), authenticatedUserId);
-        Account account = accountService.getAccount(trade.getAccountId());
+        Account account = accountService.getAccountForTrade(trade.getAccountId());
+
+        if ("FROZEN".equals(account.getStatus())) {
+            throw new ApplicationException(
+                    "ACCOUNT_FROZEN",
+                    "Trading is disabled for this account",
+                    "The account was frozen by an administrator: " + account.getFreezeReason());
+        }
+        if (!"ACTIVE".equals(account.getStatus())) {
+            throw new ObjectInvalidException("Account is not active: " + trade.getAccountId());
+        }
 
         if(trade.getInstrumentId() == null){
             throw new ObjectInvalidException("Instrument ID cannot be null");
@@ -97,10 +108,6 @@ public class TradeService implements IService {
         BigDecimal executionPrice = instrument.getCurrentPrice();
         if(executionPrice == null){
             throw new ObjectInvalidException("Unable to make trade at the moment; quote unavailable");
-        }
-
-        if(!"ACTIVE".equals(account.getStatus())){
-            throw new ObjectInvalidException("Account is not active: " + trade.getAccountId());
         }
 
         String instrumentCurrency = instrument.getCurrency() == null

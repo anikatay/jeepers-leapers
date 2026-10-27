@@ -4,85 +4,31 @@
   <div class="navbar-top">
     <!-- Logo and Brand (left) -->
     <div class="navbar-logo">
-      <button class="logo-button" [routerLink]="['/client']">
+      <button class="logo-button" [routerLink]="[homePath]">
         <img src="/symbol.PNG" alt="LEAP logo" class="logo-image" />
         <span class="brand-text font-display">{{ brandName }}</span>
       </button>
     </div>
 
     <!-- Center Navigation -->
-    <nav class="navbar-nav" aria-label="Main Navigation">
+    <nav class="navbar-nav" [attr.aria-label]="'nav.main_navigation' | translate">
       <a *ngFor="let item of navItems"
          [routerLink]="[item.path]"
          routerLinkActive="active"
-         [routerLinkActiveOptions]="{ exact: item.path === '/client' }"
+         [routerLinkActiveOptions]="{ exact: item.exact ?? item.path === homePath }"
          class="nav-link">
-        {{ item.label }}
+        {{ item.label | translate }}
         <span class="nav-underline" *ngIf="false"></span>
       </a>
     </nav>
 
     <!-- Right controls: Appearance + Language + Profile -->
     <div class="navbar-controls">
-      <!-- Appearance Dropdown -->
-      <div class="appearance-container" (click)="$event.stopPropagation()">
-        <button class="appearance-button" (click)="toggleAppearance()" title="Appearance & Language">
-          <!-- Sun/Moon icon -->
-          <svg *ngIf="true" class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"/>
-            <line x1="12" y1="1" x2="12" y2="3"/>
-            <line x1="12" y1="21" x2="12" y2="23"/>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-            <line x1="1" y1="12" x2="3" y2="12"/>
-            <line x1="21" y1="12" x2="23" y2="12"/>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-          </svg>
-          <!-- Color swatches -->
-          <span class="theme-swatches">
-            <span class="swatch" style="background-color: var(--primary);"></span>
-            <span class="swatch" style="background-color: var(--accent);"></span>
-          </span>
-          <!-- Dropdown arrow -->
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </button>
-
-        <!-- Appearance Dropdown Menu -->
-        <div class="appearance-menu" *ngIf="appearanceOpen()" (click)="$event.stopPropagation()">
-          <div class="appearance-panel">
-            <p class="panel-title">Appearance</p>
-            
-            <!-- Light/Dark Mode -->
-            <div class="mode-section">
-              <p class="section-label">Mode</p>
-              <div class="mode-buttons">
-                <button class="mode-btn light-btn" (click)="toggleDarkMode()" title="Light Mode">☀️</button>
-                <button class="mode-btn dark-btn" (click)="toggleDarkMode()" title="Dark Mode">🌙</button>
-              </div>
-            </div>
-
-            <!-- Color Themes -->
-            <div class="theme-section">
-              <p class="section-label">Theme</p>
-              <div class="theme-grid">
-                <button *ngFor="let theme of ['bull', 'ocean', 'lavender', 'rose', 'sage', 'mono', 'midnight']"
-                        class="theme-btn"
-                        (click)="changeTheme(theme)"
-                        [title]="theme | titlecase">
-                  {{ theme | slice:0:2 | uppercase }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <app-appearance-controls />
 
       <!-- Language Dropdown -->
       <div class="language-container" (click)="$event.stopPropagation()">
-        <button class="language-button" (click)="toggleLanguageDropdown()" title="Select Language">
+        <button class="language-button" (click)="toggleLanguageDropdown()" [title]="'nav.select_language' | translate">
           <!-- Globe icon -->
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
@@ -99,7 +45,7 @@
         <!-- Language Dropdown Menu -->
         <div class="language-menu" *ngIf="languageOpen()" (click)="$event.stopPropagation()">
           <div class="language-panel">
-            <p class="panel-title">Language</p>
+            <p class="panel-title">{{ 'nav.language' | translate }}</p>
             <div class="language-list">
               <button *ngFor="let lang of languages()"
                       class="language-item"
@@ -117,7 +63,7 @@
       <div class="profile-container" (click)="$event.stopPropagation()">
         <button class="profile-button" (click)="toggleProfile()">
           <div class="avatar">{{ avatarLetter }}</div>
-          <span class="username">Hi, {{ userName.split(' ')[0] }}</span>
+          <span class="username">{{ 'nav.hi' | translate }} {{ userName.split(' ')[0] }}</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
@@ -126,22 +72,22 @@
         <!-- Profile Menu -->
         <div class="profile-menu" *ngIf="profileOpen()" (click)="$event.stopPropagation()">
           <button class="menu-item" (click)="selectProfileOption('profile')">
-            <span>Profile</span>
-          </button>
-          <button class="menu-item" (click)="selectProfileOption('settings')">
-            <span>Settings</span>
+            <span>{{ 'nav.profile' | translate }}</span>
           </button>
           <div class="menu-divider"></div>
           <button class="menu-item logout" (click)="selectProfileOption('logout')">
-            <span>Sign Out</span>
+            <span>{{ 'nav.sign_out' | translate }}</span>
           </button>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Sector movers strip (above the search row) -->
+  <app-sector-movers-carousel *ngIf="showSectorMovers"></app-sector-movers-carousel>
+
   <!-- Search row (below top row) -->
-  <div class="navbar-search-row">
+  <div class="navbar-search-row" *ngIf="showSearch">
     <div class="search-container" (click)="$event.stopPropagation()">
       <div class="search-input-wrapper">
         <!-- Search icon -->
@@ -155,6 +101,7 @@
           type="text"
           class="search-input"
           placeholder="Enter company or symbol"
+          [attr.aria-label]="'nav.search_aria' | translate"
           [ngModel]="searchQuery()"
           (input)="onSearchInput($event)"
           (focus)="onSearchFocus()"
@@ -163,7 +110,7 @@
 
         <!-- Trade button -->
         <button class="trade-button" (click)="tradeClick()">
-          Trade
+          {{ 'nav.trade' | translate }}
         </button>
       </div>
 
@@ -173,7 +120,7 @@
       <!-- Search dropdown results -->
       <div class="search-dropdown" *ngIf="searchOpen() && searchQuery().length > 0" (click)="$event.stopPropagation()">
         <div *ngIf="searchResults().length === 0" class="no-results">
-          <p>No results found</p>
+          <p>{{ 'nav.no_results' | translate }}</p>
         </div>
         <button *ngFor="let result of searchResults()"
                 class="search-result-item"

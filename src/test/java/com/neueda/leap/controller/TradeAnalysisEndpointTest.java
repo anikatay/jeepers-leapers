@@ -9,6 +9,7 @@ import com.neueda.leap.analysis.TradeAnalysisService;
 import com.neueda.leap.config.SecurityConfig;
 import com.neueda.leap.exception.ObjectNotFoundException;
 import com.neueda.leap.service.TradeService;
+import com.neueda.leap.service.AuthorizationService;
 import com.neueda.leap.util.JwtUtil;
 
 import org.junit.jupiter.api.Test;
@@ -61,10 +62,17 @@ class TradeAnalysisEndpointTest {
 
     @MockBean
     private TradeService tradeService;
+        @MockBean
+        private AuthorizationService authorizationService;
     @MockBean
     private TradeAnalysisService tradeAnalysisService;
     @MockBean
     private AnalysisRateLimiter rateLimiter;
+
+        @org.junit.jupiter.api.BeforeEach
+        void configureAuthorization() {
+                when(authorizationService.getAuthenticatedUserId(any())).thenReturn(USER_ID);
+        }
 
     @Test
     void requiresALoginToken() throws Exception {
@@ -87,8 +95,9 @@ class TradeAnalysisEndpointTest {
     }
 
     @Test
-    void leavesTheRestOfTheApiOpen() throws Exception {
-        mvc.perform(get("/api/trades/account/" + UUID.randomUUID())).andExpect(status().isNoContent());
+        void protectsTheRestOfTheApiWithTheLoginToken() throws Exception {
+                mvc.perform(withToken(get("/api/trades/account/" + UUID.randomUUID())))
+                                .andExpect(status().isNoContent());
     }
 
     @Test
