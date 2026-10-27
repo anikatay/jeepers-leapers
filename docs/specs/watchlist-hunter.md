@@ -456,14 +456,16 @@ Hunter page also has a "View watchlist (n)" link.
 
 ### 8.5 Language
 
-Every label, message and button is translated into the app's 10 languages through
+Every label, message and button is translated into the app's 9 languages (Urdu was removed on main) through
 `TranslationService`. Model-written text (spec names, statements, reasons, bullets) is in English.
 
 - The strings live in `core/i18n/hunter.translations.ts` and are registered when the lazy Hunter pages
   load, so they add nothing to the initial bundle.
 - The non-English text was machine-written and needs a check by native speakers.
 - GICS sector names, tickers and company names stay in English.
-- The navbar labels are plain English, like the existing Home, Portfolio and Trades items.
+- The navbar labels are the keys `nav.hunter` and `nav.watchlist`, kept in the main table in
+  `translation.service.ts` rather than with Hunter's lazy strings, because the navbar is on every page.
+  "Hunter" is a name and stays in Latin script in every language.
 
 ### 8.6 Accessibility
 
@@ -590,7 +592,7 @@ watchlist items with no source.
 | U4 | Given a match, when Add to watchlist is pressed, then it shows "On watchlist ✓", the item appears on the Watchlist page, and pressing it again removes it | `match-card.component.spec.ts`, `hunter-page.component.spec.ts`, `watchlist-page.component.spec.ts`, `hunter.service.spec.ts` |
 | U5 | Given an unchanged spec, when Run hunter is pressed, then the "Same rules as your run on {date}" message appears with the saved results | `hunter-page.component.spec.ts` |
 | U6 | Given each error status in section 8.3, when it is returned, then the matching message is shown | `hunter.service.spec.ts`, `hunter-page.component.spec.ts` |
-| U7 | Given any of the 10 languages, when the pages are shown, then every label is in that language | `hunter.translations.spec.ts` (every key in all 10 languages, with matching placeholders) |
+| U7 | Given any of the app's languages, when the pages are shown, then every label is in that language | `hunter.translations.spec.ts` (every key in every language in `LANGUAGES`, with matching placeholders) |
 | U8 | Given the full docker-compose stack, when the example prompt in section 4.3 is run, then matches appear and the app log shows one model call and no other outbound request | Partly checked: the API run above showed one model call per run. The check in a browser on the docker-compose stack is open |
 
 ## 12. Build status
@@ -609,7 +611,7 @@ Done on 2026-10-23:
      `docker-compose.yml` and `.env.example`.
    - **Tests:** unit and endpoint tests, `HunterLiveTest`, and the two evaluation suites.
 3. **Frontend:** `hunter.model.ts`, `hunter.service.ts`, `watchlist.service.ts`, the lazy-loaded Hunter
-   and Watchlist pages, the navbar items, translations in 10 languages, and component tests.
+   and Watchlist pages, the navbar items, translations in every app language, and component tests.
 4. **nginx:** a 150 s read timeout for `/api/hunter/`.
 
 Open:
