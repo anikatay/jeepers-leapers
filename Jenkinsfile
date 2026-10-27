@@ -31,6 +31,20 @@ pipeline {
                 '''
             }
         }
+        stage('Start Application Stack') {
+            steps {
+                sh '''
+                    set -eu
+                    docker-compose config --quiet
+                    docker-compose up -d --build
+                '''
+            }
+        }
+        stage('Populate Analytics') {
+            steps {
+                sh 'bash analytics/run_etl.sh'
+            }
+        }
         stage('Backend Tests') {
             steps {
                 sh 'mvn -B clean verify'
@@ -48,15 +62,6 @@ pipeline {
                     sh 'npm test -- --watch=false'
                     sh 'npm run build -- --configuration production'
                 }
-            }
-        }
-        stage('Start Application Stack') {
-            steps {
-                sh '''
-                    set -eu
-                    docker-compose config --quiet
-                    docker-compose up -d --build
-                '''
             }
         }
         stage('Smoke Test') {
