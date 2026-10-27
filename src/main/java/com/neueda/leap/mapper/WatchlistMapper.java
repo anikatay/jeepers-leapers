@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Mapper
-public interface WatchlistMapper {
+public interface WatchlistMapper extends OltpMapper {
 
     /** 1 when added, 0 when the ticker was already on the list. */
     @Insert("INSERT INTO watchlist_items (user_id, ticker, added_at, source_spec_id) "

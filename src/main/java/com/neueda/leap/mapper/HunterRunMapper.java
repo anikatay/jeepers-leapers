@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /** Callers check that the spec belongs to the user before touching its runs. */
 @Mapper
-public interface HunterRunMapper {
+public interface HunterRunMapper extends OltpMapper {
 
     @Insert("INSERT INTO hunter_runs (run_id, spec_id, spec_hash, ran_at, result, model, match_count, "
             + "prompt_tokens, completion_tokens, latency_ms) VALUES (#{runId}, #{specId}, #{specHash}, #{ranAt}, "

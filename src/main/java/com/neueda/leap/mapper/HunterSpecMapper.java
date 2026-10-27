@@ -15,7 +15,7 @@ import java.util.UUID;
 
 /** Every query is scoped to the owner, so another user's hunter is never found. */
 @Mapper
-public interface HunterSpecMapper {
+public interface HunterSpecMapper extends OltpMapper {
 
     @Insert("INSERT INTO hunter_specs (spec_id, user_id, \"name\", prompt, spec, created_at, updated_at) "
             + "VALUES (#{specId}, #{userId}, #{name}, #{prompt}, CAST(#{specJson} AS jsonb), #{createdAt}, #{updatedAt})")
