@@ -20,7 +20,6 @@ import { TradeResponse } from '../../../../core/models/trade.model';
 import { MarketDataService } from '../../../../core/services/market-data.service';
 import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../shared/utils/portfolio-calculation';
 import { GainIndicatorComponent } from '../../../../shared/components/gain-indicator.component';
-import { SparklineComponent } from '../../../../shared/components/sparkline.component';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
 import { PortfolioChartComponent } from '../../../../shared/components/portfolio-chart.component';
 import { normalizeIntradayBaseline, combinePortfolioHistory, PortfolioHistoryPoint } from '../../../../shared/utils/portfolio-history';
@@ -69,7 +68,7 @@ interface StockIconStyle {
 @Component({
   selector: 'app-client-portfolio',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent, TradePanelComponent, PortfolioChartComponent],
+  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, ConnectionStatusComponent, TradePanelComponent, PortfolioChartComponent],
   templateUrl: './client-portfolio.component.html',
   styleUrl: './client-portfolio.component.css'
 })
@@ -105,6 +104,8 @@ export class ClientPortfolioComponent implements OnInit {
   filterType = signal<'all' | 'gain' | 'loss'>('all');
   sortBy = signal<SortKey>('currentValue');
   sortDir = signal<'asc' | 'desc'>('desc');
+  portfolioPage = signal(0);
+  readonly portfolioPageSize = 10;
   selectedPeriod = signal<Period>('1M');
   periodOptions: Period[] = ['1D', '1W', '1M', '3M', '1Y', 'All'];
   chartPoints = signal<PortfolioHistoryPoint[]>([]);
@@ -180,8 +181,16 @@ export class ClientPortfolioComponent implements OnInit {
       next: (holdingsData) => {
         this.instrumentService.getAllInstruments().subscribe({
           next: (instruments) => {
-            this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
-              next: (trades) => {
+            const activeHoldings = holdingsData.filter(holding => holding.quantity > 0);
+            const tradeRequests = activeHoldings.map(holding =>
+              this.tradesService
+                .getTradesByAccountAndInstrument(this.ACCOUNT_ID, holding.instrumentId)
+                .pipe(map(trades => trades ?? []))
+            );
+
+            forkJoin(tradeRequests).subscribe({
+              next: (tradesByHolding) => {
+                const trades = tradesByHolding.flat();
                 this.allTrades = trades;
                 this.buildHoldingsUI(holdingsData, instruments, trades);
               },
@@ -239,8 +248,9 @@ export class ClientPortfolioComponent implements OnInit {
     });
 
     this.allHoldings.set(buildHoldings);
+    this.resetPortfolioPage();
     this.heldInstruments = buildHoldings.map(holding => ({ ticker: holding.symbol, quantity: holding.shares }));
-    this.subscribeToLiveQuotes(buildHoldings);
+    this.syncPortfolioQuoteSubscriptions();
     this.loadSparklines(buildHoldings);
     this.loadChartData();
 
@@ -282,8 +292,8 @@ export class ClientPortfolioComponent implements OnInit {
   }
 
 
-  private subscribeToLiveQuotes(holdings: Holding[]): void{
-    const tickers = new Set(holdings.map(h => h.symbol));
+  private syncPortfolioQuoteSubscriptions(): void {
+    const tickers = new Set(this.pagedHoldings().map(holding => holding.symbol));
     const selectedTicker = this.selectedHolding()?.symbol;
     if (selectedTicker) {
       tickers.add(selectedTicker);
@@ -291,13 +301,13 @@ export class ClientPortfolioComponent implements OnInit {
 
     this.subscribedTickers.forEach(ticker => {
       if (!tickers.has(ticker)) {
-        this.marketQuoteService.unsubscribe(ticker);
+        this.marketQuoteService.unsubscribe(ticker, this);
       }
     });
 
     tickers.forEach(ticker => {
       if (!this.subscribedTickers.has(ticker)) {
-        this.marketQuoteService.subscribe(ticker);
+        this.marketQuoteService.subscribe(ticker, this);
       }
     });
     this.subscribedTickers = tickers;
@@ -306,6 +316,7 @@ export class ClientPortfolioComponent implements OnInit {
       this.quoteSubscription = this.marketQuoteService.quotes$
         .pipe(throttleTime(2000, undefined, { leading: true, trailing: true }))
         .subscribe(quote => {
+          if (!this.subscribedTickers.has(quote.ticker)) return;
           this.allHoldings.update(holdings =>
             holdings.map(h => {
               if (h.symbol !== quote.ticker) return h;
@@ -318,6 +329,7 @@ export class ClientPortfolioComponent implements OnInit {
               ? { ...holding, currentPrice: quote.price }
               : holding
           );
+          this.syncPortfolioQuoteSubscriptions();
           this.updateLiveChartPoint();
         });
     }
@@ -421,7 +433,7 @@ export class ClientPortfolioComponent implements OnInit {
   ngOnDestroy(): void {
     this.quoteSubscription?.unsubscribe();
     this.liveChartSubscription?.unsubscribe();
-    this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker));
+    this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker, this));
   }
 
 
@@ -453,6 +465,17 @@ export class ClientPortfolioComponent implements OnInit {
     });
 
     return result;
+  });
+  portfolioTotalPages = computed(() => {
+    const totalItems = this.filteredAndSorted().length;
+    return totalItems === 0 ? 0 : Math.ceil(totalItems / this.portfolioPageSize);
+  });
+  currentPortfolioPage = computed(() =>
+    Math.min(this.portfolioPage(), Math.max(this.portfolioTotalPages() - 1, 0))
+  );
+  pagedHoldings = computed(() => {
+    const start = this.currentPortfolioPage() * this.portfolioPageSize;
+    return this.filteredAndSorted().slice(start, start + this.portfolioPageSize);
   });
   panelInstrument = computed<TradePanelInstrument | null>(() => {
     const holding = this.selectedHolding();
@@ -531,10 +554,38 @@ export class ClientPortfolioComponent implements OnInit {
       this.sortBy.set(key);
       this.sortDir.set('desc');
     }
+    this.resetPortfolioPage();
+    this.syncPortfolioQuoteSubscriptions();
   }
 
   setFilter(filter: 'all' | 'gain' | 'loss'): void {
     this.filterType.set(filter);
+    this.resetPortfolioPage();
+    this.syncPortfolioQuoteSubscriptions();
+  }
+
+  onSearchQueryChange(query: string): void {
+    this.searchQuery.set(query);
+    this.resetPortfolioPage();
+    this.syncPortfolioQuoteSubscriptions();
+  }
+
+  private resetPortfolioPage(): void {
+    this.portfolioPage.set(0);
+  }
+
+  previousPortfolioPage(): void {
+    if (this.currentPortfolioPage() > 0) {
+      this.portfolioPage.set(this.currentPortfolioPage() - 1);
+      this.syncPortfolioQuoteSubscriptions();
+    }
+  }
+
+  nextPortfolioPage(): void {
+    if (this.currentPortfolioPage() + 1 < this.portfolioTotalPages()) {
+      this.portfolioPage.set(this.currentPortfolioPage() + 1);
+      this.syncPortfolioQuoteSubscriptions();
+    }
   }
 
   openTradeModal(holding: Holding, mode: TradeSide): void {
@@ -542,23 +593,15 @@ export class ClientPortfolioComponent implements OnInit {
     if (this.isAccountFrozen()) return;
 
     this.selectedHolding.set(holding);
-    if (!this.subscribedTickers.has(holding.symbol)) {
-      this.marketQuoteService.subscribe(holding.symbol);
-      this.subscribedTickers.add(holding.symbol);
-    }
+    this.syncPortfolioQuoteSubscriptions();
     this.modalMode.set(mode);
     this.isModalOpen.set(true);
   }
 
   closeModal(): void {
     this.isModalOpen.set(false);
-    // Drop the live quote subscription if the ticker is no longer held.
-    const ticker = this.selectedHolding()?.symbol;
-    if (ticker && !this.allHoldings().some(holding => holding.symbol === ticker)) {
-      this.marketQuoteService.unsubscribe(ticker);
-      this.subscribedTickers.delete(ticker);
-    }
     this.selectedHolding.set(null);
+    this.syncPortfolioQuoteSubscriptions();
   }
 
   onTradeCompleted(): void {

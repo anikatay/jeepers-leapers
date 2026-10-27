@@ -1,22 +1,32 @@
 // clients.routes.ts
 import { Routes } from '@angular/router';
 import { ClientLayoutComponent } from './client-layout.component';
-import { ClientHomeComponent } from './pages/home/client-home.component';
-import { ClientPortfolioComponent } from './pages/portfolio/client-portfolio.component';
-import { ClientTradesComponent } from './pages/trades/client-trades.component';
-import { StockDetailsComponent } from './pages/stock-details/stock-details.component';
-import { MarketHeatmapComponent } from '../market-heatmap/market-heatmap.component';
 
 export const CLIENT_ROUTES: Routes = [
   {
     path: '',
     component: ClientLayoutComponent,
     children: [
-      { path: '', component: ClientHomeComponent },
-      { path: 'portfolio', component: ClientPortfolioComponent },
-      { path: 'trades', component: ClientTradesComponent },
-      { path: 'stock/:ticker', component: StockDetailsComponent },
-      { path: 'heatmap', component: MarketHeatmapComponent },
+      {
+        path: '',
+        loadComponent: () => import('./pages/home/client-home.component').then(m => m.ClientHomeComponent)
+      },
+      {
+        path: 'portfolio',
+        loadComponent: () => import('./pages/portfolio/client-portfolio.component').then(m => m.ClientPortfolioComponent)
+      },
+      {
+        path: 'trades',
+        loadComponent: () => import('./pages/trades/client-trades.component').then(m => m.ClientTradesComponent)
+      },
+      {
+        path: 'stock/:ticker',
+        loadComponent: () => import('./pages/stock-details/stock-details.component').then(m => m.StockDetailsComponent)
+      },
+      {
+        path: 'heatmap',
+        loadComponent: () => import('../market-heatmap/market-heatmap.component').then(m => m.MarketHeatmapComponent)
+      },
     ]
   }
 ];
