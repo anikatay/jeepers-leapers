@@ -53,19 +53,28 @@
   </div>
 
   <header class="landing-header">
-    <div class="brand">
-      <img class="brand-logo" src="/symbol.PNG" alt="" />
-      <span class="brand-name font-display">Bull Exchange</span>
+    <div class="landing-header-inner">
+      <div class="brand">
+        <img class="brand-logo" src="/symbol.PNG" alt="" />
+        <span class="brand-name font-display">Bull Exchange</span>
+      </div>
+      <app-language-selector />
     </div>
   </header>
 
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero-copy">
-      <h1 id="hero-title" class="font-display">A Smarter Way to <span class="headline-accent">Invest</span></h1>
+      <h1 id="hero-title" class="font-display">
+        {{ 'landing.headline_lead' | translate }}
+        <span class="headline-accent">{{ 'landing.headline_accent' | translate }}</span>
+      </h1>
       <p class="hero-subtitle">
-        Explore the markets, track your portfolio, and trade with confidence. Everything you need, all in one place.
+        {{ 'landing.subtitle' | translate }}
       </p>
-      <a class="cta" routerLink="/auth/login">Get Started →</a>
+      <a class="cta" routerLink="/auth/login">
+        {{ 'landing.cta' | translate }}
+        <span class="cta-arrow" aria-hidden="true">→</span>
+      </a>
     </div>
 
     <div class="device-stage" aria-hidden="true">
@@ -80,108 +89,116 @@
                     <img src="/symbol.PNG" alt="" />
                     <span class="font-display">Bull Exchange</span>
                   </div>
-                  <div class="dash-links">
-                    <span class="is-active">Home</span>
-                    <span>Portfolio</span>
-                    <span>Trades</span>
-                    <span>Heatmap</span>
+                  <div class="dash-links" [attr.aria-label]="'landing.preview_nav_aria' | translate">
+                    <span>{{ 'nav.home' | translate }}</span>
+                    <span class="is-active">{{ 'nav.portfolio' | translate }}</span>
+                    <span>{{ 'nav.trades' | translate }}</span>
+                    <span>{{ 'nav.heatmap' | translate }}</span>
                   </div>
                   <div class="dash-avatar">J</div>
                 </div>
 
                 <div class="dash-body">
-                  <div class="dash-left">
-                    <div class="dash-profile">
-                      <div class="dash-avatar lg">J</div>
-                      <div>
-                        <p class="muted">Your profile</p>
-                        <p class="font-display dash-name">Jamie Cole</p>
-                      </div>
+                  <div class="preview-cards">
+                    <div class="preview-card">
+                      <p class="preview-label">{{ 'portfolio.total_portfolio_value' | translate }}</p>
+                      <p class="preview-value font-mono-data">$128,450.00</p>
                     </div>
-                    <div class="dash-stats">
-                      <div class="dash-stat">
-                        <p class="muted">Portfolio value</p>
-                        <p class="font-mono-data">$128,450.00</p>
-                      </div>
-                      <div class="dash-stat">
-                        <p class="muted">Today's gain</p>
-                        <p class="font-mono-data gain">+$1,284.50</p>
-                      </div>
-                      <div class="dash-stat">
-                        <p class="muted">Overall gain</p>
-                        <p class="font-mono-data gain">+$12,840.00</p>
-                      </div>
-                      <div class="dash-stat">
-                        <p class="muted">Cash remaining</p>
-                        <p class="font-mono-data">$18,220.00</p>
-                      </div>
+                    <div class="preview-card">
+                      <p class="preview-label">{{ 'portfolio.todays_gain_loss' | translate }}</p>
+                      <p class="preview-value font-mono-data positive">+$1,284.50</p>
+                    </div>
+                    <div class="preview-card">
+                      <p class="preview-label">{{ 'portfolio.overall_gain_loss' | translate }}</p>
+                      <p class="preview-value font-mono-data positive">+$12,840.00</p>
+                    </div>
+                    <div class="preview-card">
+                      <p class="preview-label">{{ 'portfolio.cash_available' | translate }}</p>
+                      <p class="preview-value font-mono-data">$18,220.00</p>
                     </div>
                   </div>
 
-                  <div class="dash-alloc">
-                    <p class="font-display dash-section">Portfolio allocation</p>
-                    <div class="dash-alloc-row">
-                      <div class="dash-donut">
-                        <svg viewBox="0 0 200 200">
-                          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--donut-1)" stroke-width="36"
-                                  stroke-dasharray="153.9 285.9" transform="rotate(-90 100 100)" />
-                          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--donut-2)" stroke-width="36"
-                                  stroke-dasharray="123.1 316.7" stroke-dashoffset="-153.9" transform="rotate(-90 100 100)" />
-                          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--donut-3)" stroke-width="36"
-                                  stroke-dasharray="96.8 343.0" stroke-dashoffset="-277.0" transform="rotate(-90 100 100)" />
-                          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--donut-4)" stroke-width="36"
-                                  stroke-dasharray="66.0 373.8" stroke-dashoffset="-373.8" transform="rotate(-90 100 100)" />
-                          <circle cx="100" cy="100" r="50" fill="var(--card)" />
-                        </svg>
-                        <div class="dash-donut-label">
-                          <p class="font-mono-data">$128,450</p>
-                          <p class="muted">Total value</p>
-                        </div>
+                  <div class="preview-chart-card">
+                    <div class="preview-chart-head">
+                      <p class="font-display dash-section">{{ 'home.portfolio_performance' | translate }}</p>
+                      <div class="preview-periods">
+                        @for (period of periods; track period) {
+                          <span class="preview-period" [class.active]="period === '1M'">{{ period }}</span>
+                        }
+                        <span class="preview-period">{{ 'portfolio.all' | translate }}</span>
                       </div>
-                      <ul class="dash-holdings">
-                        <li>
-                          <span class="ticker-icon aapl">A</span>
-                          <span class="font-mono-data">AAPL</span>
-                          <span>35%</span>
-                        </li>
-                        <li>
-                          <span class="ticker-icon msft">M</span>
-                          <span class="font-mono-data">MSFT</span>
-                          <span>28%</span>
-                        </li>
-                        <li>
-                          <span class="ticker-icon nvda">N</span>
-                          <span class="font-mono-data">NVDA</span>
-                          <span>22%</span>
-                        </li>
-                        <li>
-                          <span class="ticker-icon amzn">a</span>
-                          <span class="font-mono-data">AMZN</span>
-                          <span>15%</span>
-                        </li>
-                      </ul>
                     </div>
-                  </div>
-
-                  <div class="dash-chart-card">
-                    <p class="font-display dash-section">Portfolio performance</p>
-                    <svg class="dash-chart" viewBox="0 0 320 88" preserveAspectRatio="none">
+                    <svg class="preview-chart ltr-keep" viewBox="0 0 640 120" preserveAspectRatio="none">
                       <defs>
                         <linearGradient id="landingDashFill" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stop-color="var(--gain)" stop-opacity="0.28" />
                           <stop offset="100%" stop-color="var(--gain)" stop-opacity="0" />
                         </linearGradient>
                       </defs>
-                      <path d="M0 70 C28 66 46 58 72 54 C102 48 118 60 148 42 C176 28 198 34 228 22 C258 12 286 18 320 10 L320 88 L0 88 Z" fill="url(#landingDashFill)" />
-                      <path d="M0 70 C28 66 46 58 72 54 C102 48 118 60 148 42 C176 28 198 34 228 22 C258 12 286 18 320 10" fill="none" stroke="var(--gain)" stroke-width="2.2" />
+                      <path d="M0 92 C42 88 78 80 118 74 C168 66 198 84 248 58 C292 38 336 48 392 30 C448 14 508 24 560 16 L640 8 L640 120 L0 120 Z" fill="url(#landingDashFill)" />
+                      <path d="M0 92 C42 88 78 80 118 74 C168 66 198 84 248 58 C292 38 336 48 392 30 C448 14 508 24 560 16 L640 8" fill="none" stroke="var(--gain)" stroke-width="2.4" />
                     </svg>
                   </div>
 
-                  <div class="dash-trades">
-                    <p class="font-display dash-section">Trading history</p>
-                    <div class="dash-trade"><span class="buy">Buy</span><span class="font-mono-data">AAPL</span><span class="font-mono-data">$189.42</span></div>
-                    <div class="dash-trade"><span class="sell">Sell</span><span class="font-mono-data">MSFT</span><span class="font-mono-data">$412.18</span></div>
-                    <div class="dash-trade"><span class="buy">Buy</span><span class="font-mono-data">NVDA</span><span class="font-mono-data">$118.60</span></div>
+                  <div class="preview-holdings">
+                    <div class="preview-toolbar">
+                      <div class="preview-search">
+                        <svg class="preview-search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <circle cx="11" cy="11" r="8" />
+                          <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
+                        </svg>
+                        <span>{{ 'portfolio.search_stocks' | translate }}</span>
+                      </div>
+                      <div class="preview-filters">
+                        <span class="preview-filter active">{{ 'portfolio.all' | translate }}</span>
+                        <span class="preview-filter">{{ 'portfolio.gains' | translate }}</span>
+                        <span class="preview-filter">{{ 'portfolio.losses' | translate }}</span>
+                      </div>
+                    </div>
+
+                    <table class="preview-table">
+                      <thead>
+                        <tr>
+                          <th>{{ 'home.symbol' | translate }}</th>
+                          <th>{{ 'portfolio.company' | translate }}</th>
+                          <th class="num">{{ 'portfolio.shares' | translate }}</th>
+                          <th class="num">{{ 'portfolio.current_price' | translate }}</th>
+                          <th class="num">{{ 'portfolio.current_value' | translate }}</th>
+                          <th class="num">{{ 'portfolio.gain_loss' | translate }}</th>
+                          <th class="actions">{{ 'portfolio.actions' | translate }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (holding of previewHoldings; track holding.symbol) {
+                          <tr>
+                            <td>
+                              <div class="preview-symbol">
+                                <span class="stock-icon"
+                                      [style.background]="icon(holding.symbol).background"
+                                      [style.color]="icon(holding.symbol).color">
+                                  {{ icon(holding.symbol).label }}
+                                </span>
+                                <span class="font-mono-data symbol-text">{{ holding.symbol }}</span>
+                              </div>
+                            </td>
+                            <td class="preview-company">{{ holding.name }}</td>
+                            <td class="num font-mono-data">{{ holding.shares }}</td>
+                            <td class="num font-mono-data">{{ holding.price }}</td>
+                            <td class="num font-mono-data">{{ holding.value }}</td>
+                            <td class="num">
+                              <div class="preview-gain" [class.positive]="holding.gain >= 0" [class.negative]="holding.gain < 0">
+                                <app-sparkline [values]="holding.spark" [width]="42" [height]="16" />
+                                <span class="font-mono-data">{{ holding.gain >= 0 ? '+' : '−' }}${{ (holding.gain >= 0 ? holding.gain : -holding.gain).toFixed(2) }}</span>
+                              </div>
+                            </td>
+                            <td class="actions">
+                              <span class="preview-btn buy">{{ 'portfolio.buy_more' | translate }}</span>
+                              <span class="preview-btn sell">{{ 'portfolio.sell' | translate }}</span>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -197,7 +214,7 @@
         <div class="phone-frame">
           <span class="phone-notch"></span>
           <div class="phone-screen">
-            <p class="phone-back">‹ Back</p>
+            <p class="phone-back"><span class="phone-back-chevron">‹</span> {{ 'stock.back' | translate }}</p>
             <div class="phone-identity">
               <span class="ticker-icon aapl lg">A</span>
               <div>
@@ -205,11 +222,11 @@
                 <p class="muted"><span class="font-mono-data phone-ticker">AAPL</span> · USD</p>
               </div>
             </div>
-            <p class="phone-open">Market open</p>
+            <p class="phone-open">{{ 'stock.market_open' | translate }}</p>
             <p class="font-mono-data phone-price">$189.42</p>
-            <p class="font-mono-data gain phone-change">▲ +$2.18 (+1.16%) today</p>
-            <p class="font-display phone-chart-title">Price history</p>
-            <svg class="phone-chart" viewBox="0 0 200 72" preserveAspectRatio="none">
+            <p class="font-mono-data gain phone-change">▲ +$2.18 (+1.16%) {{ 'stock.today' | translate }}</p>
+            <p class="font-display phone-chart-title">{{ 'stock.price_history' | translate }}</p>
+            <svg class="phone-chart ltr-keep" viewBox="0 0 200 72" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="landingPhoneFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="var(--gain)" stop-opacity="0.32" />
@@ -220,8 +237,8 @@
               <path d="M0 52 L18 48 L36 50 L54 38 L72 40 L90 28 L108 30 L126 18 L144 22 L162 14 L180 16 L200 10" fill="none" stroke="var(--gain)" stroke-width="2.4" />
             </svg>
             <div class="phone-actions">
-              <span class="phone-btn buy">Buy</span>
-              <span class="phone-btn sell">Sell</span>
+              <span class="phone-btn buy">{{ 'stock.buy' | translate }}</span>
+              <span class="phone-btn sell">{{ 'stock.sell' | translate }}</span>
             </div>
           </div>
           <span class="phone-home"></span>
@@ -230,15 +247,15 @@
     </div>
   </section>
 
-  <section class="features" aria-label="Product features">
+  <section class="features" [attr.aria-label]="'landing.features_aria' | translate">
     <article class="feature-card">
       <span class="feature-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </span>
-      <h2 class="font-display">Real-Time Market Data</h2>
-      <p>Live quotes and market movement, updated as the session unfolds.</p>
+      <h2 class="font-display">{{ 'landing.feature_data_title' | translate }}</h2>
+      <p>{{ 'landing.feature_data_body' | translate }}</p>
     </article>
 
     <article class="feature-card">
@@ -248,8 +265,8 @@
           <path d="M12 12L12 4A8 8 0 0 1 19.5 8.5Z" fill="currentColor" stroke="none" opacity="0.35" />
         </svg>
       </span>
-      <h2 class="font-display">Track Your Portfolio</h2>
-      <p>See allocation, performance, and cash at a glance in one dashboard.</p>
+      <h2 class="font-display">{{ 'landing.feature_portfolio_title' | translate }}</h2>
+      <p>{{ 'landing.feature_portfolio_body' | translate }}</p>
     </article>
 
     <article class="feature-card">
@@ -259,8 +276,8 @@
           <path d="M7 17L17 7" />
         </svg>
       </span>
-      <h2 class="font-display">Seamless Trading</h2>
-      <p>Place buy and sell orders with a clear, confident workflow.</p>
+      <h2 class="font-display">{{ 'landing.feature_trading_title' | translate }}</h2>
+      <p>{{ 'landing.feature_trading_body' | translate }}</p>
     </article>
 
     <article class="feature-card">
@@ -272,8 +289,8 @@
           <path d="M22 19V13" />
         </svg>
       </span>
-      <h2 class="font-display">Powerful Analytics</h2>
-      <p>Charts, heatmaps, and insights to support every decision.</p>
+      <h2 class="font-display">{{ 'landing.feature_analytics_title' | translate }}</h2>
+      <p>{{ 'landing.feature_analytics_body' | translate }}</p>
     </article>
   </section>
 </main>

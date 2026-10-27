@@ -4,6 +4,8 @@ import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router
 import { filter } from 'rxjs';
 import { Login } from '../login/login';
 import { Register } from '../register/register';
+import { TranslatePipe } from '../core/pipes/translate.pipe';
+import { LanguageSelectorComponent } from '../shared/components/language-selector.component';
 
 @Component({
   selector: 'app-auth-slot',
@@ -13,7 +15,7 @@ export class AuthSlot {}
 
 @Component({
   selector: 'app-auth-shell',
-  imports: [Login, Register, RouterLink, RouterOutlet],
+  imports: [Login, Register, RouterLink, RouterOutlet, TranslatePipe, LanguageSelectorComponent],
   templateUrl: './auth-shell.html',
   styleUrl: './auth-shell.css',
 })

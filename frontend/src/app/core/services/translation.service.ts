@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { CLIENT_UI_TRANSLATIONS } from './client-ui-translations';
 import { CLIENT_UI_TRANSLATIONS_MORE } from './client-ui-translations-more';
+import { LANDING_AUTH_TRANSLATIONS } from './landing-auth-translations';
 
 export type Language = 'en' | 'es' | 'bn' | 'hi' | 'pa' | 'te' | 'ta' | 'gu' | 'ga' | 'ur';
 
@@ -1025,13 +1026,15 @@ function applyParams(text: string, params?: Record<string, string | number>): st
   );
 }
 
-for (const extra of [CLIENT_UI_TRANSLATIONS, CLIENT_UI_TRANSLATIONS_MORE]) {
+for (const extra of [CLIENT_UI_TRANSLATIONS, CLIENT_UI_TRANSLATIONS_MORE, LANDING_AUTH_TRANSLATIONS]) {
   for (const [lang, entries] of Object.entries(extra)) {
     if (translations[lang as Language]) {
       Object.assign(translations[lang as Language], entries);
     }
   }
 }
+
+const RTL_LANGUAGES: ReadonlySet<string> = new Set(['ar', 'ur']);
 
 const KEY_ALIASES: Record<string, string> = {
   'home.buy': 'trades.buy',
@@ -1068,6 +1071,7 @@ export class TranslationService {
     // Persist language to localStorage whenever it changes
     const lang = this.currentLanguage();
     localStorage.setItem('app-language', lang);
+    this.applyDocumentLanguage(lang);
   }
 
   private getStoredLanguage(): Language {
@@ -1085,6 +1089,17 @@ export class TranslationService {
   setLanguage(lang: Language): void {
     this.currentLanguage.set(lang);
     localStorage.setItem('app-language', lang);
+    this.applyDocumentLanguage(lang);
+  }
+
+  isRtl(lang: string = this.currentLanguage()): boolean {
+    return RTL_LANGUAGES.has(lang);
+  }
+
+  private applyDocumentLanguage(lang: Language): void {
+    const root = document.documentElement;
+    root.lang = lang;
+    root.dir = this.isRtl(lang) ? 'rtl' : 'ltr';
   }
 
   translate(key: TranslationKey, defaultValue?: string, params?: Record<string, string | number>): string {

@@ -1,4 +1,12 @@
 <main class="auth-page">
+  <header class="auth-toolbar">
+    <a class="brand" routerLink="/" [attr.aria-label]="'auth.home_aria' | translate">
+      <img class="brand-logo" src="/symbol.PNG" alt="" />
+      <span class="brand-name font-display">Bull Exchange</span>
+    </a>
+    <app-language-selector />
+  </header>
+
   <div class="auth-card" [class.is-register]="isRegister()">
     <section
       class="form-container sign-in-container"
@@ -24,10 +32,9 @@
           [attr.aria-hidden]="!isRegister()"
         >
           <img class="overlay-logo" src="/symbol.PNG" alt="" />
-          <p class="overlay-brand">Bull Exchange</p>
-          <h2>Welcome to Bull Exchange!</h2>
-          <p class="overlay-copy">Start your investing journey with us.</p>
-          <a class="ghost-btn" routerLink="/auth/login" (click)="isRegister.set(false)">Sign In</a>
+          <h2>{{ 'auth.welcome_new' | translate }}</h2>
+          <p class="overlay-copy">{{ 'auth.welcome_new_copy' | translate }}</p>
+          <a class="ghost-btn" routerLink="/auth/login" (click)="isRegister.set(false)">{{ 'auth.sign_in' | translate }}</a>
         </div>
 
         <div
@@ -36,10 +43,9 @@
           [attr.aria-hidden]="isRegister()"
         >
           <img class="overlay-logo" src="/symbol.PNG" alt="" />
-          <p class="overlay-brand">Bull Exchange</p>
-          <h2>Welcome Back!</h2>
-          <p class="overlay-copy">Your market, your portfolio, your next move.</p>
-          <a class="ghost-btn" routerLink="/auth/register" (click)="isRegister.set(true)">Create Account</a>
+          <h2>{{ 'auth.welcome_back' | translate }}</h2>
+          <p class="overlay-copy">{{ 'auth.welcome_back_copy' | translate }}</p>
+          <a class="ghost-btn" routerLink="/auth/register" (click)="isRegister.set(true)">{{ 'auth.create_account' | translate }}</a>
         </div>
       </div>
     </div>
