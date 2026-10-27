@@ -133,7 +133,8 @@ class SecurityConfigTest {
     static class TestEndpoints {
 
         @GetMapping({"/api/auth/login", "/public/status", "/api/status", "/admin/status",
-                "/analyst/status", "/holdings/status", "/trades/status"})
+            "/analyst/status", "/holdings/status", "/trades/status", "/api/analytics/status",
+            "/api/analytics/admin/status"})
         String status() {
             return "ok";
         }

@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Mapper
-public interface ExchangeMapper {
+public interface ExchangeMapper extends OltpMapper {
 
     @Select("SELECT exchange_id AS exchangeId, name, region, timezone, currency FROM exchanges")
     List<Exchange> findAll();

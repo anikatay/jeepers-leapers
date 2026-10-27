@@ -5,15 +5,35 @@ Complete, tested ETL modules for the trading analytics pipeline. This guide show
 ## Quick Start
 
 ### Prerequisites
-- Python 3.9+ with `pip install -r analytics/requirements.txt`
-- The stack running: `docker-compose up -d --build` (PostgreSQL 16 on port 8100, app, frontend)
-- `.env` in the repo root with `PAYSPRINT_SOURCE_DB_URL` and `PAYSPRINT_ANALYTICS_DB_URL` (see `.env.example`)
+- Docker, Docker Compose, and Bash.
+- `.env` in the repo root configured for Docker Compose (see `.env.example`).
+- The stack running: `docker-compose up -d --build`.
 
 ### Run the Full Pipeline
 
-```bash
-cd ~/jeepers-leapers
+After pulling changes and starting the containers, run:
 
+```bash
+bash analytics/run_etl.sh
+```
+
+The script works from any directory when invoked by its path. It builds the ETL image,
+which provides Python 3.11 and pip and installs `analytics/requirements.txt`, waits for
+PostgreSQL, and runs all four pipeline phases in a disposable container on the Compose
+network. Database URLs and credentials come from the Compose `etl` service; no host Python,
+pip installation, or host database URLs are needed. The pipeline waits for the app's OLTP
+tables and seed instruments before extraction. If the scheduled refresh already holds the
+pipeline lock, the script retries up to 60 times with a two-second delay.
+
+Failures exit non-zero; Jenkins runs this same script immediately after
+`docker-compose up -d --build` and before backend, frontend, and smoke tests.
+No extra test trades are inserted; the existing OLTP trades populate the OLAP tables and views.
+
+For manual Python commands below, install Python 3.11 with pip, run
+`python3 -m pip install -r analytics/requirements.txt`, and set host-accessible
+`PAYSPRINT_SOURCE_DB_URL` and `PAYSPRINT_ANALYTICS_DB_URL` in the root `.env`.
+
+```bash
 # Runs Phase 0 → 1 → 2 → 3 on the trades already in OLTP
 python3 analytics/etl/run_pipeline.py
 
@@ -58,9 +78,20 @@ The intended flow is: trigger the pipeline, wait for it to return, then read the
 from etl.run_pipeline import run_pipeline   # with analytics/ on sys.path
 
 result = run_pipeline()
-# {'status': 'success', 'phases': [...], 'summary': {'trades_loaded': 668, ...},
+# {'status': 'success', 'run_id': 'pipeline-run-20261023-120000',
+#  'phases': [...], 'summary': {'trades_loaded': 668, ...},
 #  'error': None, 'duration_seconds': 0.9}
 ```
+
+The analytics container also exposes the same operation for the Spring app:
+
+```text
+POST http://etl:8094/refresh
+```
+
+The endpoint runs synchronously and returns the pipeline JSON. The `status` can be
+`success`, `busy`, or `failed`; the Spring app maps those states to the admin refresh API.
+The endpoint is available only on the Docker network and is not published to the host.
 
 From anything else, run the script and read the JSON it prints on stdout (logs go to stderr):
 

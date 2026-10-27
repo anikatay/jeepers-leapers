@@ -303,6 +303,8 @@ button {
 .search-input {
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   padding: 0.625rem 0;
   font-size: 0.875rem;
   color: var(--foreground);
@@ -331,14 +333,6 @@ button {
 
 .trade-button:hover {
   opacity: 0.9;
-}
-
-.search-hint {
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-  margin: 0.25rem 0 0;
-  margin-inline-start: 1rem;
-  padding: 0;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────

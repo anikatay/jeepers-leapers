@@ -62,6 +62,48 @@ class AuthControllerTest {
     }
 
     @Test
+    void loginAllowsUserWithoutAccount() throws Exception {
+        String email = "dana@platform.com";
+        UUID userId = UUID.randomUUID();
+        when(authService.login(email, "password"))
+            .thenReturn(new User(userId, "ROLE_ANALYST", "ACTIVE"));
+        when(accountService.getAccountIdByUserId(userId)).thenReturn(null);
+        when(jwtUtil.generateToken(email, "ROLE_ANALYST", userId, null)).thenReturn("jwt-token");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"dana@platform.com\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("jwt-token"))
+                .andExpect(jsonPath("$.userId").value(userId.toString()))
+                .andExpect(jsonPath("$.accountId").doesNotExist())
+                .andExpect(jsonPath("$.role").value("ROLE_ANALYST"));
+
+        verify(jwtUtil).generateToken(eq(email), eq("ROLE_ANALYST"), eq(userId), eq(null));
+    }
+
+    @Test
+    void loginAllowsAdminWithoutAccount() throws Exception {
+        String email = "admin@platform.com";
+        UUID userId = UUID.randomUUID();
+        when(authService.login(email, "password"))
+            .thenReturn(new User(userId, "ROLE_ADMIN", "ACTIVE"));
+        when(accountService.findAccountIdByUserId(userId)).thenReturn(null);
+        when(jwtUtil.generateToken(email, "ROLE_ADMIN", userId, null)).thenReturn("jwt-token");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@platform.com\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("jwt-token"))
+                .andExpect(jsonPath("$.userId").value(userId.toString()))
+                .andExpect(jsonPath("$.accountId").doesNotExist())
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
+
+        verify(jwtUtil).generateToken(eq(email), eq("ROLE_ADMIN"), eq(userId), eq(null));
+    }
+
+    @Test
     void loginReturnsUnauthorizedWhenCredentialsAreRejected() throws Exception {
         when(authService.login("alex@example.com", "wrong-password"))
             .thenThrow(new BadCredentialsException("Invalid password"));

@@ -26,6 +26,7 @@ import {
 } from '../../../../shared/utils/portfolio-history';
 import { PortfolioChartComponent } from '../../../../shared/components/portfolio-chart.component';
 import { MarketNewsComponent } from '../../../../shared/components/market-news.component';
+import { SparklineComponent } from '../../../../shared/components/sparkline.component';
 
 
 export interface StockHolding {
@@ -70,10 +71,16 @@ export interface PieSlice {
   d: string;
 }
 
+export interface StockInsight {
+  symbol: string;
+  changePct: number | null;
+  history: number[];
+}
+
 @Component({
   selector: 'app-client-home',
   standalone: true,
-  imports: [CommonModule, TranslatePipe, ConnectionStatusComponent, PortfolioChartComponent, MarketNewsComponent],
+  imports: [CommonModule, TranslatePipe, ConnectionStatusComponent, PortfolioChartComponent, MarketNewsComponent, SparklineComponent],
   templateUrl: './client-home.component.html',
   styleUrl: './client-home.component.css'
 })
@@ -82,14 +89,16 @@ export class ClientHomeComponent implements OnInit {
   private auth = inject(AuthService);
   private readonly appearance = inject(AppearanceService);
   private get ACCOUNT_ID() { return this.auth.session()?.accountId ?? ''; }
-  printname() {
-    return {
-      userInitial: this.auth.userName.charAt(0),
-      userName: this.auth.userName
-    };
+  get firstName(): string {
+    return this.auth.userName.trim().split(/\s+/)[0] ?? '';
   }
 
-  user = this.printname();
+  greetingKey(): string {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'home.greeting_morning';
+    if (hour >= 12 && hour < 17) return 'home.greeting_afternoon';
+    return 'home.greeting_evening';
+  }
 
 
   holdings = signal<StockHolding[]>([]);
@@ -118,6 +127,7 @@ export class ClientHomeComponent implements OnInit {
   chartPoints = signal<PortfolioHistoryPoint[]>([]);
   chartLoading = signal<boolean>(false);
   accountCurrency = signal<string>('USD');
+  stockInsights = signal<StockInsight[]>([]);
 
   /** Holdings drive the news panel; it falls back to a default set when the account is empty. */
   newsTickers = computed(() => this.holdings().map(holding => holding.symbol));
@@ -289,6 +299,7 @@ export class ClientHomeComponent implements OnInit {
 
   private loadTodaysGain(): void {
     if (this.heldInstruments.length === 0) {
+      this.stockInsights.set([]);
       this.todaysGain.set('N/A');
       return;
     }
@@ -296,6 +307,10 @@ export class ClientHomeComponent implements OnInit {
     const requests = this.heldInstruments.map(h => this.marketDataService.getHistory(h.ticker, '1mo'));
     forkJoin(requests).subscribe({
       next: (histories) => {
+        this.stockInsights.set(histories.map((history, idx) => this.buildStockInsight(
+          this.heldInstruments[idx].ticker,
+          history
+        )));
         let totalTodaysGain = 0;
         histories.forEach((history, idx) => {
           const bars = history.bars;
@@ -309,9 +324,23 @@ export class ClientHomeComponent implements OnInit {
       },
       error: (err) => {
         console.error("Failed to load today's gain:", err);
+        this.stockInsights.set([]);
         this.todaysGain.set('N/A');
       }
     });
+  }
+
+  private buildStockInsight(symbol: string, history: HistoryResponse): StockInsight {
+    const closes = history.bars
+      .map(bar => bar.close)
+      .filter(value => Number.isFinite(value));
+    const previousClose = closes.length > 1 ? closes[closes.length - 2] : undefined;
+    const currentPrice = this.holdings().find(holding => holding.symbol === symbol)?.price;
+    const changePct = previousClose && previousClose !== 0 && currentPrice !== undefined
+      ? ((currentPrice - previousClose) / previousClose) * 100
+      : null;
+
+    return { symbol, changePct, history: closes };
   }
 
 
@@ -400,6 +429,24 @@ export class ClientHomeComponent implements OnInit {
       background: 'var(--secondary)',
       color: 'var(--primary)',
     };
+  }
+
+  insightFor(symbol: string): StockInsight | undefined {
+    return this.stockInsights().find(insight => insight.symbol === symbol);
+  }
+
+  scrollInsights(direction: 'previous' | 'next', container: HTMLElement): void {
+    const firstCard = container.querySelector<HTMLElement>('.insight-card');
+    if (!firstCard) return;
+
+    const gap = Number.parseFloat(getComputedStyle(container).columnGap) || 0;
+    const cardStep = firstCard.offsetWidth + gap;
+    const visibleCards = Math.max(1, Math.round(container.clientWidth / cardStep));
+
+    container.scrollBy({
+      left: direction === 'next' ? cardStep * visibleCards : -cardStep * visibleCards,
+      behavior: 'smooth'
+    });
   }
 
   setPeriod(period: Period) {
@@ -638,10 +685,6 @@ export class ClientHomeComponent implements OnInit {
 
   goToTrades() {
     this.router.navigate(['/client/trades']);
-  }
-
-  goToProfile() {
-    this.router.navigate(['/client/portfolio']);
   }
 
   handleProfileOption(option: string) {

@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, OnDestroy, effect, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, effect, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms';
 import { PortfolioService } from '../../../../core/services/portfolio.service';
@@ -8,9 +8,10 @@ import { TradesService } from '../../../../core/services/trades.service';
 import { TradeModalService } from '../../../../core/services/trade-modal.service';
 import { TranslationService } from '../../../../core/services/translation.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { Subscription, forkJoin } from 'rxjs';
-import { throttleTime } from 'rxjs/operators';
+import { Subscription, forkJoin, of, timer } from 'rxjs';
+import { catchError, map, throttleTime } from 'rxjs/operators';
 import { MarketQuoteService } from '../../../../core/services/market-quote.service';
+import { HistoryResponse } from '../../../../core/models/market.model';
 import { TranslatePipe } from '../../../../core/pipes/translate.pipe';
 import { HoldingResponse } from '../../../../core/models/holding.model';
 import { InstrumentResponse } from '../../../../core/models/instrument.model';
@@ -21,6 +22,8 @@ import { calculateAverageCostBasis, calculateHoldingGain } from '../../../../sha
 import { GainIndicatorComponent } from '../../../../shared/components/gain-indicator.component';
 import { SparklineComponent } from '../../../../shared/components/sparkline.component';
 import { ConnectionStatusComponent } from '../../../../shared/components/connection.status.component';
+import { PortfolioChartComponent } from '../../../../shared/components/portfolio-chart.component';
+import { normalizeIntradayBaseline, combinePortfolioHistory, PortfolioHistoryPoint } from '../../../../shared/utils/portfolio-history';
 import {
   LoadStatus,
   TradePanelComponent,
@@ -47,6 +50,7 @@ export interface Holding {
 }
 
 type SortKey = 'shares' | 'currentPrice' | 'currentValue' | 'gain';
+type Period = '1D' | '1W' | '1M' | '3M' | '1Y' | 'All';
 
 interface SummaryCard {
   label: string;
@@ -65,7 +69,7 @@ interface StockIconStyle {
 @Component({
   selector: 'app-client-portfolio',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent, TradePanelComponent],
+  imports: [CommonModule, FormsModule, TranslatePipe, GainIndicatorComponent, SparklineComponent, ConnectionStatusComponent, TradePanelComponent, PortfolioChartComponent],
   templateUrl: './client-portfolio.component.html',
   styleUrl: './client-portfolio.component.css'
 })
@@ -101,13 +105,28 @@ export class ClientPortfolioComponent implements OnInit {
   filterType = signal<'all' | 'gain' | 'loss'>('all');
   sortBy = signal<SortKey>('currentValue');
   sortDir = signal<'asc' | 'desc'>('desc');
+  selectedPeriod = signal<Period>('1M');
+  periodOptions: Period[] = ['1D', '1W', '1M', '3M', '1Y', 'All'];
+  chartPoints = signal<PortfolioHistoryPoint[]>([]);
+  chartLoading = signal(false);
+  accountCurrency = signal('USD');
 
   // Trade panel state
   isModalOpen = signal<boolean>(false);
   modalMode = signal<TradeSide>('BUY');
   selectedHolding = signal<Holding | null>(null);
   private quoteSubscription?: Subscription;
+  private liveChartSubscription?: Subscription;
   private subscribedTickers = new Set<string>();
+  @ViewChild(PortfolioChartComponent)
+  private portfolioChart?: PortfolioChartComponent;
+  private heldInstruments: Array<{ ticker: string; quantity: number }> = [];
+  private lastBarCloseByTicker = new Map<string, number>();
+  private lastBarValue: number | null = null;
+  private allTrades: TradeResponse[] = [];
+  private readonly periodMap: Record<Period, string> = {
+    '1D': '1d', '1W': '1mo', '1M': '1mo', '3M': '3mo', '1Y': '1y', 'All': 'max'
+  };
 
   // Filter options
   filterOptions: Array<'all' | 'gain' | 'loss'> = ['all', 'gain', 'loss'];
@@ -162,10 +181,14 @@ export class ClientPortfolioComponent implements OnInit {
         this.instrumentService.getAllInstruments().subscribe({
           next: (instruments) => {
             this.tradesService.getTradesByAccount(this.ACCOUNT_ID).subscribe({
-              next: (trades) => this.buildHoldingsUI(holdingsData, instruments, trades),
+              next: (trades) => {
+                this.allTrades = trades;
+                this.buildHoldingsUI(holdingsData, instruments, trades);
+              },
               error: (err) => {
                 console.error('Failed to load trades:', err);
                 // Still show holdings even if gain/loss data can't be computed
+                this.allTrades = [];
                 this.buildHoldingsUI(holdingsData, instruments, []);
               }
             });
@@ -216,13 +239,16 @@ export class ClientPortfolioComponent implements OnInit {
     });
 
     this.allHoldings.set(buildHoldings);
+    this.heldInstruments = buildHoldings.map(holding => ({ ticker: holding.symbol, quantity: holding.shares }));
     this.subscribeToLiveQuotes(buildHoldings);
     this.loadSparklines(buildHoldings);
+    this.loadChartData();
 
     // Load account for cash balance
     this.accountService.getAccount(this.ACCOUNT_ID).subscribe({
       next: (acc) => {
         this.account.set(acc);
+        this.accountCurrency.set(acc.currency || 'USD');
         this.loading.set(false);
       },
       error: (err) => {
@@ -292,12 +318,109 @@ export class ClientPortfolioComponent implements OnInit {
               ? { ...holding, currentPrice: quote.price }
               : holding
           );
+          this.updateLiveChartPoint();
         });
     }
   }
 
+  setPeriod(period: Period): void {
+    this.selectedPeriod.set(period);
+    this.loadChartData();
+    this.refreshLiveChartTimer();
+  }
+
+  private refreshLiveChartTimer(): void {
+    this.liveChartSubscription?.unsubscribe();
+    this.liveChartSubscription = undefined;
+
+    if (this.selectedPeriod() !== '1D' || this.heldInstruments.length === 0) return;
+
+    this.updateLiveChartPoint();
+    const millisecondsUntilNextFiveSeconds = 5_000 - (Date.now() % 5_000);
+    this.liveChartSubscription = timer(millisecondsUntilNextFiveSeconds, 5_000).subscribe(() => {
+      this.updateLiveChartPoint();
+    });
+  }
+
+  private updateLiveChartPoint(): void {
+    if (this.selectedPeriod() !== '1D' || this.lastBarValue === null) return;
+
+    const livePriceBySymbol = new Map(this.allHoldings().map(holding => [holding.symbol, holding.currentPrice]));
+    let value = this.lastBarValue;
+    this.heldInstruments.forEach(({ ticker, quantity }) => {
+      const barClose = this.lastBarCloseByTicker.get(ticker);
+      const livePrice = livePriceBySymbol.get(ticker);
+      if (barClose === undefined || livePrice === undefined || !Number.isFinite(livePrice)) return;
+      value += quantity * (livePrice - barClose);
+    });
+
+    const date = new Date();
+    date.setSeconds(0, 0);
+    this.portfolioChart?.updateLivePoint(date.toISOString(), value);
+  }
+
+  private loadChartData(): void {
+    if (this.allTrades.length === 0) {
+      this.chartPoints.set([]);
+      this.chartLoading.set(false);
+      return;
+    }
+
+    this.chartLoading.set(true);
+    const period = this.selectedPeriod();
+    const isIntraday = period === '1D';
+    const backendPeriod = this.periodMap[period];
+    const tickers = Array.from(new Set(this.allTrades.map(trade => trade.ticker)));
+    const batch$ = isIntraday
+      ? this.marketDataService.getIntradayHistoryBatch(tickers)
+      : this.marketDataService.getHistoryBatch(tickers, backendPeriod);
+
+    batch$.pipe(
+      map(byTicker => tickers.map(ticker => {
+        const history = byTicker[ticker] ?? emptyHistory(ticker, backendPeriod);
+        return isIntraday ? normalizeIntradayBaseline(history) : history;
+      })),
+      catchError(err => {
+        console.error('Failed to load chart history:', err);
+        return of(tickers.map(ticker => emptyHistory(ticker, backendPeriod)));
+      })
+    ).subscribe({
+      next: (histories) => {
+        let points = combinePortfolioHistory(this.allTrades, histories);
+        this.lastBarCloseByTicker = new Map(
+          histories
+            .filter(history => history.bars.length > 0)
+            .map(history => [history.ticker, history.bars[history.bars.length - 1].close])
+        );
+        this.lastBarValue = isIntraday && points.length > 0 ? points[points.length - 1].value : null;
+
+        if (period === 'All') {
+          const oldestTrade = this.allTrades.reduce((oldest, trade) =>
+            new Date(trade.executedAt).getTime() < new Date(oldest.executedAt).getTime() ? trade : oldest
+          );
+          points = points.filter(point => point.date.slice(0, 10) >= oldestTrade.executedAt.slice(0, 10));
+        } else if (period === '1W') {
+          const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          points = points.filter(point => new Date(
+            point.date.length === 10 ? `${point.date}T00:00:00Z` : point.date
+          ).getTime() >= cutoff);
+        }
+
+        this.chartPoints.set(points);
+        this.chartLoading.set(false);
+        this.refreshLiveChartTimer();
+      },
+      error: (err) => {
+        console.error('Failed to load chart history:', err);
+        this.chartPoints.set([]);
+        this.chartLoading.set(false);
+      }
+    });
+  }
+
   ngOnDestroy(): void {
     this.quoteSubscription?.unsubscribe();
+    this.liveChartSubscription?.unsubscribe();
     this.subscribedTickers.forEach(ticker => this.marketQuoteService.unsubscribe(ticker));
   }
 
@@ -462,5 +585,9 @@ export class ClientPortfolioComponent implements OnInit {
   Math = Math;
   parseFloat = parseFloat;
   Object = Object;
+}
+
+function emptyHistory(ticker: string, period: string): HistoryResponse {
+  return { ticker, period, bars: [] };
 }
   // Expose parseFloat for template use (remove last line and add this)

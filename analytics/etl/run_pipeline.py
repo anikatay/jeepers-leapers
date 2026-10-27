@@ -339,10 +339,10 @@ def run_phase_3() -> Dict[str, Any]:
     logger.info("PHASE 3: P&L TRANSFORMATION (FIFO)")
     logger.info("="*80)
     
+    run_id = f"pipeline-run-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     try:
         from etl.transform_pnl import run_pnl_transformation
-        
-        run_id = f"pipeline-run-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
         logger.info(f"Running P&L transformation (run_id: {run_id})...")
         result = run_pnl_transformation(run_id)
         
@@ -362,6 +362,7 @@ def run_phase_3() -> Dict[str, Any]:
         phase_result = {
             'status': status,
             'phase': 3,
+            'run_id': run_id,
             'transformation_results': result
         }
         if result.get('error'):
@@ -372,6 +373,7 @@ def run_phase_3() -> Dict[str, Any]:
         return {
             'status': 'failed',
             'phase': 3,
+            'run_id': run_id,
             'error': str(e)
         }
 
@@ -417,6 +419,7 @@ def run_pipeline(phase: Optional[int] = None, seed: bool = False, trades: int = 
         dict:
         {
             'status': 'success' | 'failed' | 'busy' | 'interrupted',
+            'run_id': phase 3 run identifier, or None when phase 3 did not run,
             'phases': [one result dict per phase that ran],
             'summary': Phase 3 statistics (trades_loaded, matched_trades, ...) or None,
             'error': message of the phase that failed, or None,
@@ -451,9 +454,11 @@ def run_pipeline(phase: Optional[int] = None, seed: bool = False, trades: int = 
     
     summary = next((r.get('transformation_results') for r in results
                     if r.get('phase') == 3 and r['status'] == 'success'), None)
+    run_id = next((r.get('run_id') for r in results if r.get('run_id')), None)
     
     return {
         'status': status,
+        'run_id': run_id,
         'phases': results,
         'summary': summary,
         'error': error,
