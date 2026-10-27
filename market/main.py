@@ -40,12 +40,6 @@ BACKEND_QUOTE_URL = os.getenv(
     "BACKEND_QUOTE_URL",
     "http://app:8080/internal/market/quotes",
 )
-SECTOR_STREAM_ENABLED = os.getenv("SECTOR_STREAM_ENABLED", "true").lower() in {
-    "1",
-    "true",
-    "yes",
-    "on",
-}
 SECTOR_UNIVERSE_VERSION = "us-large-cap-v1"
 SECTOR_SELECTION_BASIS = "configured_large_cap_order"
 
@@ -54,57 +48,49 @@ SECTOR_SELECTION_BASIS = "configured_large_cap_order"
 SECTOR_UNIVERSE = {
     "communication-services": {
         "name": "Communication Services",
-        "tickers": ["GOOGL", "META", "NFLX", "DIS", "CMCSA", "VZ", "T", "TMUS", "CHTR", "EA"],
+        "tickers": ["GOOGL", "META", "NFLX", "DIS", "CMCSA", "VZ", "T", "TMUS"],
     },
     "consumer-discretionary": {
         "name": "Consumer Discretionary",
-        "tickers": ["AMZN", "TSLA", "HD", "MCD", "TJX", "LOW", "BKNG", "NKE", "SBUX", "ORLY"],
+        "tickers": ["AMZN", "TSLA", "HD", "MCD", "TJX", "LOW", "BKNG", "NKE"],
     },
     "consumer-staples": {
         "name": "Consumer Staples",
-        "tickers": ["WMT", "COST", "PG", "KO", "PEP", "PM", "MO", "MDLZ", "CL", "KMB"],
+        "tickers": ["WMT", "COST", "PG", "KO", "PEP", "PM", "MO", "MDLZ"],
     },
     "energy": {
         "name": "Energy",
-        "tickers": ["XOM", "CVX", "COP", "EOG", "SLB", "OXY", "MPC", "PSX", "VLO", "WMB"],
+        "tickers": ["XOM", "CVX", "COP", "EOG", "SLB", "OXY", "MPC", "PSX"],
     },
     "financials": {
         "name": "Financials",
-        "tickers": ["JPM", "V", "MA", "BAC", "WFC", "GS", "MS", "BLK", "C", "AXP"],
+        "tickers": ["JPM", "V", "MA", "BAC", "WFC", "GS", "MS", "BLK"],
     },
     "health-care": {
         "name": "Health Care",
-        "tickers": ["LLY", "UNH", "JNJ", "ABBV", "MRK", "TMO", "ABT", "AMGN", "PFE", "ISRG"],
+        "tickers": ["LLY", "UNH", "JNJ", "ABBV", "MRK", "TMO", "ABT", "AMGN"],
     },
     "industrials": {
         "name": "Industrials",
-        "tickers": ["GE", "CAT", "RTX", "HON", "UNP", "DE", "BA", "ADP", "ETN", "LMT"],
+        "tickers": ["GE", "CAT", "RTX", "HON", "UNP", "DE", "BA", "ADP"],
     },
     "information-technology": {
         "name": "Information Technology",
-        "tickers": ["NVDA", "MSFT", "AAPL", "AVGO", "ORCL", "CRM", "AMD", "CSCO", "IBM", "ADBE"],
+        "tickers": ["NVDA", "MSFT", "AAPL", "AVGO", "ORCL", "CRM", "AMD", "CSCO"],
     },
     "materials": {
         "name": "Materials",
-        "tickers": ["LIN", "SHW", "APD", "ECL", "NEM", "FCX", "NUE", "DOW", "DD", "CTVA"],
+        "tickers": ["LIN", "SHW", "APD", "ECL", "NEM", "FCX", "NUE", "DOW"],
     },
     "real-estate": {
         "name": "Real Estate",
-        "tickers": ["PLD", "AMT", "EQIX", "WELL", "SPG", "O", "PSA", "CCI", "DLR", "VICI"],
+        "tickers": ["PLD", "AMT", "EQIX", "WELL", "SPG", "O", "PSA", "CCI"],
     },
     "utilities": {
         "name": "Utilities",
-        "tickers": ["NEE", "SO", "DUK", "CEG", "SRE", "AEP", "EXC", "XEL", "ED", "PCG"],
+        "tickers": ["NEE", "SO", "DUK", "CEG", "SRE", "AEP", "EXC", "XEL"],
     },
 }
-SECTOR_TICKERS = tuple(
-    ticker
-    for sector in SECTOR_UNIVERSE.values()
-    for ticker in sector["tickers"]
-)
-SECTOR_TICKER_SET = set(SECTOR_TICKERS)
-
-
 def sector_catalog_payload() -> dict:
     return {
         "market": "US",
@@ -412,8 +398,6 @@ stream = YahooStream()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if SECTOR_STREAM_ENABLED:
-        stream.desired.update(SECTOR_TICKERS)
     await stream.start()
     yield
     await stream.stop()
@@ -428,20 +412,12 @@ async def health():
         "status": "ok",
         "streamConnected": stream.websocket is not None and stream.websocket.is_connected(),
         "subscribedTickers": sorted(stream.desired),
-        "sectorStreamEnabled": SECTOR_STREAM_ENABLED,
-        "sectorTickerCount": len(SECTOR_TICKERS),
     }
 
 
 @app.post("/stream/subscribe/{ticker}")
 async def subscribe_stream(ticker: str):
     normalized = validate_ticker(ticker)
-    if SECTOR_STREAM_ENABLED and normalized in SECTOR_TICKER_SET:
-        return {
-            "ticker": normalized,
-            "subscribed": True,
-            "persistent": True,
-        }
     await stream.add(normalized)
     return {"ticker": normalized, "subscribed": True}
 
@@ -449,12 +425,6 @@ async def subscribe_stream(ticker: str):
 @app.delete("/stream/subscribe/{ticker}")
 async def unsubscribe_stream(ticker: str):
     normalized = validate_ticker(ticker)
-    if SECTOR_STREAM_ENABLED and normalized in SECTOR_TICKER_SET:
-        return {
-            "ticker": normalized,
-            "subscribed": True,
-            "persistent": True,
-        }
     await stream.remove(normalized)
     return {"ticker": normalized, "subscribed": False}
 

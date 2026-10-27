@@ -56,6 +56,16 @@ export function calculateHoldingGain(
   currentPrice: number,
   avgCostBasis: number
 ): { gain: number; gainPct: number } {
+  if (
+    quantity <= 0 ||
+    !Number.isFinite(quantity) ||
+    !Number.isFinite(currentPrice) ||
+    !Number.isFinite(avgCostBasis) ||
+    avgCostBasis <= 0
+  ) {
+    return { gain: 0, gainPct: 0 };
+  }
+
   const gain = (currentPrice - avgCostBasis) * quantity;
   const gainPct = avgCostBasis > 0 ? ((currentPrice - avgCostBasis) / avgCostBasis) * 100 : 0;
   return { gain, gainPct };
