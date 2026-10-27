@@ -4,6 +4,8 @@ import { AuthShell, AuthSlot } from './auth-shell/auth-shell';
 import { CLIENT_ROUTES } from './features/client/client.routes';
 import { ADMIN_ROUTES } from './features/admin/admin.routes';
 import { ANALYST_ROUTES } from './features/analyst/analyst.routes';
+import { Login } from './login/login';
+import { Register } from './register/register';
 import { adminGuard } from './core/guards/admin.guard';
 import { analystGuard } from './core/guards/analyst.guard';
 
@@ -34,17 +36,17 @@ export const routes: Routes = [
   },
   {
     path: 'client',
-    children: CLIENT_ROUTES
+    loadChildren: () => import('./features/client/client.routes').then(m => m.CLIENT_ROUTES)
   },
   {
     path: 'admin',
-    canActivate: [adminGuard],
-    children: ADMIN_ROUTES
+    canMatch: [adminGuard],
+    loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES)
   },
   {
     path: 'analyst',
-    canActivate: [analystGuard],
-    children: ANALYST_ROUTES
+    canMatch: [analystGuard],
+    loadChildren: () => import('./features/analyst/analyst.routes').then(m => m.ANALYST_ROUTES)
   },
   {
     path: '**',

@@ -29,7 +29,9 @@ export class ClientLayoutComponent implements OnInit {
     { label: 'nav.home', path: '/client' },
     { label: 'nav.portfolio', path: '/client/portfolio' },
     { label: 'nav.trades', path: '/client/trades' },
-    { label: 'nav.heatmap', path: '/client/heatmap' }
+    { label: 'nav.heatmap', path: '/client/heatmap' },
+    { label: 'nav.hunter', path: '/client/hunter' },
+    { label: 'nav.watchlist', path: '/client/watchlist' }
   ];
 
   userName: string;

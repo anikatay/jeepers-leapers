@@ -1,4 +1,7 @@
 package com.neueda.leap.advice;
+import com.neueda.leap.ai.ModelCallException;
+import com.neueda.leap.hunter.LimitReachedException;
+import com.neueda.leap.hunter.spec.HunterSpecInvalidException;
 import com.neueda.leap.analysis.TooManyAnalysesException;
 import com.neueda.leap.analysis.TradeAnalysisException;
 import com.neueda.leap.dto.response.ErrorResponse;
@@ -180,6 +183,49 @@ public class GlobalExceptionHandler {
         );
         response.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
+    }
+
+    @ExceptionHandler(ModelCallException.class)
+    public ResponseEntity<ErrorResponse> handleModelCallFailure(
+            ModelCallException e,
+            HttpServletRequest request) {
+        // The cause can quote the upstream error body, so it is logged and not returned.
+        log.warn("Model call failed for {}: {}", request.getRequestURI(), e.getMessage());
+        ErrorResponse response = new ErrorResponse(
+            "ANALYSIS_UNAVAILABLE",
+            "The AI is unavailable right now. Please try again later.",
+            502
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
+    }
+
+    @ExceptionHandler(HunterSpecInvalidException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidHunter(
+            HunterSpecInvalidException e,
+            HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+            "VALIDATION_ERROR",
+            "Input validation failed",
+            400
+        );
+        response.setPath(request.getRequestURI());
+        response.setFieldErrors(e.getFieldErrors());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(LimitReachedException.class)
+    public ResponseEntity<ErrorResponse> handleLimitReached(
+            LimitReachedException e,
+            HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+            "LIMIT_REACHED",
+            "Limit reached",
+            e.getMessage(),
+            409
+        );
+        response.setPath(request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(TooManyAnalysesException.class)

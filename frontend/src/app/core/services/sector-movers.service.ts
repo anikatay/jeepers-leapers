@@ -39,6 +39,7 @@ export class SectorMoversService {
   private consumers = 0;
   private pollSub?: Subscription;
   private loadSub?: Subscription;
+  private historySub?: Subscription;
 
   /** Called by a consumer on mount; the first one starts polling. */
   retain(): void {
@@ -58,6 +59,8 @@ export class SectorMoversService {
     this.pollSub = undefined;
     this.loadSub?.unsubscribe();
     this.loadSub = undefined;
+    this.historySub?.unsubscribe();
+    this.historySub = undefined;
   }
 
   private load(): void {
@@ -79,11 +82,13 @@ export class SectorMoversService {
   }
 
   private loadHistories(): void {
+    this.historySub?.unsubscribe();
+    this.historySub = undefined;
     const tickers = this.sectors.flatMap(sector => sector.tickers.map(t => t.ticker));
     if (tickers.length === 0) return;
 
     // Shared with the heatmap, so opening that page costs no extra requests and vice versa.
-    this.historyCache.load(tickers).subscribe({
+    this.historySub = this.historyCache.load(tickers).subscribe({
       next: ([ticker, bars]) => {
         this.histories.update(current => new Map(current).set(ticker, bars));
         this.recompute();

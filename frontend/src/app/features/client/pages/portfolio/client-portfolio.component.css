@@ -259,7 +259,11 @@ button {
 .holdings-table th.col-symbol { width: 12%; }
 .holdings-table th.col-company { width: 18%; }
 .holdings-table th.col-sortable { width: 13%; cursor: pointer; padding: 0; }
-.holdings-table th.col-actions { width: 18%; }
+.holdings-table th.col-actions {
+  width: 18%;
+  text-align: end;
+  padding-inline-end: 0.625rem;
+}
 
 .sort-header {
   display: flex;
@@ -348,60 +352,33 @@ button {
 }
 
 /* Gain/Loss */
-.col-gain { width: 13%; text-align: end; padding-inline-end: 1.5rem; }
+.holdings-table th.col-gain-header {
+  width: 13%;
+  text-align: center;
+  padding: 0;
+}
+
+.gain-sort-header {
+  justify-content: center;
+  transform: translateX(0.75rem);
+}
+
+.col-gain {
+  width: 13%;
+  text-align: center;
+  padding-inline: 0.625rem;
+}
 
 .gain-content {
   display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
+  transform: translateX(0.75rem);
 }
 
-.gain-hover-wrapper {
-  position: relative;
-}
-
-.gain-tooltip {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  inset-inline-end: 0;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.375rem 0.625rem;
-  box-shadow: var(--shadow-raised);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(4px);
-  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 10;
-}
-
-.gain-hover-wrapper:hover .gain-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.gain-pct {
+.gain-unavailable {
+  color: var(--muted-foreground);
   font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.gain-dollar {
-  font-size: 0.75rem;
-}
-
-.col-gain.gain-positive .gain-pct,
-.col-gain.gain-positive .gain-dollar {
-  color: var(--gain);
-}
-
-.col-gain.gain-negative .gain-pct,
-.col-gain.gain-negative .gain-dollar {
-  color: var(--loss);
 }
 
 /* Actions */
@@ -478,6 +455,32 @@ button {
   padding: 4rem 1rem;
   color: var(--muted-foreground);
   font-size: 0.875rem;
+}
+
+.portfolio-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.portfolio-pagination button {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--secondary);
+  color: var(--foreground);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.portfolio-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* Responsive */

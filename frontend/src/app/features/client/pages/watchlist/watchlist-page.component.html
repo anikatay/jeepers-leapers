@@ -1,0 +1,64 @@
+<div class="watchlist-page">
+  <header class="page-head">
+    <h1 class="title">{{ 'watchlist.title' | translate }}</h1>
+    <a class="link" routerLink="/client/hunter">{{ 'watchlist.go_hunter' | translate }}</a>
+  </header>
+
+  @if (disclaimer(); as text) {
+    <p class="disclaimer">{{ text }}</p>
+  }
+
+  <div aria-live="polite">
+    @if (error()) {
+      <p class="alert" role="alert">{{ error() }}</p>
+    }
+    @if (loading()) {
+      <p class="muted">{{ 'watchlist.loading' | translate }}</p>
+    } @else if (!watchlist.items().length) {
+      <div class="empty panel">
+        <p>{{ 'watchlist.empty' | translate }}</p>
+        <a class="link" routerLink="/client/hunter">{{ 'watchlist.go_hunter' | translate }}</a>
+      </div>
+    }
+  </div>
+
+  @if (!loading() && watchlist.items().length) {
+    <div class="panel table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{{ 'watchlist.ticker' | translate }}</th>
+            <th scope="col">{{ 'watchlist.company' | translate }}</th>
+            <th scope="col">{{ 'watchlist.sector' | translate }}</th>
+            <th scope="col">{{ 'watchlist.added' | translate }}</th>
+            <th scope="col">{{ 'watchlist.found_by' | translate }}</th>
+            <th scope="col"><span class="visually-hidden">{{ 'hunter.remove' | translate }}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of watchlist.items(); track item.ticker) {
+            <tr>
+              <td class="ticker">{{ item.ticker }}</td>
+              <td>{{ item.companyName ?? '—' }}</td>
+              <td>{{ item.gicsSector ?? '—' }}</td>
+              <td>{{ added(item) }}</td>
+              <td>
+                @if (item.sourceSpec; as source) {
+                  <a class="link" routerLink="/client/hunter" [queryParams]="{ spec: source.id }">{{ source.name }}</a>
+                } @else {
+                  —
+                }
+              </td>
+              <td class="actions">
+                <button type="button" class="remove-button" [attr.aria-label]="removeLabel(item)"
+                  [disabled]="pendingTicker() === item.ticker" (click)="remove(item)">
+                  {{ 'hunter.remove' | translate }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

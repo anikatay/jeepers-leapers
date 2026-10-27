@@ -1,0 +1,117 @@
+<div class="hunter-page">
+  <header class="page-head">
+    <div>
+      <h1 class="title">{{ 'hunter.title' | translate }}</h1>
+      <p class="subtitle">{{ 'hunter.subtitle' | translate }}</p>
+    </div>
+    <a class="link" routerLink="/client/watchlist">{{ t('hunter.view_watchlist', { n: watchlist.count() }) }}</a>
+  </header>
+
+  <div class="layout">
+    <aside class="panel saved" aria-labelledby="hunter-saved-title">
+      <h2 class="panel-title" id="hunter-saved-title">{{ 'hunter.saved_title' | translate }}</h2>
+      @if (!saved().length) {
+        <p class="muted">{{ 'hunter.saved_empty' | translate }}</p>
+      }
+      <ul class="saved-list">
+        @for (summary of saved(); track summary.specId) {
+          <li class="saved-item" [class.active]="summary.specId === spec()?.id">
+            <button type="button" class="saved-open" [disabled]="busy()" (click)="open(summary.specId)">
+              <span class="saved-name">{{ summary.name }}</span>
+              <span class="saved-meta">{{ savedLine(summary) }}</span>
+            </button>
+            <button type="button" class="icon-button" [attr.aria-label]="t('hunter.delete_named', { name: summary.name })"
+              [disabled]="busy()" (click)="remove(summary)">×</button>
+          </li>
+        }
+      </ul>
+    </aside>
+
+    <div class="main">
+      <section class="panel">
+        <label class="field-label" for="hunter-prompt">{{ 'hunter.prompt_label' | translate }}</label>
+        <textarea id="hunter-prompt" class="prompt" rows="3" [attr.maxlength]="promptLimit()" [value]="prompt()"
+          [placeholder]="'hunter.prompt_placeholder' | translate" [disabled]="busy()"
+          (input)="setPrompt($any($event.target).value)" (keydown.control.enter)="build()"></textarea>
+        <div class="prompt-foot">
+          <span class="muted">{{ charactersLeft() }}</span>
+          <button type="button" class="primary" [disabled]="busy() || !prompt().trim()" (click)="build()">
+            {{ 'hunter.build' | translate }}
+          </button>
+        </div>
+        <div class="examples">
+          <span class="muted">{{ 'hunter.examples' | translate }}:</span>
+          @for (example of examples; track example) {
+            <button type="button" class="example" [disabled]="busy()" (click)="setPrompt(example)">{{ example }}</button>
+          }
+        </div>
+      </section>
+
+      <div class="status" aria-live="polite">
+        @if (drafting()) {
+          <p class="progress"><span class="spinner" aria-hidden="true"></span>{{ 'hunter.drafting' | translate }}</p>
+        }
+        @if (running()) {
+          <p class="progress"><span class="spinner" aria-hidden="true"></span>{{ 'hunter.running' | translate }}</p>
+        }
+        @if (error()) {
+          <p class="alert" role="alert">{{ error() }}</p>
+        }
+      </div>
+
+      @if (spec(); as current) {
+        @if (catalog(); as loadedCatalog) {
+          <section class="panel">
+            <app-hunter-card [spec]="current" (specChange)="spec.set($event)" [catalog]="loadedCatalog"
+              [fieldErrors]="fieldErrors()" [disabled]="busy()"></app-hunter-card>
+            <div class="run-row">
+              <button type="button" class="primary" [disabled]="busy()" (click)="runHunter()">
+                {{ 'hunter.run' | translate }}
+              </button>
+            </div>
+          </section>
+        }
+      }
+
+      <div aria-live="polite">
+        @if (run(); as result) {
+          @if (catalog(); as loadedCatalog) {
+            <section class="panel results" aria-labelledby="hunter-results-title">
+              <header class="results-head">
+                <h2 class="panel-title" id="hunter-results-title">{{ 'hunter.results_title' | translate }}</h2>
+                <span class="ai-badge">{{ t('hunter.ai_badge', { month: runMonth() }) }}</span>
+              </header>
+              <p class="disclaimer">{{ t('hunter.disclaimer', { month: runMonth() }) }}</p>
+              <p class="muted">{{ runLine(result) }}</p>
+              @if (result.droppedCount) {
+                <p class="muted">{{ t('hunter.dropped', { n: result.droppedCount }) }}</p>
+              }
+              @if (!result.matches.length) {
+                <p class="empty-result">{{ 'hunter.no_matches' | translate }}</p>
+              }
+              <div class="match-grid">
+                @for (match of scoredMatches(); track match.ticker) {
+                  <app-match-card [match]="match" [catalog]="loadedCatalog" [criteria]="spec()?.criteria ?? []"
+                    [onWatchlist]="watchlist.has(match.ticker)" [busy]="pendingTicker() === match.ticker"
+                    (toggleWatchlist)="toggleWatchlist(match)"></app-match-card>
+                }
+              </div>
+              @if (zeroMatches().length) {
+                <details class="zero-group">
+                  <summary>{{ t('hunter.zero_group', { n: zeroMatches().length }) }}</summary>
+                  <div class="match-grid">
+                    @for (match of zeroMatches(); track match.ticker) {
+                      <app-match-card [match]="match" [catalog]="loadedCatalog" [criteria]="spec()?.criteria ?? []"
+                        [onWatchlist]="watchlist.has(match.ticker)" [busy]="pendingTicker() === match.ticker"
+                        (toggleWatchlist)="toggleWatchlist(match)"></app-match-card>
+                    }
+                  </div>
+                </details>
+              }
+            </section>
+          }
+        }
+      </div>
+    </div>
+  </div>
+</div>

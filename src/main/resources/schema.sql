@@ -116,3 +116,38 @@ SET settlement_currency = a.currency,
 FROM accounts a
 WHERE t.account_id = a.account_id
   AND t.settlement_currency IS NULL;
+
+-- 5. Watchlist Hunter (docs/specs/watchlist-hunter.md, section 5.5)
+CREATE TABLE IF NOT EXISTS hunter_specs (
+    spec_id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    "name" VARCHAR(80) NOT NULL,
+    prompt VARCHAR(500) NOT NULL DEFAULT '',
+    spec JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_hunter_specs_user ON hunter_specs (user_id);
+
+-- The latest 10 runs per spec are kept; spec_hash lets an unchanged spec reuse its last run.
+CREATE TABLE IF NOT EXISTS hunter_runs (
+    run_id UUID PRIMARY KEY,
+    spec_id UUID NOT NULL REFERENCES hunter_specs(spec_id) ON DELETE CASCADE,
+    spec_hash CHAR(64) NOT NULL,
+    ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    result JSONB NOT NULL,
+    model VARCHAR(64) NOT NULL,
+    match_count INT NOT NULL,
+    prompt_tokens INT NOT NULL DEFAULT 0,
+    completion_tokens INT NOT NULL DEFAULT 0,
+    latency_ms BIGINT NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_hunter_runs_spec ON hunter_runs (spec_id, ran_at DESC);
+
+CREATE TABLE IF NOT EXISTS watchlist_items (
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    ticker VARCHAR(32) NOT NULL,
+    added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    source_spec_id UUID REFERENCES hunter_specs(spec_id) ON DELETE SET NULL,
+    PRIMARY KEY (user_id, ticker)
+);
