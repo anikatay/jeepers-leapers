@@ -24,35 +24,20 @@ services:
     ports:
       - ${App_port}
     depends_on:
-      - db
       - market
       - redis
       - kafka
 
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/paysprint
-      SPRING_DATASOURCE_USERNAME: paysprint
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:5432/paysprint
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:8092
       JWT_SHARED_SECRET: ${JWT_SHARED_SECRET}
-      ANALYTICS_DATASOURCE_URL: jdbc:postgresql://db:5432/paysprint_analytics
+      ANALYTICS_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:5432/paysprint_analytics
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       HUNTER_OPENAI_MODEL: ${HUNTER_OPENAI_MODEL:-gpt-6-luna}
-
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: paysprint
-      POSTGRES_USER: paysprint
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      # Only db is reachable from the host. app is not. This mirrors a real
-      # deployment where the database is internal but needs to be accessible
-      # to DBA tooling running on the developer's machine during development.
-      - ${DB_PORT_J}
-    volumes:
-      - db_data:/var/lib/postgresql/data
   etl:
     # Refreshes analytics P&L (paysprint_analytics) on a fixed interval and exposes
     # the internal POST /refresh endpoint used by the Spring app.
@@ -60,16 +45,10 @@ services:
     init: true
     restart: unless-stopped
     depends_on:
-      - db
       - app
     expose:
       - "8094"
     environment:
-      PAYSPRINT_SOURCE_DB_URL: postgresql://paysprint:${DB_PASSWORD}@db:5432/paysprint
-      PAYSPRINT_ANALYTICS_DB_URL: postgresql://paysprint:${DB_PASSWORD}@db:5432/paysprint_analytics
+      PAYSPRINT_SOURCE_DB_URL: postgresql://paysprint:${DB_PASSWORD}@${DB_HOST}:5432/paysprint
+      PAYSPRINT_ANALYTICS_DB_URL: postgresql://paysprint:${DB_PASSWORD}@${DB_HOST}:5432/paysprint_analytics
       ETL_INTERVAL_SECONDS: ${ETL_INTERVAL_SECONDS:-600}
-volumes:
-  db_data:
-    # Named volume: persists Postgres data across `docker compose down` and
-    # `docker compose up`. Use `docker compose down -v` to also remove this
-    # volume, which wipes the database and starts fresh on the next `up`.
