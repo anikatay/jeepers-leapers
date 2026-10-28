@@ -3,14 +3,10 @@ services:
     image: redis:7-alpine
   market:
     build: ./market
-    ports:
-      - ${Market_port}
     environment:
       BACKEND_QUOTE_URL: http://app:8080/internal/market/quotes
   kafka:
     image: apache/kafka:latest
-    ports: 
-      - ${Kafka_port}
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -72,14 +68,6 @@ services:
       PAYSPRINT_SOURCE_DB_URL: postgresql://paysprint:${DB_PASSWORD}@db:5432/paysprint
       PAYSPRINT_ANALYTICS_DB_URL: postgresql://paysprint:${DB_PASSWORD}@db:5432/paysprint_analytics
       ETL_INTERVAL_SECONDS: ${ETL_INTERVAL_SECONDS:-600}
-
-  frontend:
-    build: ./frontend
-    depends_on:
-      - app
-    ports:
-      - ${Frontend_port}
-
 volumes:
   db_data:
     # Named volume: persists Postgres data across `docker compose down` and

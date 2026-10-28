@@ -1,0 +1,57 @@
+services:
+  redis:
+    image: redis:7-alpine
+  market:
+    build: ./market
+    environment:
+      BACKEND_QUOTE_URL: http://app:8080/internal/market/quotes
+  kafka:
+    image: apache/kafka:latest
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:8092,CONTROLLER://:8093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:8092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:8093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  app:
+    build: .
+    ports:
+      - ${App_port}
+    depends_on:
+      - market
+      - redis
+      - kafka
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST}:5432/paysprint
+      SPRING_DATASOURCE_USERNAME: ${RDS_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:8092
+      JWT_SHARED_SECRET: ${JWT_SHARED_SECRET}
+      ANALYTICS_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST}:5432/paysprint_analytics
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      HUNTER_OPENAI_MODEL: ${HUNTER_OPENAI_MODEL:-gpt-6-luna}
+  etl:
+    # Refreshes analytics P&L (paysprint_analytics) on a fixed interval and exposes
+    # the internal POST /refresh endpoint used by the Spring app.
+    build: ./analytics
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - app
+    expose:
+      - "8094"
+    environment:
+      PAYSPRINT_SOURCE_DB_URL: postgresql://paysprint:${RDS_PASSWORD}@${RDS_HOST}:5432/paysprint
+      PAYSPRINT_ANALYTICS_DB_URL: postgresql://paysprint:${RDS_PASSWORD}@${RDS_HOST}:5432/paysprint_analytics
+      ETL_INTERVAL_SECONDS: ${ETL_INTERVAL_SECONDS:-600}
+
+
+      
