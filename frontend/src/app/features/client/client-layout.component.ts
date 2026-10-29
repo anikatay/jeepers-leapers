@@ -21,7 +21,7 @@ import { AuthService } from '../../core/services/auth.service';
     </div>
   `,
   styles: [`
-    .client-app { min-height: 100%; }
+    .client-app { min-height: 0; }
   `]
 })
 export class ClientLayoutComponent implements OnInit {

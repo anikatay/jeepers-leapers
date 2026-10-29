@@ -16,7 +16,6 @@
 }
 
 .sd-shell {
-  min-height: 100vh;
   background: var(--bg-wave);
   color: var(--foreground);
   font-family: 'Inter', sans-serif;

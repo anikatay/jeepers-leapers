@@ -17,7 +17,6 @@ button {
 
 /* Portfolio Page */
 .portfolio-shell {
-  min-height: 100vh;
   background: var(--bg-wave);
   font-family: 'Inter', sans-serif;
   color: var(--foreground);

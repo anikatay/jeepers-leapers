@@ -147,6 +147,10 @@ interface SrRow {
       user-select: none;
     }
 
+    .portfolio-chart > table.sr-only {
+      display: block;
+    }
+
     canvas {
       display: block;
       width: 100%;
