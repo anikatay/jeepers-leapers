@@ -64,6 +64,10 @@ input::placeholder {
   color: var(--muted-foreground);
 }
 
+.password-wrap input::-ms-reveal {
+  display: none;
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    BUTTONS & INTERACTIVE ELEMENTS
    ────────────────────────────────────────────────────────────────────────── */
